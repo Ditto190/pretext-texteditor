@@ -1,34 +1,65 @@
 # Font context diagnostics
 
-Run `bun run font-probe --browser=chrome --output=/tmp/font-probe.json`, or open `/font-probe` after `bun start`. Safari and Firefox are also accepted. The page uses the same Google Fonts family/weight request as the [#195 reproduction](https://github.com/chenglou/pretext/issues/195), and fails if the requested face is absent. That live URL does not pin a font binary revision. Network/font failures must not become fallback-font evidence.
+Findings from the optional font-probe tool: why whole-word, individual-letter and
+line-prefix measurements differ. It is development tooling, not part of the
+library's layout path. General measurement pitfalls belong in
+[RESEARCH.md](RESEARCH.md#reading-browser-output).
 
-The retained probes separate facts that a single width comparison hides:
+Run `bun run font-probe --browser=chrome --output=/tmp/font-probe.json`, or open
+`/font-probe` after `bun start`. Safari and Firefox are also accepted. The tool
+uses the Google Fonts request from [#195](https://github.com/chenglou/pretext/issues/195)
+and fails if the requested face is absent. That live URL does not pin a font
+revision; a fallback font is not valid evidence.
 
-- A whole text run in Canvas and an unwrapped DOM element.
-- The sum of separately measured graphemes.
-- Each prefix measured as its own text run.
-- Each prefix measured with `Range` inside the unchanged complete text node.
-- Canvas prefix measurements with one following grapheme of context.
-- A detached HTML canvas whose language matches the text element.
-
-The repeated-letter controls also test 48 widths around exact measured thresholds. They retain native source boundaries, Pretext boundaries, independently reshaped prefix boundaries, and a forward-context fit experiment. The latter two are diagnostic models, not alternate public line breakers. The page keeps one native text node; wrapping every grapheme in a span could itself change shaping.
+The probes compare whole-run Canvas and DOM widths, isolated graphemes, separately
+measured prefixes, prefixes inside the unchanged DOM text node, and Canvas prefixes
+with one following grapheme retained. A language-matched HTML canvas tests font
+selection separately. Repeated-letter controls sample 48 nearby wrap thresholds.
+These are diagnostic models, not alternative public line breakers.
 
 ## Shantell Sans
 
-On September 3, 2026, `bold 15px "Shantell Sans"`, 56 `x` characters, a 140px content width and `pre-wrap` reproduced 15/15/15/11 native characters versus 16/16/16/8 in Pretext in Chrome 152 and Firefox 152. Firefox's whole-run DOM and Canvas widths both measured 501.75px; separately measured characters summed to 480.66665px.
+On September 3, 2026, `bold 15px "Shantell Sans"`, 56 `x` characters, a 140px
+content width and `pre-wrap` produced native lines of 15/15/15/11 characters versus
+Pretext's 16/16/16/8 in Chrome 152 and Firefox 152. Firefox's whole-run DOM and
+Canvas widths both measured 501.75px; isolated characters summed to 480.66665px.
+Agreement on the whole word did not establish its internal widths.
 
-Turning on the existing prefix model fixed that one width and passed the canonical 7,680-case Firefox sweep. It did not solve the font's narrow thresholds: in Chrome, the candidate matched only 16/48 bold and 16/48 regular Shantell probes. It was rejected and is not included in the library changes here.
+Enabling the existing prefix model fixed that width, but matched only 16/48
+nearby thresholds for each Shantell face in Chrome. It was rejected. Chrome's
+first bold `x` measured about 8.586px alone, 8.969px inside the whole DOM run, and
+8.961px in Canvas when the following character was retained. That extra context
+mattered, but the browsers did not use it alike:
 
-The in-context probe explains the difference. Chrome's first bold `x` measured about 8.586px alone and 8.969px inside the whole DOM run. A Canvas measurement with the following character retained measured about 8.961px. The forward-context experiment matched all 48 recorded thresholds for each of the bold, regular and Arial controls. This is evidence for the fit model, not proof of arbitrary contextual shaping or exact painted line widths. A proper engine change needs to represent those differences explicitly instead of adding a font-name correction.
+| Diagnostic model | Chrome | Safari 26.5.2 |
+| --- | --- | --- |
+| Retain one following grapheme for fitting | 48/48 for both Shantell faces and Arial | 16/48 for each Shantell face; 48/48 for Arial |
+| Reshape each line prefix | Insufficient for Shantell | 42/48 for each Shantell face |
 
-Safari 26.5.2 is a useful negative control: the same forward-context model matched only 16/48 thresholds for each Shantell face, while reshaping each line prefix matched 42/48. Its Arial control matched 48/48. The extractor ignores Safari's extra zero-width rectangle at a wrap boundary without splitting the native text into spans. The Chrome/Firefox fit result must not become an unconditional browser policy.
+These results support a contextual fit model for the tested inputs, not arbitrary
+shaping, exact painted widths, or an unconditional browser policy. A font-name
+correction would conceal the missing measurement information.
+
+The repeated-letter extractor ignores Safari's extra zero-width rectangle at a
+wrap boundary while keeping one native text node. That rule does not generalize
+to controls or combining marks. Inserting grapheme spans can itself change shaping.
 
 ## Language context
 
-For `foo-bar日本語` in `18px serif`, `lang=ja`, the Firefox DOM measured 114.867px while the default offscreen canvas measured 106.983px. An HTML canvas with `lang=ja` measured 114.867px. Chrome showed the same class; Times New Roman controls agreed in both browsers.
+For `foo-bar日本語` in `18px serif`, `lang=ja`, Firefox's DOM measured 114.867px
+versus 106.983px in the default offscreen canvas. An HTML canvas with `lang=ja`
+restored 114.867px. Chrome showed the same kind of difference; named Times New
+Roman controls agreed in both browsers.
 
-Safari's language-bound canvas control still measured 106.972px against the DOM's 114.859px. Its named-font control agreed. Matching the element's language attribute alone is therefore not a cross-browser solution.
+Safari's language-matched canvas still measured 106.972px against the DOM's
+114.859px; its named-font control agreed. Matching `lang` alone is not a
+cross-browser solution.
 
-The [Canvas text-style specification](https://html.spec.whatwg.org/multipage/canvas.html#text-styles) includes language context. Pretext's locale setting selects word segmentation; it does not currently configure Canvas font language. A future measurement-owner API should include that context in the owner's identity and cache lifetime.
+The [Canvas text-style specification](https://html.spec.whatwg.org/multipage/canvas.html#text-styles)
+includes language context. Pretext's `setLocale()` controls word segmentation,
+not Canvas font language. If measurements gain language context, cached
+measurements for different languages must stay separate.
 
-These observations do not retest the separate Retina emoji or `system-ui` bugs. The diagnostic records browser and DPR; the repository's default Firefox transport runs at DPR1.
+These probes did not retest the Retina emoji or `system-ui` bugs in
+[PLATFORM_BUGS.md](PLATFORM_BUGS.md). The September 3 Firefox capture used DPR 1;
+do not use those results to judge Retina-specific bugs.

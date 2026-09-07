@@ -37,19 +37,6 @@ export type AnalysisProfile = {
 const collapsibleWhitespaceRunRe = /[ \t\n\r\f]+/g
 const needsWhitespaceNormalizationRe = /[\t\n\r\f]| {2,}|^ | $/
 
-type WhiteSpaceProfile = {
-  mode: WhiteSpaceMode
-  preserveOrdinarySpaces: boolean
-  preserveHardBreaks: boolean
-}
-
-function getWhiteSpaceProfile(whiteSpace?: WhiteSpaceMode): WhiteSpaceProfile {
-  const mode = whiteSpace ?? 'normal'
-  return mode === 'pre-wrap'
-    ? { mode, preserveOrdinarySpaces: true, preserveHardBreaks: true }
-    : { mode, preserveOrdinarySpaces: false, preserveHardBreaks: false }
-}
-
 export function normalizeWhitespaceNormal(text: string): string {
   if (!needsWhitespaceNormalizationRe.test(text)) return text
 
@@ -109,48 +96,11 @@ function containsArabicScript(text: string): boolean {
   return arabicScriptRe.test(text)
 }
 
-function isCJKCodePoint(codePoint: number): boolean {
-  return (
-    (codePoint >= 0x4E00 && codePoint <= 0x9FFF) ||
-    (codePoint >= 0x3400 && codePoint <= 0x4DBF) ||
-    (codePoint >= 0x20000 && codePoint <= 0x2A6DF) ||
-    (codePoint >= 0x2A700 && codePoint <= 0x2B73F) ||
-    (codePoint >= 0x2B740 && codePoint <= 0x2B81F) ||
-    (codePoint >= 0x2B820 && codePoint <= 0x2CEAF) ||
-    (codePoint >= 0x2CEB0 && codePoint <= 0x2EBEF) ||
-    (codePoint >= 0x2EBF0 && codePoint <= 0x2EE5D) ||
-    (codePoint >= 0x2F800 && codePoint <= 0x2FA1F) ||
-    (codePoint >= 0x30000 && codePoint <= 0x3134F) ||
-    (codePoint >= 0x31350 && codePoint <= 0x323AF) ||
-    (codePoint >= 0x323B0 && codePoint <= 0x33479) ||
-    (codePoint >= 0xF900 && codePoint <= 0xFAFF) ||
-    (codePoint >= 0x3000 && codePoint <= 0x303F) ||
-    (codePoint >= 0x3040 && codePoint <= 0x309F) ||
-    (codePoint >= 0x30A0 && codePoint <= 0x30FF) ||
-    (codePoint >= 0x3130 && codePoint <= 0x318F) ||
-    (codePoint >= 0xAC00 && codePoint <= 0xD7AF) ||
-    (codePoint >= 0xFF00 && codePoint <= 0xFFEF)
-  )
-}
+// CJK ranges used by the wrapping policy, including supplementary ideographs.
+const cjkRe = /[\u3000-\u30FF\u3130-\u318F\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF\u{20000}-\u{2A6DF}\u{2A700}-\u{2EE5D}\u{2F800}-\u{2FA1F}\u{30000}-\u{33479}]/u
 
 export function isCJK(s: string): boolean {
-  for (let i = 0; i < s.length; i++) {
-    const first = s.charCodeAt(i)
-    if (first < 0x3000) continue
-
-    if (first >= 0xD800 && first <= 0xDBFF && i + 1 < s.length) {
-      const second = s.charCodeAt(i + 1)
-      if (second >= 0xDC00 && second <= 0xDFFF) {
-        const codePoint = ((first - 0xD800) << 10) + (second - 0xDC00) + 0x10000
-        if (isCJKCodePoint(codePoint)) return true
-        i++
-        continue
-      }
-    }
-
-    if (isCJKCodePoint(first)) return true
-  }
-  return false
+  return cjkRe.test(s)
 }
 
 function endsWithLineStartProhibitedText(text: string): boolean {
@@ -402,26 +352,22 @@ function startsWithDecimalDigit(text: string): boolean {
 }
 
 function splitTrailingForwardStickyCluster(text: string): { head: string, tail: string } | null {
-  const chars = Array.from(text)
-  let splitIndex = chars.length
+  let splitIndex = text.length
 
   while (splitIndex > 0) {
-    const ch = chars[splitIndex - 1]!
-    if (combiningMarkRe.test(ch)) {
-      splitIndex--
-      continue
-    }
-    if (kinsokuEnd.has(ch) || forwardStickyGlue.has(ch)) {
-      splitIndex--
+    const start = previousCodePointStart(text, splitIndex)
+    const ch = text.slice(start, splitIndex)
+    if (combiningMarkRe.test(ch) || kinsokuEnd.has(ch) || forwardStickyGlue.has(ch)) {
+      splitIndex = start
       continue
     }
     break
   }
 
-  if (splitIndex <= 0 || splitIndex === chars.length) return null
+  if (splitIndex <= 0 || splitIndex === text.length) return null
   return {
-    head: chars.slice(0, splitIndex).join(''),
-    tail: chars.slice(splitIndex).join(''),
+    head: text.slice(0, splitIndex),
+    tail: text.slice(splitIndex),
   }
 }
 
@@ -468,11 +414,11 @@ export function endsWithClosingQuote(text: string): boolean {
   return false
 }
 
-function classifySegmentBreakChar(ch: string, whiteSpaceProfile: WhiteSpaceProfile): SegmentBreakKind {
-  if (whiteSpaceProfile.preserveOrdinarySpaces || whiteSpaceProfile.preserveHardBreaks) {
+function classifySegmentBreakChar(ch: string, whiteSpace: WhiteSpaceMode): SegmentBreakKind {
+  if (whiteSpace === 'pre-wrap') {
     if (ch === ' ') return 'preserved-space'
     if (ch === '\t') return 'tab'
-    if (whiteSpaceProfile.preserveHardBreaks && ch === '\n') return 'hard-break'
+    if (ch === '\n') return 'hard-break'
   }
   if (ch === ' ') return 'space'
   if (ch === '\u00A0' || ch === '\u202F' || ch === '\u2060' || ch === '\uFEFF') {
@@ -503,7 +449,7 @@ function splitSegmentByBreakKind(
   segment: string,
   isWordLike: boolean,
   start: number,
-  whiteSpaceProfile: WhiteSpaceProfile,
+  whiteSpace: WhiteSpaceMode,
 ): SegmentationPiece[] {
   if (!breakCharRe.test(segment)) {
     return [{ text: segment, isWordLike, kind: 'text', start }]
@@ -511,43 +457,40 @@ function splitSegmentByBreakKind(
 
   const pieces: SegmentationPiece[] = []
   let currentKind: SegmentBreakKind | null = null
-  let currentTextParts: string[] = []
-  let currentStart = start
+  let currentStart = 0
   let currentWordLike = false
   let offset = 0
 
   for (const ch of segment) {
-    const kind = classifySegmentBreakChar(ch, whiteSpaceProfile)
+    const kind = classifySegmentBreakChar(ch, whiteSpace)
     const wordLike = kind === 'text' && isWordLike
 
     if (currentKind !== null && kind === currentKind && wordLike === currentWordLike) {
-      currentTextParts.push(ch)
       offset += ch.length
       continue
     }
 
     if (currentKind !== null) {
       pieces.push({
-        text: joinTextParts(currentTextParts),
+        text: segment.slice(currentStart, offset),
         isWordLike: currentWordLike,
         kind: currentKind,
-        start: currentStart,
+        start: start + currentStart,
       })
     }
 
     currentKind = kind
-    currentTextParts = [ch]
-    currentStart = start + offset
+    currentStart = offset
     currentWordLike = wordLike
     offset += ch.length
   }
 
   if (currentKind !== null) {
     pieces.push({
-      text: joinTextParts(currentTextParts),
+      text: segment.slice(currentStart),
       isWordLike: currentWordLike,
       kind: currentKind,
-      start: currentStart,
+      start: start + currentStart,
     })
   }
 
@@ -1047,7 +990,7 @@ function carryTrailingForwardStickyAcrossCJKBoundary(segmentation: MergedSegment
 function buildMergedSegmentation(
   normalized: string,
   profile: AnalysisProfile,
-  whiteSpaceProfile: WhiteSpaceProfile,
+  whiteSpace: WhiteSpaceMode,
 ): MergedSegmentation {
   const wordSegmenter = getSharedWordSegmenter()
   let mergedLen = 0
@@ -1071,7 +1014,7 @@ function buildMergedSegmentation(
   let tailHasArabicNoSpacePunctuation = false
 
   for (const s of wordSegmenter.segment(normalized)) {
-    for (const piece of splitSegmentByBreakKind(s.segment, s.isWordLike ?? false, s.index, whiteSpaceProfile)) {
+    for (const piece of splitSegmentByBreakKind(s.segment, s.isWordLike ?? false, s.index, whiteSpace)) {
       const isText = piece.kind === 'text'
       const repeatableSingleCharRunChar = getRepeatableSingleCharRunChar(piece.text, piece.isWordLike, piece.kind)
       const pieceContainsCJK = isCJK(piece.text)
@@ -1423,8 +1366,8 @@ function buildBaseCjkUnits(
   profile: AnalysisProfile,
 ): TextBreakUnit[] {
   const units: TextBreakUnit[] = []
-  let unitParts: string[] = []
   let unitStart = 0
+  let unitEnd = 0
   let unitContainsCJK = false
   let unitEndsWithClosingQuote = false
   let unitIsSingleKinsokuEnd = false
@@ -1432,13 +1375,13 @@ function buildBaseCjkUnits(
   let unitHasNumericHyphen = false
 
   function pushUnit(): void {
-    if (unitParts.length === 0) return
+    if (unitEnd === unitStart) return
     units.push({
-      text: unitParts.length === 1 ? unitParts[0]! : unitParts.join(''),
+      text: segText.slice(unitStart, unitEnd),
       start: unitStart,
       overflow: unitContainsCJK ? (unitHasHyphen ? 'grapheme' : 'none') : 'word-like',
     })
-    unitParts = []
+    unitStart = unitEnd
     unitContainsCJK = false
     unitEndsWithClosingQuote = false
     unitIsSingleKinsokuEnd = false
@@ -1447,8 +1390,8 @@ function buildBaseCjkUnits(
   }
 
   function startUnit(grapheme: string, start: number, graphemeContainsCJK: boolean): void {
-    unitParts = [grapheme]
     unitStart = start
+    unitEnd = start + grapheme.length
     unitContainsCJK = graphemeContainsCJK
     unitHasHyphen = grapheme === '-'
     unitEndsWithClosingQuote = endsWithClosingQuote(grapheme)
@@ -1456,7 +1399,7 @@ function buildBaseCjkUnits(
   }
 
   function appendToUnit(grapheme: string, graphemeContainsCJK: boolean): void {
-    unitParts.push(grapheme)
+    unitEnd += grapheme.length
     unitContainsCJK = unitContainsCJK || graphemeContainsCJK
     unitHasHyphen = unitHasHyphen || grapheme === '-'
     const graphemeEndsWithClosingQuote = endsWithClosingQuote(grapheme)
@@ -1472,7 +1415,7 @@ function buildBaseCjkUnits(
     const grapheme = gs.segment
     const graphemeContainsCJK = isCJK(grapheme)
 
-    if (unitParts.length === 0) {
+    if (unitEnd === unitStart) {
       startUnit(grapheme, gs.index, graphemeContainsCJK)
       continue
     }
@@ -1616,8 +1559,7 @@ export function analyzeText(
   whiteSpace: WhiteSpaceMode = 'normal',
   wordBreak: WordBreakMode = 'normal',
 ): TextAnalysis {
-  const whiteSpaceProfile = getWhiteSpaceProfile(whiteSpace)
-  const normalized = whiteSpaceProfile.mode === 'pre-wrap'
+  const normalized = whiteSpace === 'pre-wrap'
     ? normalizeWhitespacePreWrap(text)
     : normalizeWhitespaceNormal(text)
   if (normalized.length === 0) {
@@ -1630,7 +1572,7 @@ export function analyzeText(
       starts: [],
     }
   }
-  const mergedSegmentation = buildMergedSegmentation(normalized, profile, whiteSpaceProfile)
+  const mergedSegmentation = buildMergedSegmentation(normalized, profile, whiteSpace)
   const segmentation = wordBreak === 'keep-all'
     ? mergeKeepAllTextSegments(normalized, mergedSegmentation, profile)
     : mergedSegmentation

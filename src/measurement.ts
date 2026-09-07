@@ -1,8 +1,7 @@
-import { getSharedGraphemeSegmenter, isCJK } from './analysis.js'
+import { getSharedGraphemeSegmenter } from './analysis.js'
 
 export type SegmentMetrics = {
   width: number
-  containsCJK: boolean
   emojiCount?: number
   breakableFitMode?: BreakableFitMode
   breakableFitAdvances?: number[] | null
@@ -63,7 +62,6 @@ export function getSegmentMetrics(seg: string, cache: Map<string, SegmentMetrics
     const ctx = getMeasureContext()
     metrics = {
       width: ctx.measureText(seg).width,
-      containsCJK: isCJK(seg),
     }
     cache.set(seg, metrics)
   }
@@ -125,10 +123,11 @@ export function textMayContainEmoji(text: string): boolean {
   return maybeEmojiRe.test(text)
 }
 
-function getEmojiCorrection(font: string, fontSize: number): number {
+function getEmojiCorrection(font: string): number {
   let correction = emojiCorrectionCache.get(font)
   if (correction !== undefined) return correction
 
+  const fontSize = parseFontSize(font)
   const ctx = getMeasureContext()
   ctx.font = font
   const canvasW = ctx.measureText('\u{1F600}').width
@@ -251,15 +250,13 @@ export function getSegmentBreakableFitAdvances(
 
 export function getFontMeasurementState(font: string, needsEmojiCorrection: boolean): {
   cache: Map<string, SegmentMetrics>
-  fontSize: number
   emojiCorrection: number
 } {
   const ctx = getMeasureContext()
   ctx.font = font
   const cache = getSegmentMetricCache(font)
-  const fontSize = parseFontSize(font)
-  const emojiCorrection = needsEmojiCorrection ? getEmojiCorrection(font, fontSize) : 0
-  return { cache, fontSize, emojiCorrection }
+  const emojiCorrection = needsEmojiCorrection ? getEmojiCorrection(font) : 0
+  return { cache, emojiCorrection }
 }
 
 export function clearMeasurementCaches(): void {

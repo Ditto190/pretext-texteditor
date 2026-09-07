@@ -1,35 +1,8 @@
-// Text measurement for browser environments using canvas measureText.
-//
-// Problem: DOM-based text measurement (getBoundingClientRect, offsetHeight)
-// forces synchronous layout reflow. When components independently measure text,
-// each measurement triggers a reflow of the entire document. This creates
-// read/write interleaving that can cost 30ms+ per frame for 500 text blocks.
-//
-// Solution: two-phase measurement centered around canvas measureText.
-//   prepare(text, font) — segments text via Intl.Segmenter, measures each word
-//     via canvas, caches widths, and does one cached DOM calibration read per
-//     font when emoji correction is needed. Call once when text first appears.
-//   layout(prepared, maxWidth, lineHeight) — walks cached word widths with pure
-//     arithmetic to count lines and compute height. Call on every resize.
-//     ~0.0002ms per text.
-//
-// i18n: Intl.Segmenter handles CJK (per-character breaking), Thai, Arabic, etc.
-//   Bidi: simplified rich-path metadata for mixed LTR/RTL custom rendering.
-//   Punctuation merging: "better." measured as one unit (matches CSS behavior).
-//   Trailing whitespace: hangs past line edge without triggering breaks (CSS behavior).
-//   overflow-wrap: pre-measured grapheme widths enable character-level word breaking.
-//
-// Emoji correction: Chrome/Firefox canvas measures emoji wider than DOM at font
-//   sizes <24px on macOS (Apple Color Emoji). The inflation is constant per emoji
-//   grapheme at a given size, font-independent. Auto-detected by comparing canvas
-//   vs actual DOM emoji width (one cached DOM read per font). Safari canvas and
-//   DOM agree (both wider than fontSize), so correction = 0 there.
-//
-// Limitations:
-//   - system-ui font: canvas resolves to different optical variants than DOM on macOS.
-//     Use named fonts (Helvetica, Inter, etc.) for guaranteed accuracy.
-//     See RESEARCH.md "Discovery: system-ui font resolution mismatch".
-//
+// Prepare text with Intl segmentation and cached Canvas measurements, then
+// lay it out with arithmetic. Emoji calibration may perform a cached DOM read
+// during preparation; layout itself does no measurement or string work.
+// Rich APIs add source cursors, text materialization and approximate bidi metadata.
+// Browser measurement limitations are documented in README.md and PLATFORM_BUGS.md.
 // Based on Sebastian Markbage's text-layout research (github.com/chenglou/text-layout).
 
 import { computeSegmentLevels } from './bidi.js'
@@ -39,6 +12,7 @@ import {
   getBreakablePreferredBreaks,
   getCjkTextUnits,
   getSharedGraphemeSegmenter,
+  isCJK,
   isNumericRunSegment,
   isIndependentSymbolRun,
   setAnalysisLocale,
@@ -396,9 +370,8 @@ function measureAnalysis(
       continue
     }
 
-    const segMetrics = getSegmentMetrics(segText, cache)
-
-    if (segKind === 'text' && segMetrics.containsCJK) {
+    // Measure CJK text only after its final line-break units are known.
+    if (segKind === 'text' && isCJK(segText)) {
       const measuredUnits = getCjkTextUnits(segText, engineProfile, wordBreak)
 
       for (let i = 0; i < measuredUnits.length; i++) {
@@ -415,7 +388,7 @@ function measureAnalysis(
       continue
     }
 
-    pushMeasuredTextSegment(segText, segMetrics, segKind, segStart,
+    pushMeasuredTextSegment(segText, getSegmentMetrics(segText, cache), segKind, segStart,
       segKind === 'text' && (analysis.isWordLike[mi]! || isIndependentSymbolRun(segText)))
   }
 
@@ -521,7 +494,7 @@ export function layout(prepared: PreparedText, maxWidth: number, lineHeight: num
 
 function createLayoutLine(
   prepared: PreparedTextWithSegments,
-  cache: Map<number, string[]>,
+  cache: ReturnType<typeof getLineTextCache>,
   width: number,
   startSegmentIndex: number,
   startGraphemeIndex: number,

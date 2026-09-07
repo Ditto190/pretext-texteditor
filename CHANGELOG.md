@@ -2,17 +2,13 @@
 
 ## Unreleased
 
-### Changed
-
-- Safari soft-hyphen wrapping now follows the same strict insertion-point behavior across `layout()`, rich-line, and streaming APIs. The Safari compatibility profile was revalidated on Safari 26.4, after previously being validated through Safari 26.3.1.
-
 ### Fixed
 
 - Streaming line layouts and line statistics now agree with batch layout when a later break follows a soft hyphen. Streaming also retains later text after consecutive lines containing only invisible break controls (#222).
-
-- Rich-inline preparation with long internal whitespace and streaming layout of long hyphenated runs no longer rescan growing portions of the input. Pixel font-size extraction also avoids repeated digit-suffix scans.
-
-- Rich-inline cursors now retain original item indices across empty items, zero-width items can occupy a line, and boundary spaces preserve their font and signed letter spacing. Mutating a visited line no longer changes the walker's continuation.
+- Terminal soft hyphens now stay invisible and preserve terminal letter spacing across the rich line APIs.
+- Rich bidi metadata now resets independently at each paragraph boundary.
+- Rich-inline preparation with long internal whitespace, streaming layout of long hyphenated runs, and long font-size strings now avoid excessive repeated work (#221).
+- Rich-inline cursors now retain original item indices across empty items, zero-width items can occupy a line, and boundary spaces preserve their font and signed letter spacing. Mutating a visited line no longer changes the walker's continuation (#220).
 - Overlong independent symbol runs can now wrap at grapheme boundaries, with browser-specific punctuation attachment (#208).
 - Numeric minus signs no longer introduce a preferred break before their number, and ASCII hyphens after CJK text stay attached to the preceding character (#213, #215).
 - The Markdown chat demo now keeps ordinary text inside its bubbles in Firefox on macOS ([#202](https://github.com/chenglou/pretext/issues/202)).

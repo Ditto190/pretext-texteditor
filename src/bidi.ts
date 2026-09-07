@@ -102,8 +102,6 @@ function resolveParagraphLevels(types: BidiType[], levels: Int8Array, start: num
       break
     }
   }
-  for (let i = start; i < end; i++) levels[i] = startLevel
-
   const e: BidiType = (startLevel & 1) ? 'R' : 'L'
   const sor = e
 
@@ -172,12 +170,14 @@ function resolveParagraphLevels(types: BidiType[], levels: Int8Array, start: num
   // I1-I2
   for (let i = start; i < end; i++) {
     const t = types[i]!
-    if ((levels[i]! & 1) === 0) {
-      if (t === 'R') levels[i]!++
-      else if (t === 'AN' || t === 'EN') levels[i]! += 2
+    let level = startLevel
+    if ((startLevel & 1) === 0) {
+      if (t === 'R') level++
+      else if (t === 'AN' || t === 'EN') level += 2
     } else if (t === 'L' || t === 'AN' || t === 'EN') {
-      levels[i]!++
+      level++
     }
+    levels[i] = level
   }
 
   return startLevel

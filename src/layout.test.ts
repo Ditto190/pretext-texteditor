@@ -585,13 +585,13 @@ describe('measurement invariants', () => {
   })
 
   test('breakable fit cache distinguishes fit modes', () => {
-    const metrics: SegmentMetrics = { width: 80, containsCJK: false }
+    const metrics: SegmentMetrics = { width: 80 }
     const cache = new Map<string, SegmentMetrics>([
-      ['a', { width: 10, containsCJK: false }],
-      ['b', { width: 20, containsCJK: false }],
-      ['c', { width: 30, containsCJK: false }],
-      ['ab', { width: 35, containsCJK: false }],
-      ['bc', { width: 60, containsCJK: false }],
+      ['a', { width: 10 }],
+      ['b', { width: 20 }],
+      ['c', { width: 30 }],
+      ['ab', { width: 35 }],
+      ['bc', { width: 60 }],
       ['abc', metrics],
     ])
 
