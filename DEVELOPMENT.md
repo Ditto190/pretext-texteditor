@@ -69,6 +69,8 @@ correctness checks may stay in the background or move between same-scale screens
 Benchmarks require a visible, focused page throughout and reject observed window,
 viewport or screen changes. The three runs must have matching environments before
 we take their median; snapshots retain each run's request and environment.
+Foreground Firefox sessions request activation of the owned tab and process by
+PID; a headed window alone does not establish focus.
 
 DPR includes page zoom; visual viewport scale is a separate measurement. Screen
 sizes are browser-reported CSS dimensions, not a physical monitor ID or a reliable

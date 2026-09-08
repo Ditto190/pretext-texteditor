@@ -429,6 +429,9 @@ async function closeFirefoxSessionState(state: FirefoxSessionState): Promise<voi
 async function initializeFirefoxSession(options: BrowserSessionOptions): Promise<FirefoxSessionState> {
   const bidiPort = await getAvailablePort()
   const profileDir = mkdtempSync(join(tmpdir(), 'pretext-firefox-'))
+  // The startup default-browser dialog takes focus from the owned page.
+  // Disable that prompt only in this disposable automation profile.
+  writeFileSync(join(profileDir, 'user.js'), 'user_pref("browser.shell.checkDefaultBrowser", false);\n')
   const firefoxProcess = spawn('/Applications/Firefox.app/Contents/MacOS/firefox', [
     ...(options.headless === false || options.foreground === true ? [] : ['--headless']),
     '--new-instance',
@@ -648,6 +651,17 @@ function createFirefoxSession(options: BrowserSessionOptions): BrowserSession {
   return {
     async navigate(url) {
       const state = await ensureState()
+      if (options.foreground === true) {
+        const activated = await state.bidi.send('browsingContext.activate', { context: state.context })
+        if (activated.error !== undefined) throw new Error(activated.message ?? activated.error)
+        const pid = state.firefoxProcess.pid
+        if (pid === undefined) throw new Error('The owned Firefox process has no PID')
+        runAppleScript([
+          'tell application "System Events"',
+          `set frontmost of (first application process whose unix id is ${pid}) to true`,
+          'end tell',
+        ])
+      }
       const navigate = await state.bidi.send('browsingContext.navigate', {
         context: state.context,
         url,
