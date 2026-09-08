@@ -6,6 +6,7 @@
 // Based on Sebastian Markbage's text-layout research (github.com/chenglou/text-layout).
 
 import { computeSegmentLevels } from './bidi.js'
+import { observeSegmentEntries, type SegmentEntryGeometry } from './entry-geometry.js'
 import {
   analyzeText,
   clearAnalysisCaches,
@@ -24,7 +25,10 @@ import {
 import {
   type BreakableFitMode,
   clearMeasurementCaches,
+  createEntryMeasurement,
+  entryMeasurementProfilesMatch,
   getCorrectedSegmentWidth,
+  getEntryMeasurementProfile,
   getSegmentBreakableFitAdvances,
   getEngineProfile,
   getFontMeasurementState,
@@ -140,6 +144,7 @@ function createEmptyPrepared(includeSegments: boolean): InternalPreparedText | P
       segLevels: null,
       breakableFitAdvances: [],
       breakablePreferredBreaks: [],
+      entryGeometry: null,
       letterSpacing: 0,
       spacingGraphemeCounts: [],
       discretionaryHyphenWidth: 0,
@@ -157,6 +162,7 @@ function createEmptyPrepared(includeSegments: boolean): InternalPreparedText | P
     segLevels: null,
     breakableFitAdvances: [],
     breakablePreferredBreaks: [],
+    entryGeometry: null,
     letterSpacing: 0,
     spacingGraphemeCounts: [],
     discretionaryHyphenWidth: 0,
@@ -218,10 +224,51 @@ function measureAnalysis(
   const segStarts = includeSegments ? [] as number[] : null
   const breakableFitAdvances: (number[] | null)[] = []
   const breakablePreferredBreaks: (number[] | null)[] = []
+  let entryGeometry: (SegmentEntryGeometry | null)[] | null = null
+  let entryProfile: ReturnType<typeof getEntryMeasurementProfile> | undefined
+  let measureEntry: ReturnType<typeof createEntryMeasurement> | undefined
+  const getEntryProfile = () => {
+    if (entryProfile === undefined) entryProfile = getEntryMeasurementProfile()
+    return entryProfile
+  }
+  const getEntryMeasurement = () => {
+    if (measureEntry === undefined) measureEntry = createEntryMeasurement(letterSpacing, emojiCorrection, getEntryProfile())
+    return measureEntry
+  }
   const spacingGraphemeCounts: number[] = []
   const segments = includeSegments ? [] as string[] : null
   const chunks: PreparedLineChunk[] = []
   let chunkStartSegmentIndex = 0
+
+  function getEntryGeometry(
+    text: string,
+    metrics: SegmentMetrics,
+    advances: number[],
+    width: number,
+    fitBasis: 'fresh' | 'original',
+  ): SegmentEntryGeometry | null {
+    const cached = metrics.entryGeometry
+    if (cached !== undefined && cached.letterSpacing === letterSpacing &&
+      cached.advances === advances && cached.emojiCorrection === emojiCorrection) {
+      const profile = getEntryProfile()
+      if (profile === null) return null
+      if (entryMeasurementProfilesMatch(cached.profile, profile)) return cached.geometry
+    }
+    let complete = true
+    const geometry = observeSegmentEntries(text, advances, letterSpacing, width, fitBasis, source => {
+      const measurement = getEntryMeasurement()
+      const measured = measurement === null ? null : measurement.measure(source)
+      if (measured === null) complete = false
+      return measured
+    })
+    // The cache owner fixes the text/font, and the engine's basis is fixed.
+    // Replacing this last successful observation leaves prepared copies intact.
+    if (geometry !== null && complete) {
+      metrics.entryGeometry = { letterSpacing, advances, emojiCorrection,
+        profile: getEntryMeasurement()!.profile, geometry }
+    }
+    return geometry
+  }
 
   function pushMeasuredSegment(
     text: string,
@@ -233,6 +280,7 @@ function measureAnalysis(
     breakableFitAdvance: number[] | null,
     breakablePreferredBreak: number[] | null,
     spacingGraphemeCount: number,
+    entry: SegmentEntryGeometry | null = null,
   ): void {
     if (kind !== 'text' && kind !== 'space' && kind !== 'zero-width-break') {
       simpleLineWalkFastPath = false
@@ -244,6 +292,11 @@ function measureAnalysis(
     segStarts?.push(start)
     breakableFitAdvances.push(breakableFitAdvance)
     breakablePreferredBreaks.push(breakablePreferredBreak)
+    if (entry !== null && entryGeometry === null) {
+      entryGeometry = Array.from({ length: widths.length - 1 }, () => null)
+      simpleLineWalkFastPath = false
+    }
+    entryGeometry?.push(entry)
     if (hasLetterSpacing) spacingGraphemeCounts.push(spacingGraphemeCount)
     if (segments !== null) segments.push(text)
   }
@@ -306,6 +359,8 @@ function measureAnalysis(
         fitAdvances,
         preferredBreaks,
         spacingGraphemeCount,
+        engineProfile.entryFitBasis !== 'disabled' && kind === 'text' && fitAdvances !== null
+          ? getEntryGeometry(text, textMetrics, fitAdvances, width, engineProfile.entryFitBasis) : null,
       )
       return
     }
@@ -410,6 +465,7 @@ function measureAnalysis(
       segLevels,
       breakableFitAdvances,
       breakablePreferredBreaks,
+      entryGeometry,
       letterSpacing,
       spacingGraphemeCounts,
       discretionaryHyphenWidth,
@@ -427,6 +483,7 @@ function measureAnalysis(
     segLevels,
     breakableFitAdvances,
     breakablePreferredBreaks,
+    entryGeometry,
     letterSpacing,
     spacingGraphemeCounts,
     discretionaryHyphenWidth,

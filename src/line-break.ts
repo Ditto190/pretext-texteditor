@@ -1,5 +1,6 @@
 import type { SegmentBreakKind } from './analysis.js'
 import { getEngineProfile } from './measurement.js'
+import { getSegmentEntryWidth, type SegmentEntryGeometry } from './entry-geometry.js'
 
 export type LineBreakCursor = {
   segmentIndex: number
@@ -14,6 +15,7 @@ export type PreparedLineBreakData = {
   simpleLineWalkFastPath: boolean
   breakableFitAdvances: (number[] | null)[]
   breakablePreferredBreaks: (number[] | null)[]
+  entryGeometry?: (SegmentEntryGeometry | null)[] | null
   letterSpacing: number
   spacingGraphemeCounts: number[]
   discretionaryHyphenWidth: number
@@ -633,6 +635,35 @@ function walkPreparedComplexLines(
       : getNextPreferredBreakIndex(preferredBreaks, 0, startGraphemeIndex + 1)
     let lastPreferredBreakEnd = -1
     let lastPreferredBreakWidth = 0
+
+    const entry = prepared.entryGeometry?.[segmentIndex]
+    const freshWhole = getSegmentEntryWidth(entry, startGraphemeIndex, fitAdvances.length)
+    if (freshWhole !== null) {
+      const terminal = prepared.letterSpacing
+      if (entry!.entries[startGraphemeIndex]!.admissionFit <= fitLimit) {
+        startLineAtSegment(segmentIndex, freshWhole - terminal)
+        return null
+      }
+      // Admission, ordered emergency prefixes and continuing pen are distinct.
+      // The first real grapheme is mandatory source progress, even when unfit.
+      for (let g = startGraphemeIndex; g < fitAdvances.length; g++) {
+        const fresh = getSegmentEntryWidth(entry, startGraphemeIndex, g + 1)!
+        if (g > startGraphemeIndex && fresh > fitLimit) {
+          return lastPreferredBreakEnd > startGraphemeIndex
+            ? finishLine(segmentIndex, lastPreferredBreakEnd, lastPreferredBreakWidth)
+            : finishLine()
+        }
+        startLineAtGrapheme(segmentIndex, g, fresh - terminal)
+        if (preferredBreaks !== null && preferredBreaks[preferredBreakIndex] === g + 1) {
+          lastPreferredBreakEnd = g + 1
+          lastPreferredBreakWidth = lineW
+          preferredBreakIndex++
+        }
+      }
+      // Exhausting an emergency fragment consumes the measured segment and
+      // ends this line. Only intact admission above continues into other source.
+      return finishLine(segmentIndex + 1, 0)
+    }
 
     for (let g = startGraphemeIndex; g < fitAdvances.length; g++) {
       const baseGw = fitAdvances[g]!

@@ -41,9 +41,11 @@ let phase: 'prepare' | 'numeric' | 'materialize' = 'prepare'
 let counts: Counts = { measureCalls: 0, submittedUTF16: 0, maxSubmittedUTF16: 0 }
 let forbiddenMeasurement = false
 let advances = { space: 4, tab: 8, other: 8 }
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
 class TestCanvas {
   font = '16px Probe'
   textRendering = 'auto'
+  letterSpacing = '0px'
 
   measureText(text: string): { width: number } {
     if (phase !== 'prepare') {
@@ -58,7 +60,10 @@ class TestCanvas {
       if (/[\p{M}\u00AD\u200B\u2060\uFEFF]/u.test(character)) continue
       width += character === ' ' ? advances.space : character === '\t' ? advances.tab : advances.other
     }
-    return { width: width * Number.parseFloat(this.font) / 16 }
+    const spacing = Number.parseFloat(this.letterSpacing)
+    const tracking = spacing === 0 ? 0 : Array.from(graphemes.segment(text)).length * spacing
+    const contextWidth = spacing !== 0 && this.textRendering === 'optimizeLegibility' ? 2 : 0
+    return { width: width * Number.parseFloat(this.font) / 16 + tracking + contextWidth }
   }
 }
 
@@ -77,12 +82,14 @@ Object.defineProperty(globalThis, 'OffscreenCanvas', {
 })
 const api = await import(pathToFileURL(resolve(source, 'layout.ts')).href) as typeof import('../../src/layout.ts')
 const rich = await import(pathToFileURL(resolve(source, 'rich-inline.ts')).href) as typeof import('../../src/rich-inline.ts')
+const measurement = await import(pathToFileURL(resolve(source, 'measurement.ts')).href) as typeof import('../../src/measurement.ts')
 
 const recipes: Recipe[] = [
   { name: 'latin-url', text: size => `https://example.com/${'alpha-b/'.repeat(size)}?q=end`, whiteSpace: 'normal' },
   { name: 'arabic-openers', text: size => 'بِبِ((tail '.repeat(size), whiteSpace: 'normal' },
   { name: 'cjk-openers', text: size => '「「tail 世界 '.repeat(size), whiteSpace: 'normal' },
   { name: 'controls', text: size => 'alpha\u00ADbeta\u200Bgamma '.repeat(size), whiteSpace: 'normal' },
+  { name: 'entry-controls', text: size => 'a\u2060\u0301bc '.repeat(size), whiteSpace: 'normal' },
   { name: 'long-word', text: size => 'abcdefghij'.repeat(size), whiteSpace: 'normal' },
   { name: 'long-grapheme', text: size => `a${'\u0301'.repeat(size)}`.repeat(8), whiteSpace: 'normal' },
   { name: 'tabs', text: size => 'a\t\t\u200Bb\n'.repeat(size), whiteSpace: 'pre-wrap' },
@@ -147,6 +154,43 @@ for (const recipe of recipes) for (const [size, letterSpacing] of preparations) 
       const detail = error instanceof Error ? error.message : String(error)
       row.failures.push({ contract: `${phase}/completion`, detail, width: widthLabel })
       if (forbiddenMeasurement) row.failures.push({ contract: `${phase}/no-canvas`, detail, width: widthLabel })
+    }
+  }
+  if (recipe.name === 'entry-controls' && size === 1 && letterSpacing === -1) {
+    // Replacing an observation must not alter a held handle or its JSON copy.
+    // A changed synthetic context affects only fresh, tracked measurements.
+    const context = measurement.getMeasureContext()
+    const originalRendering = context.textRendering
+    const saved = JSON.stringify(prepared)
+    const copied = JSON.parse(saved) as typeof prepared
+    const result = (value: typeof prepared) => {
+      phase = 'numeric'
+      return JSON.stringify([1, 8, 27].map(width => api.layoutWithLines(value, width, 20)))
+    }
+    const original = result(prepared)
+    try {
+      phase = 'prepare'
+      const positive = api.prepareWithSegments(text, '16px Probe', { ...options, letterSpacing: 1 })
+      api.clearCache()
+      const positiveCold = api.prepareWithSegments(text, '16px Probe', { ...options, letterSpacing: 1 })
+      if (result(positive) !== result(positiveCold)) throw new Error('Cached geometry ignored the letter spacing')
+      phase = 'prepare'
+      const replaced = api.prepareWithSegments(text, '16px Probe', options)
+      if (result(replaced) !== original) throw new Error('Spacing replacement changed matching preparation')
+      context.textRendering = 'optimizeLegibility'
+      phase = 'prepare'
+      const changed = api.prepareWithSegments(text, '16px Probe', options)
+      api.clearCache()
+      const cold = api.prepareWithSegments(text, '16px Probe', options)
+      if (result(changed) !== result(cold)) throw new Error('Cached geometry ignored the measurement context')
+      if (JSON.stringify(prepared) !== saved || result(prepared) !== original || result(copied) !== original) {
+        throw new Error('Replacing cached geometry changed a held or copied preparation')
+      }
+      row.passedContracts.push({ contract: 'numeric/cache-lifetime', width: 'unbounded' })
+    } catch (error) {
+      row.failures.push({ contract: 'numeric/cache-lifetime', width: 'unbounded', detail: error instanceof Error ? error.message : String(error) })
+    } finally {
+      context.textRendering = originalRendering
     }
   }
   rows.push(row)

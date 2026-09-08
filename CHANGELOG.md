@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Narrow wrapping around invisible controls and combining marks now more closely matches desktop Chrome and Firefox.
+
 ## 0.0.9 - 2026-09-07
 
 ### Fixed

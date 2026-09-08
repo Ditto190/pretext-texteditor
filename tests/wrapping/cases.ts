@@ -113,6 +113,20 @@ export function generateCases(measure: Measure, selection: CaseSelection): Wrapp
     }
   })
 
+  // Promote existing observations without growing the full matrix. The last
+  // witness requires different native line counts in Chromium and Gecko.
+  for (const input of [
+    { text: 'a\u2060\u0301b', font: '16px Courier New', width: 1, letterSpacing: -4,
+      whiteSpace: 'pre-wrap', browsers: ['chrome'] },
+    { text: 'a\u2060\u2060\u0301b', font: '16px Courier New', width: 12, letterSpacing: 1,
+      whiteSpace: 'pre-wrap', browsers: ['chrome', 'firefox'] },
+    { text: 'a\u200e\u0301b', font: '16px Arial', width: 6.229999732971191, letterSpacing: -1,
+      lineHeight: 48, whiteSpace: 'normal', browsers: ['chrome', 'firefox'] },
+  ] as const) {
+    add({ ...defaults, ...input, browsers: [...input.browsers], family: 'entry-geometry',
+      origins: ['maintained/entry-geometry'], required: ['height', 'lineCount', 'api'] })
+  }
+
   const recipeMeasure = (text: string, font: string): number => measure(text, font, 0)
   for (const recipe of [policyCases, generateLanguageCases, generateSeamCases, generateAcceptanceCases]) {
     for (const input of recipe(recipeMeasure)) {

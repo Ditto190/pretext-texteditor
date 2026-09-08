@@ -63,6 +63,10 @@ serialized returned fields, so agreeing text and source positions cannot hide
 lost break metadata. Widths retain their existing numeric tolerance.
 The numeric companion covers nine environment profiles, prohibits Canvas calls
 after preparation, and retains the unverified-profile TAB compatibility checks.
+Its synthetic Canvas supports letter spacing so control-bearing recipes exercise
+entry observations as well as their disabled fallback. It also checks that
+spacing/context changes and cache replacement preserve held and copied handles.
+These are API and call checks, not native shaping measurements.
 
 Most native observations use one unmodified text node and scalar `Range`
 rectangles. Compact maintained cases also preserve their selected Range/span

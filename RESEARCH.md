@@ -67,10 +67,10 @@ cost.
 
 ## Widths After A Line Break
 
-These are findings from the September 2026 unmerged wrapping experiments around
+These are findings from the September 2026 wrapping experiments around
 [#210](https://github.com/chenglou/pretext/issues/210) and
-[#211](https://github.com/chenglou/pretext/pull/211), not new guarantees of the
-shipped engine. None of the broader replacements preserved all main's successes.
+[#211](https://github.com/chenglou/pretext/pull/211). The bounded entry measurements
+below improve some cases; they do not resolve the filed source-accounting examples.
 
 Three quantities that look like “remaining width” need different treatment:
 
@@ -97,14 +97,33 @@ starting at the preceding word joiner (WJ). Counting Unicode characters or
 that source is absent; Unicode's default-ignorable classification is not a
 spacing rule. Removing controls before measuring changes the experiment.
 
-A bounded experiment measured the new start through the first complete following
-grapheme, then reused the existing later prefix differences. That recovered useful
-cases without measuring every suffix. Stopping before that following grapheme
-lost context. The adjustment also has to be computed against the actual widths
-being reused: a correction to raw Canvas prefixes cannot simply be attached to
-a different production model. Replacing all existing widths with Canvas's
-letter-spaced measurements regressed ligature cases. The sampled success is not
-proof of a universal shaping boundary or a mergeable fix.
+For covered starts inside a control-affected interval, preparation measures the
+original source through the first complete following grapheme, then reuses later
+prepared prefix differences. The following grapheme supplies context; its own
+starting position does not inherit a correction. Removing controls only helps
+locate affected source intervals: measuring that altered text would be wrong.
+Clipped context and long runs retain the existing measurement path.
+
+Desktop Chromium uses the fresh remainder for intact admission; desktop Gecko
+keeps original-whole-minus-consumed-prefix admission while using the fresh widths
+for emergency fitting and continuing advance. Preparation resolves this choice
+into numeric geometry. Safari, mobile and unrecognized environments retain the
+existing path, including avoiding the extra observations. The Canvas context
+must expose letter spacing before assignment: reading back an expando
+is not feature support. Measurements borrow the existing context synchronously,
+restore its spacing immediately, and bypass the unspaced segment cache. A new
+context for each preparation repeated expensive shaping that the existing
+context could reuse, even after clearing Pretext's own caches. That improvement
+does not remove the cost of shaping a new, unusually large cluster. Retaining
+observations with the segment metrics still matters: repeating the calls and
+interval work remained costly even when Canvas reused shaping.
+
+Using emergency-prefix differences for every admission removed one mixed-width
+failure but sacrificed other Chrome successes. Choosing by the existing prefix
+measurement mode also failed: the opposing Chrome and Firefox cases both use
+that mode. These are bounded engine policies, not a universal shaping boundary.
+Replacing all widths with Canvas's letter-spaced measurements also regressed
+ligatures. Keep the interpretation tied to the actual measurements being reused.
 
 Earlier line breaks can matter too. In 24px Times New Roman, single-text-node
 Safari probes forced `AVAVbc` through `AVAV`, `AV/A/V` and `A/V/A/V` using different
