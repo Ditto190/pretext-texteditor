@@ -84,6 +84,30 @@ and LF to the same hard boundary, although their native line existence can diffe
 The standalone fix does not broaden normalization or resolve the visible-text
 reproduction in #210.
 
+An executed WebKit trace separates another source rule from width measurement.
+With Amiri at 16px, a 14.75px-wide LTR pre-wrap paragraph containing ZWSP, Arabic beh,
+SHY and beh produces four lines: empty, beh, hyphen, beh. After forcing the first
+letter onto a line, WebKit leaves the SHY unconsumed. Pretext consumes it earlier.
+WebKit already includes the possible hyphen in its candidate width before
+overflow; it also considers the previous SHY when wrapping the following text.
+Neither a width adjustment alone nor “add the marker after wrapping” describes
+this path.
+
+Chromium retains the complete RTL-shaped item across ZWSP and SHY. The same text
+fits intact at 25px. At 14.75px it selects a cut after SHY, reshapes the selected
+text range with the surrounding original source still available, then adds a
+separately shaped U+2010 hyphen in the paragraph's LTR direction. The remaining
+letter is reshaped at the next line's start. The selected glyphs differ from
+the original whole-run glyphs. Do not treat isolated-letter widths or one RTL
+text-and-marker measurement as equivalent observations. Keeping source positions,
+measurement context and selected line geometry separate still matters.
+
+These traces used source-built Chromium 152 and cached Playwright WebKit 2272.
+The Chromium controls matched installed Chrome's complete native rectangles;
+WebKit matched installed Safari's line counts and horizontal geometry, but its
+vertical glyph metrics differed. They establish those builds' executed paths,
+not an execution trace of the installed binaries or general engine equivalence.
+
 Three quantities that look like “remaining width” need different treatment:
 
 - The width used to decide whether the remaining word fits intact.
