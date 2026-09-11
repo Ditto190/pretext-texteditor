@@ -17,6 +17,67 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Exclamation breaks and leading ZWSP marks
+
+Runtime commit `14d92ca` starts from the leading-ZWSP branch head `fdb7f01`.
+UAX #14 breaks after EX punctuation such as `?`, `!`, U+061F and U+06D4 before a
+following letter or number. Every engine keeps that break, except where the
+Chromium and WebKit Latin-1 pair tables keep `!` with a following printable ASCII
+character. The forward carry and the no-space join now keep it for punctuation
+with no text before it. Safari also keeps a basic combining mark with a ZWSP that
+starts its text node or follows a mandatory break. Rich-inline items prepare their
+own text, so a collapsed leading SPACE remains break context.
+
+The full shared inventory ran in installed Chrome, Safari and Firefox, both
+directions, at DPR 2: 656,407 browser/input observations, with pinned `6ad8409`
+as the reference. There are zero lost metrics, failed required checks, execution
+errors and new API/rich failures, and nine numeric profiles have no new failures.
+The candidate gains 78 metrics in Chrome, 60 in Safari and 100 in Firefox. The
+suite hash is `5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07`;
+rows are in `/private/tmp/pretext-210-followers-20260911/full-v4-vs-step1`.
+
+A separate research family of 4,923 inputs per browser checked the engine rules
+directly (`probe-followers4` in the same directory): non-ASCII followers after `!`,
+ASCII symbols after `?`, Arabic question marks and full stops, Firefox mid-word
+`!`, Safari marks after a leading SPACE, TAB, LF or CR, rich items, U+201D under
+zh-Hans, ja and en, and letter spacing. Relative to `6ad8409` it fixes 356 Chrome,
+462 Firefox and 566 Safari line counts, with no new API failures. It loses 20
+research rows:
+
+- Safari `\u200B\u0301ab` at letter spacing 2, widths 27–28.5: the glued ZWSP owns a
+  spacing gap the browser does not add.
+- Safari pre-wrap `x\u000D\u200B\u0301ab` at widths 3–7.5: the mark stays with the
+  ZWSP natively, but the raw CR's separate native line is the existing raw-CR
+  limitation.
+- One RTL width each of `\u0623\u0645\u0648\u0646!!\u0648\u0644\u0642\u062F` in Chrome and Safari: the new break is native,
+  but isolated emergency widths of joined Arabic letters exceed the box.
+
+Excluding default-ignorable characters from letter spacing matched native gap
+counts more often, but it lost 73 supported cases in the full comparison,
+including a required Firefox control case, so it is not part of this change.
+Firefox's ZWSP-plus-cluster-extender grouping and U+201D locale tailoring remain
+unmodeled.
+
+After reviewing these per-case changes, the baseline advances to `14d92ca`.
+
+The ordinary snapshots were regenerated against that pin. All six legs pass with
+zero new regressions, required failures or execution errors, and nine numeric
+profiles have no new failures. Accuracy and letter-spacing results are unchanged.
+In the step-10 corpus sweep, the Urdu `ur-chughd` text now matches at all 61 widths
+in every browser (57 before), and the Arabic `ar-risalat-al-ghufran-part-1` text at
+all 61 widths in Chrome and Safari (60 before): `!` now breaks before the following
+word. Refreshed files otherwise change only provenance and environment records.
+The ordinary suite hash is
+`f50daaa280c974e44db39a778092d8185fd1e7b1af4d29216edeb056924e3307`.
+
+Chrome and Safari benchmark snapshots were refreshed from this checkout: three
+foreground runs each, with matching environments at DPR 2 on the 2560×1440 screen,
+visible and focused. Hot `layout()` reads 0.088 ms in Chrome (0.086 before) and
+0.103 ms in Safari (unchanged); rich statistics, range and streaming rows stay
+within timer granularity. Chrome preparation rows read 2–5% higher, for example
+Arabic prose 35.5 → 37.1 ms, from the added boundary checks during analysis. Safari
+reports whole milliseconds and shows no clear change.
+
 ## Leading zero-width spaces
 
 Runtime commit `6ad8409` starts from published main `5443392`. A ZWSP that starts
