@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-09-11T13:56:49.187Z",
-  "suiteHash": "f50daaa280c974e44db39a778092d8185fd1e7b1af4d29216edeb056924e3307",
+  "generatedAt": "2026-09-11T21:48:06.845Z",
+  "suiteHash": "edf54ed053d7e1c0ef387ffcade551a22dfb6508440215746abb388d29245c30",
   "source": {
-    "revision": "14d92ca10b398573c0c569ef483acf367ef9e13b",
+    "revision": "4cff0288ae26c47129579d5b63126eca61d65bd7",
     "files": {
       "analysis.ts": "a57b2a0cff6e0710d2c3d3444b9c0f8c1a4b78dae51b66b2535c3c16204a3747",
       "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
@@ -24,16 +24,16 @@
         "start": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2560,
-          "innerHeight": 1225,
-          "outerWidth": 2560,
-          "outerHeight": 1315,
+          "innerWidth": 1512,
+          "innerHeight": 772,
+          "outerWidth": 1512,
+          "outerHeight": 862,
           "screenX": 0,
-          "screenY": 30,
-          "screenWidth": 2560,
-          "screenHeight": 1440,
-          "screenAvailWidth": 2560,
-          "screenAvailHeight": 1315,
+          "screenY": 33,
+          "screenWidth": 1512,
+          "screenHeight": 982,
+          "screenAvailWidth": 1512,
+          "screenAvailHeight": 862,
           "visibility": "visible",
           "focused": true,
           "language": "en",
@@ -42,22 +42,28 @@
         "end": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2560,
-          "innerHeight": 1225,
-          "outerWidth": 2560,
-          "outerHeight": 1315,
+          "innerWidth": 1512,
+          "innerHeight": 772,
+          "outerWidth": 1512,
+          "outerHeight": 862,
           "screenX": 0,
-          "screenY": 30,
-          "screenWidth": 2560,
-          "screenHeight": 1440,
-          "screenAvailWidth": 2560,
-          "screenAvailHeight": 1315,
+          "screenY": 33,
+          "screenWidth": 1512,
+          "screenHeight": 982,
+          "screenAvailWidth": 1512,
+          "screenAvailHeight": 862,
           "visibility": "visible",
-          "focused": true,
+          "focused": false,
           "language": "en",
           "direction": "ltr"
         },
-        "changes": []
+        "changes": [
+          {
+            "field": "focused",
+            "value": false,
+            "evidence": "snapshot"
+          }
+        ]
       },
       "context": {
         "kind": "installed",
@@ -67,7 +73,7 @@
       "dpr": 2,
       "locale": "zh-CN",
       "visibility": "visible",
-      "focused": true,
+      "focused": false,
       "fonts": []
     }
   ],

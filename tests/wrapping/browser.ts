@@ -88,8 +88,8 @@ export async function runBrowser(variants: Variant[]): Promise<void> {
     // Each direction therefore runs on a fresh page before any API is called.
     document.documentElement.dir = config.direction
     const fonts = config.context.kind === 'fixtures' ? config.fonts : []
-    if (config.context.kind === 'fixtures') document.documentElement.removeAttribute('lang')
-    else document.documentElement.lang = config.context.lang
+    // Without a language Chrome and Firefox follow the machine's preferred one.
+    document.documentElement.lang = config.context.kind === 'fixtures' ? 'en' : config.context.lang
     await loadFonts(fonts)
     guard = createBrowserEnvironmentGuard('correctness')
     guard.assertStable()

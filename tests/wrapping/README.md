@@ -29,6 +29,19 @@ leave an earlier font resolution in the Canvas context. Native element language
 and preparation locale remain separate inputs. Loading the same font through
 `FontFace` can also change Safari behavior.
 
+Fixture pages use `en` as their document language. Without one, Chrome uses its
+app language and Firefox the macOS preferred language, while Safari matched `en`.
+Language changes native results in three ways. Chrome allows extra breaks around
+curly double quotes on Chinese pages. Safari allows extra breaks around curly
+quotes on pages without a language and in `en`, `zh-Hans` and `ko`, but not `ja`.
+Glyphs missing from the named font fall back to a language-specific font with
+different widths. Under `ja`, `zh-Hans` and `ko`, Safari and Firefox also shape
+some of the named font's own punctuation differently. Pretext's OffscreenCanvas
+follows `<html lang>` in Chrome and Firefox, never in Safari. Chrome treats an
+element's `lang=""` like no language, and the case generator's detached canvas
+still uses the machine language in Chrome and Firefox. Give standalone probe
+pages an explicit, non-empty `lang`.
+
 The environment guard starts after font readiness and before case generation or
 preparation. It records the page's start/end environment and latches observed
 changes; a DPR, visual scale or document-context change invalidates the run.
