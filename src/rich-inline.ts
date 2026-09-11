@@ -162,13 +162,16 @@ export function prepareRichInline(items: RichInlineItem[]): PreparedRichInline {
     while (end > start && isCollapsibleBoundaryWhitespace(item.text.charCodeAt(end - 1))) end--
     const hasLeadingWhitespace = start > 0
     const hasTrailingWhitespace = end < item.text.length
-    const trimmedText = item.text.slice(start, end)
 
     const gapBefore = pendingGapWidth ?? (
       hasLeadingWhitespace ? getCollapsedSpaceWidth(item.font, letterSpacing) : 0
     )
+    // Normalization already drops boundary whitespace, so the item's own text
+    // yields the same segments while analysis keeps the source before them:
+    // a leading SPACE or TAB is break context inside the item's text node.
+    // Fragment cursors then index the same handle as prepareWithSegments(item.text).
     const prepared = prepareWithSegments(
-      trimmedText,
+      item.text,
       item.font,
       letterSpacing === 0 ? undefined : { letterSpacing },
     )

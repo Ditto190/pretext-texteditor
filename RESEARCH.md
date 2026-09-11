@@ -39,6 +39,33 @@ must not depend on those incidental storage differences.
 Extending Firefox's ASCII opener/numeric rules to wider Unicode cases exposed
 trailing-space fit failures, so the accepted rules remain narrow.
 
+Question and exclamation marks are UAX #14 class EX. ICU and ICU4X break after EX
+before a following letter or number (LB31), and Firefox sends every word
+containing EX to ICU4X: its ASCII shortcut covers only AL, IS, NU and QU words.
+Chrome and Safari first consult a pair table for characters up to U+00FF. It
+follows ICU except for printable ASCII, where `?` breaks before a letter, digit or
+symbol but `!` does not. Punctuation with no text before it, such as `?` after a
+space or ZWSP, is otherwise carried onto the next word, so the forward carry and
+the no-space join apply the same rule. Safari's keep-all still breaks only at
+spaces. Earlier passes keep two table quirks unmodeled: `?` before `$`, `-` or
+`|`, and `!` before a non-letter symbol such as `©` or `¿`. The first-pass Arabic
+no-space rule also keeps U+061B with a following word.
+
+WebKit's pair scan never breaks before a basic combining mark. It reports the
+break between ZWSP and that mark (LB8) only from an ICU lookup that started
+before the ZWSP. Every text node starts its own scan without prior context, so a
+ZWSP at the start of a node, or after LF, CR, FF or another mandatory break, keeps
+the mark, while a leading SPACE or TAB is context. This holds per node, not per
+paragraph: a rich inline item that begins with ZWSP and a mark keeps it too.
+`prepareRichInline()` prepares each item's own text, so a collapsed leading SPACE
+still reaches analysis and fragment cursors index `prepareWithSegments(item.text)`.
+Safari keeps the mark after a raw CR as well; the separate line that CR can take
+in pre-wrap is the raw CR limitation below. Firefox keeps ZWSP with any following
+cluster extender in every position, because shaped words end at ZWSP and a
+word-initial extender is not a cluster start. Pretext does not model that
+granularity. Gluing them everywhere lost native successes, because Firefox also
+applies letter spacing and emergency breaks per cluster.
+
 The shared complex walker fixed batch/streaming disagreement after a soft hyphen
 ([#222](https://github.com/chenglou/pretext/pull/222)). A later usable break could
 win in one path while another rewound to the hyphen. This needed one decision

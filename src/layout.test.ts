@@ -551,7 +551,10 @@ describe('boundary-policy regressions', () => {
 
   test('Gecko ASCII opener attachment does not broaden the Unicode-affix model', async () => {
     const { analyzeText } = await import('./analysis.ts')
-    const profile = { geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: true }
+    const profile = {
+      geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: true,
+      keepZeroWidthSpaceMarkAtScanStart: false,
+    }
     for (const text of ['####((aabb', '""""[[aabb', '−+x«value»!']) {
       expect(analyzeText(text, profile).texts).toEqual([text])
     }
@@ -560,6 +563,62 @@ describe('boundary-policy regressions', () => {
     expect(analyzeText('한글x{value}', profile).texts).toEqual(
       analyzeText('한글x{value}', { ...profile, geckoAsciiLineBreaks: false }).texts,
     )
+  })
+
+  test('exclamation punctuation keeps the break browsers offer before a word', async () => {
+    const { analyzeText } = await import('./analysis.ts')
+    const profile = {
+      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: true,
+      keepZeroWidthSpaceMarkAtScanStart: false,
+    }
+    // The ASCII pair tables keep '!' with a following ASCII letter. UAX #14
+    // otherwise separates EX from a following letter or number (LB31).
+    for (const [text, expected] of [
+      ['\u200B?ab', ['\u200B', '?', 'ab']],
+      ['\u200B!ab', ['\u200B', '!ab']],
+      ['x!\u00E9b', ['x!', '\u00E9b']],
+      ['\u200B!\u0430b', ['\u200B', '!', '\u0430b']],
+      ['\u200B?#ab', ['\u200B', '?', '#ab']],
+      ['?_ab', ['?', '_ab']],
+      ['\u200B\u061F\u0628\u0628', ['\u200B', '\u061F', '\u0628\u0628']],
+    ] as const) {
+      expect(analyzeText(text, profile).texts).toEqual([...expected])
+    }
+  })
+
+  test('a ZWSP that starts a WebKit scan keeps a basic combining mark', async () => {
+    const { analyzeText } = await import('./analysis.ts')
+    const profile = {
+      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: false,
+      keepZeroWidthSpaceMarkAtScanStart: true,
+    }
+    expect(analyzeText('\u200B\u0301ab', profile).texts).toEqual(['\u200B\u0301ab'])
+    expect(analyzeText('x\n\u200B\u0301ab', profile, 'pre-wrap').texts).toEqual(['x', '\n', '\u200B\u0301ab'])
+    // Source before the ZWSP, even a collapsed leading space, is prior context.
+    expect(analyzeText(' \u200B\u0301ab', profile).texts).toEqual(['\u200B', '\u0301ab'])
+    expect(analyzeText('x\u200B\u0301ab', profile).texts).toEqual(['x', '\u200B', '\u0301ab'])
+  })
+
+  test('a rich item keeps its collapsed leading whitespace as WebKit break context', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = profile.keepZeroWidthSpaceMarkAtScanStart
+    profile.keepZeroWidthSpaceMarkAtScanStart = true
+    try {
+      // Rich fragment cursors index prepareWithSegments(item.text), where a
+      // SPACE or TAB before the ZWSP separates the mark.
+      for (const parts of [[' \u200B\u0301ab', 'c'], ['x', '\t\u200B\u0301ab']]) for (const width of [1, 20]) {
+        const result = variant.predict({
+          id: 'unit-rich-scan-context', family: 'api', origins: ['maintained'], scope: 'supported',
+          text: parts.join(''), parts, nativeItems: true, whiteSpace: 'normal', font: FONT, width,
+          lineHeight: LINE_HEIGHT, wordBreak: 'normal', letterSpacing: 0, direction: 'ltr',
+        })
+        if (result.detail !== 'full') throw new Error('Expected full public contract checks')
+        expect(result.contracts).toEqual([])
+      }
+    } finally {
+      profile.keepZeroWidthSpaceMarkAtScanStart = previous
+    }
   })
 
   test('numeric signs stay with their numbers while ordinary hyphens retain their breaks', () => {

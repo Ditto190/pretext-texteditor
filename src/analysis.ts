@@ -32,6 +32,7 @@ export type AnalysisProfile = {
   geckoAsciiLineBreaks: boolean
   carryCJKAfterClosingQuote: boolean
   breakKeepAllAfterPunctuation: boolean
+  keepZeroWidthSpaceMarkAtScanStart: boolean
 }
 
 const collapsibleWhitespaceRunRe = /[ \t\n\r\f]+/g
@@ -432,6 +433,43 @@ function classifySegmentBreakChar(ch: string, whiteSpace: WhiteSpaceMode): Segme
 // All characters that classifySegmentBreakChar maps to a non-'text' kind.
 const breakCharRe = /[\x20\t\n\xA0\xAD\u200B\u202F\u2060\uFEFF]/
 
+// The combining marks WebKit's pair scan classifies without ICU. That scan
+// never breaks before them (BreakablePositions.h, `after.type == kCM`).
+function isBasicCombiningMark(code: number): boolean {
+  return (
+    (code >= 0x0300 && code <= 0x036F && code !== 0x034F && (code < 0x035C || code > 0x0362)) ||
+    (code >= 0x0483 && code <= 0x0489) ||
+    (code >= 0x0591 && code <= 0x05BD) ||
+    code === 0x05BF || code === 0x05C1 || code === 0x05C2 ||
+    code === 0x05C4 || code === 0x05C5 || code === 0x05C7
+  )
+}
+
+// UAX #14 BK, CR, LF and NL. LB7 forbids every other break before a ZWSP.
+function isMandatoryBreakCode(code: number): boolean {
+  return (code >= 0x0A && code <= 0x0D) || code === 0x85 || code === 0x2028 || code === 0x2029
+}
+
+// WebKit reports ZWSP|mark (LB8) only from an ICU lookup that starts before the
+// ZWSP. A scan that starts at a text node's leading ZWSP makes no such lookup,
+// and after a mandatory break ICU reports the earlier boundary, so the basic
+// mark rule wins. Other source before the ZWSP, including a collapsible SPACE,
+// is prior context. Normalization neither adds nor removes ZWSPs, so the nth
+// normalized ZWSP is the nth source ZWSP. Returns normalized offsets.
+function getMarkKeepingZeroWidthSpaces(source: string, normalized: string, profile: AnalysisProfile): Set<number> | null {
+  if (!profile.keepZeroWidthSpaceMarkAtScanStart) return null
+  let kept: Set<number> | null = null
+  let sourceIndex = -1
+  for (let index = normalized.indexOf('\u200B'); index >= 0; index = normalized.indexOf('\u200B', index + 1)) {
+    sourceIndex = source.indexOf('\u200B', sourceIndex + 1)
+    if (!isBasicCombiningMark(normalized.charCodeAt(index + 1))) continue
+    if (sourceIndex > 0 && !isMandatoryBreakCode(source.charCodeAt(sourceIndex - 1))) continue
+    if (kept === null) kept = new Set()
+    kept.add(index)
+  }
+  return kept
+}
+
 function joinTextParts(parts: string[]): string {
   return parts.length === 1 ? parts[0]! : parts.join('')
 }
@@ -669,6 +707,51 @@ function endsWithNoSpaceWordJoiner(text: string): boolean {
   return false
 }
 
+// UAX #14 EX from LineBreak.txt (Unicode 17), stored as start/end pairs.
+const exclamationLineBreakRanges = [
+  0x0021, 0x0021, 0x003F, 0x003F, 0x05C6, 0x05C6, 0x061B, 0x061B, 0x061D, 0x061F,
+  0x06D4, 0x06D4, 0x07F9, 0x07F9, 0x0F0D, 0x0F11, 0x0F14, 0x0F14, 0x1802, 0x1803,
+  0x1808, 0x1809, 0x1944, 0x1945, 0x2762, 0x2763, 0x2CF9, 0x2CF9, 0x2CFE, 0x2CFE,
+  0x2E2E, 0x2E2E, 0x2E53, 0x2E54, 0xA60E, 0xA60E, 0xA876, 0xA877, 0xFE15, 0xFE16,
+  0xFE56, 0xFE57, 0xFF01, 0xFF01, 0xFF1F, 0xFF1F, 0x115C4, 0x115C5, 0x11C71, 0x11C71,
+] as const
+
+// Letters and numbers, with the ASCII symbols of the AL line-break class.
+const lineBreakWordStartRe = /[\p{L}\p{N}#&*<=>@^_`~]/uy
+const combiningMarkAtRe = /\p{M}/uy
+
+// UAX #14 breaks after EX before a following letter or number (LB31). Gecko's
+// nsLineBreaker ASCII shortcut skips only words of AL/IS/NU/QU characters, so
+// any word containing EX reaches ICU4X. Chromium and WebKit first look up
+// pairs up to U+00FF in a table that follows ICU, except for printable ASCII:
+// there '?' still breaks, but '!' keeps a following letter, digit or symbol.
+// The last-code-unit screen keeps ordinary word boundaries allocation-free.
+function breaksAfterExclamation(
+  text: string,
+  nextText: string,
+  profile: AnalysisProfile,
+  wordBreak: WordBreakMode,
+): boolean {
+  const lastCode = text.charCodeAt(text.length - 1)
+  if (lastCode < 0x0300 && lastCode !== 0x21 && lastCode !== 0x3F) return false
+  // Safari's keep-all breaks only at spaces, even after punctuation.
+  if (wordBreak === 'keep-all' && !profile.breakKeepAllAfterPunctuation) return false
+  for (let end = text.length; end > 0;) {
+    const start = previousCodePointStart(text, end)
+    const codePoint = text.codePointAt(start)!
+    if (isCodePointInRanges(codePoint, exclamationLineBreakRanges)) {
+      lineBreakWordStartRe.lastIndex = 0
+      if (!lineBreakWordStartRe.test(nextText)) return false
+      // The pair table sees the code unit before the boundary, not a mark's base.
+      return profile.geckoAsciiLineBreaks || codePoint !== 0x21 || end !== text.length || nextText.charCodeAt(0) >= 0x80
+    }
+    combiningMarkAtRe.lastIndex = start
+    if (codePoint < 0x0300 || !combiningMarkAtRe.test(text)) return false
+    end = start
+  }
+  return false
+}
+
 const asciiAlphabeticBoundaryRe = /[A-Za-z#&*<=>@^_`~]/
 
 function isAsciiBoundary(left: string, right: string): boolean {
@@ -718,6 +801,7 @@ function canJoinNoSpaceWordBoundary(
   rightText: string,
   rightWordLike: boolean,
   profile: AnalysisProfile,
+  wordBreak: WordBreakMode,
 ): boolean {
   // The forward-sticky pass joins a sign to its numeric suffix. Preserve its
   // CJK left edge so final unit construction can place the ordinary boundary.
@@ -728,6 +812,7 @@ function canJoinNoSpaceWordBoundary(
 
   const openingJoin = openingPunctuationJoinsPrevious(leftText, rightText, profile)
   if (openingJoin !== null) return openingJoin
+  if (breaksAfterExclamation(leftText, rightText, profile, wordBreak)) return false
 
   const leftSymbol = !leftWordLike && isNoSpaceWordInternalSymbolSegment(leftText)
   const rightSymbol = !rightWordLike && isNoSpaceWordInternalSymbolSegment(rightText)
@@ -835,7 +920,12 @@ function mergeNumericRuns(segmentation: MergedSegmentation, normalized: string, 
   }
 }
 
-function mergeNoSpaceWordChains(segmentation: MergedSegmentation, normalized: string, profile: AnalysisProfile): MergedSegmentation {
+function mergeNoSpaceWordChains(
+  segmentation: MergedSegmentation,
+  normalized: string,
+  profile: AnalysisProfile,
+  wordBreak: WordBreakMode,
+): MergedSegmentation {
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
@@ -861,6 +951,7 @@ function mergeNoSpaceWordChains(segmentation: MergedSegmentation, normalized: st
           segmentation.texts[j]!,
           segmentation.isWordLike[j]!,
           profile,
+          wordBreak,
         ))
       ) {
         const nextText = segmentation.texts[j]!
@@ -988,10 +1079,13 @@ function carryTrailingForwardStickyAcrossCJKBoundary(segmentation: MergedSegment
 }
 
 function buildMergedSegmentation(
+  source: string,
   normalized: string,
   profile: AnalysisProfile,
   whiteSpace: WhiteSpaceMode,
+  wordBreak: WordBreakMode,
 ): MergedSegmentation {
+  const markKeepingZeroWidthSpaces = getMarkKeepingZeroWidthSpaces(source, normalized, profile)
   const wordSegmenter = getSharedWordSegmenter()
   let mergedLen = 0
   const mergedTexts: string[] = []
@@ -1015,6 +1109,15 @@ function buildMergedSegmentation(
 
   for (const s of wordSegmenter.segment(normalized)) {
     for (const piece of splitSegmentByBreakKind(s.segment, s.isWordLike ?? false, s.index, whiteSpace)) {
+      if (
+        piece.kind === 'zero-width-break' &&
+        piece.text.length === 1 &&
+        markKeepingZeroWidthSpaces !== null &&
+        markKeepingZeroWidthSpaces.has(piece.start)
+      ) {
+        // No break before it (LB7) or after it: glue joins the marked word.
+        piece.kind = 'glue'
+      }
       const isText = piece.kind === 'text'
       const repeatableSingleCharRunChar = getRepeatableSingleCharRunChar(piece.text, piece.isWordLike, piece.kind)
       const pieceContainsCJK = isCJK(piece.text)
@@ -1170,7 +1273,11 @@ function buildMergedSegmentation(
       mergedKinds[nextLiveIndex] === 'text' &&
       (
         (numericAffixBoundary(normalized, mergedStarts[i]! + text.length, profile) ??
-          (isForwardStickyClusterSegment(text) && openingPunctuationJoinsPrevious(text, nextText, profile) !== false)) ||
+          // A cluster with no text before it must not erase the break
+          // browsers keep after it, such as '?' before a word.
+          (isForwardStickyClusterSegment(text) &&
+            !breaksAfterExclamation(text, nextText, profile, wordBreak) &&
+            openingPunctuationJoinsPrevious(text, nextText, profile) !== false)) ||
         (text === '-' && startsWithDecimalDigit(nextText))
       )
     ) {
@@ -1223,7 +1330,12 @@ function buildMergedSegmentation(
     kinds: mergedKinds,
     starts: mergedStarts,
   })
-  const mergedRuns = mergeNoSpaceWordChains(mergeNumericRuns(mergeUrlRuns(compacted, normalized, profile), normalized, profile), normalized, profile)
+  const mergedRuns = mergeNoSpaceWordChains(
+    mergeNumericRuns(mergeUrlRuns(compacted, normalized, profile), normalized, profile),
+    normalized,
+    profile,
+    wordBreak,
+  )
   carryTrailingForwardStickyAcrossCJKBoundary(mergedRuns)
 
   for (let i = 0; i < mergedRuns.len - 1; i++) {
@@ -1573,7 +1685,7 @@ export function analyzeText(
       starts: [],
     }
   }
-  const mergedSegmentation = buildMergedSegmentation(normalized, profile, whiteSpace)
+  const mergedSegmentation = buildMergedSegmentation(text, normalized, profile, whiteSpace, wordBreak)
   const segmentation = wordBreak === 'keep-all'
     ? mergeKeepAllTextSegments(normalized, mergedSegmentation, profile)
     : mergedSegmentation
