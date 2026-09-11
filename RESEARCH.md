@@ -70,8 +70,22 @@ cost.
 These are findings from the September 2026 wrapping experiments around
 [#210](https://github.com/chenglou/pretext/issues/210) and
 [#211](https://github.com/chenglou/pretext/pull/211). The bounded entry measurements
-below improve some cases; they do not resolve the leading-ZWSP visible-text
-reproduction.
+below improve some cases; the line-start rule described next resolves the
+leading-ZWSP visible-text reproduction.
+
+A ZWSP at a paragraph or hard-break start is real source. It establishes a line
+and offers a break after it, without owning a letter-spacing gap. After a forced
+break inside overflowing text, all three engines also give a following ZWSP its
+own line; the line-start rule still consumes that ZWSP, as before. Keeping the
+leading ZWSP exposed two older mismatches that dropping its line had cancelled.
+Chrome and Firefox shape an Arabic letter before a selected SHY in context, so
+ZWSP, beh, SHY and beh fits in boxes where Pretext's isolated letter width does
+not. A raw CR before ZWSP in pre-wrap occupies one native line, while
+normalization turns that CR into a hard break. Amiri ZWSP, beh, SHY, beh and
+ZWSP, U+A65C, SHY, U+A65C prepare identical widths but need different native line
+counts, so no rule inside `layout()` can repair the Arabic case; it needs
+contextual widths during preparation. An Arabic-letter guard across SHY, deleting
+raw CR and treating CR as a zero-width break each lost other native successes.
 
 A complete original paragraph containing only ZWSP now uses the
 existing empty-line chunk representation, retaining its consumed source range.

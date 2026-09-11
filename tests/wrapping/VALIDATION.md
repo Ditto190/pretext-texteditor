@@ -2,9 +2,9 @@
 
 This branch implements the boundary-policy fixes for #206/#208, #212/#213 and
 #214/#215, plus the separate rich-inline source-identity and signed-space fix.
-The exact flat #210/#211 reproduction remains a known failure. Its twelve native
-rich-inline height witnesses are required, as are two exact-fit admission
-opposites discovered during review.
+The later leading-ZWSP change fixes the exact flat #210/#211 reproduction. The
+twelve native rich-inline height witnesses are required, as are two exact-fit
+admission opposites discovered during review.
 [README.md](README.md) explains the runner; [INVENTORY.md](INVENTORY.md) records
 coverage, provenance and research protocols outside its scope.
 

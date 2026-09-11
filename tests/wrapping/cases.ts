@@ -231,13 +231,12 @@ function addReportedCases(add: (input: Omit<WrappingCase, 'id'>) => void, measur
     add({ ...defaults, family: `reported/${issue}`, origins: [`issue/${issue}`], text, width, ...options })
   }
   // Keep the filed CSS and independent Canvas thresholds alongside the older
-  // neighboring probes. Boundary and rich fixes are required; the flat #210
-  // reproduction remains observed while source progress is investigated.
+  // neighboring probes. Boundary, rich and flat #210 reproductions are required.
   const installed = { context: { kind: 'installed', lang: 'en' }, lang: 'en' } as const
   const zwsp = { ...installed, font: '12px Calibri, sans-serif', lineHeight: 20.96,
     whiteSpace: 'pre-wrap', origins: ['issue/#210-#211', 'reported-reproduction/#210'] } as const
-  report('#210-#211', '\u200B≤100nA\u200B', 25, { ...zwsp, origins: [...zwsp.origins] })
-  report('#210-#211', '\u200B', 25, { ...zwsp, origins: [...zwsp.origins] })
+  report('#210-#211', '\u200B≤100nA\u200B', 25, { ...zwsp, origins: [...zwsp.origins], required: ['height', 'lineCount', 'source', 'api'] })
+  report('#210-#211', '\u200B', 25, { ...zwsp, origins: [...zwsp.origins], required: ['height', 'lineCount', 'api'] })
   const numericFont = '16px Arial, sans-serif'
   for (const [text, prefix] of [['-0.475', '-0.47'], ['≥-100nA', '≥-100n']] as const) {
     report('#212-#213', text, measure(prefix, numericFont, 0) + 0.1, {

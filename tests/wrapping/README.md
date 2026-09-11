@@ -44,9 +44,9 @@ boundary-policy report obligations (#206/#208, #212/#213 and #214/#215) in
 [INVENTORY.md](INVENTORY.md) must pass even when main fails them. Elsewhere, the gate rejects lost passing main metrics and
 lost observation coverage. All source execution errors fail the run. A candidate
 fix does not offset an unrelated regression. The twelve native rich-inline
-#210/#211 reproductions also require `richHeight` to pass. The exact flat
-reproduction remains an observed known failure; its source-progress fix is not
-included.
+#210/#211 reproductions also require `richHeight` to pass. The two exact flat
+reproductions require native height, line count and API agreement; the visible
+text also requires source placement.
 Two additional native rich cases retain exact-fit ZWSP and forced-overflow WJ
 admission. Their `richHeight` must pass too.
 

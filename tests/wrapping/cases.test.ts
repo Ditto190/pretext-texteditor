@@ -55,7 +55,7 @@ test('ordinary includes complete maintained grids and the original oracle defaul
   expect(ordinary.find(input => input.id === 'wrap-5123bf2f598e26a1')!.context).toBeUndefined()
 })
 
-test('boundary and rich reproductions are required while flat source-progress reports stay observed', () => {
+test('boundary, rich and flat #210 reproductions are required', () => {
   const exact = ordinary.filter(input => input.origins.some(origin => /^reported-reproduction\/#\d+$/.test(origin)))
   expect(exact.map(input => ({ text: input.text, font: input.font, width: input.width, lineHeight: input.lineHeight, whiteSpace: input.whiteSpace }))).toEqual([
     { text: '\u200B≤100nA\u200B', font: '12px Calibri, sans-serif', width: 25, lineHeight: 20.96, whiteSpace: 'pre-wrap' },
@@ -66,12 +66,8 @@ test('boundary and rich reproductions are required while flat source-progress re
   ])
   for (const input of exact) {
     expect(input.context).toEqual({ kind: 'installed', lang: 'en' })
-    if (input.origins.includes('reported-reproduction/#210')) {
-      expect(input.required).toBeUndefined()
-    } else {
-      expect(input.required).toContain('height')
-      expect(input.required).toContain('api')
-    }
+    for (const metric of ['height', 'lineCount', 'api'] as const) expect(input.required).toContain(metric)
+    if (input.text !== '\u200B') expect(input.required).toContain('source')
   }
   const rich = ordinary.filter(input => input.nativeItems === true)
   expect(rich).toHaveLength(14)
