@@ -28,6 +28,10 @@ export type EngineProfile = {
   lineFitEpsilon: number
   carryCJKAfterClosingQuote: boolean
   breakKeepAllAfterPunctuation: boolean
+  // WebKit keeps a basic combining mark after a ZWSP that starts a text node or
+  // follows a mandatory break. Gecko keeps ZWSP with any following cluster
+  // extender in every position; that granularity is not modeled.
+  keepZeroWidthSpaceMarkAtScanStart: boolean
   preferPrefixWidthsForBreakableRuns: boolean
 }
 
@@ -141,6 +145,7 @@ export function getEngineProfile(): EngineProfile {
       lineFitEpsilon: 0.005,
       carryCJKAfterClosingQuote: false,
       breakKeepAllAfterPunctuation: true,
+      keepZeroWidthSpaceMarkAtScanStart: false,
       preferPrefixWidthsForBreakableRuns: false,
     }
     return cachedEngineProfile
@@ -174,6 +179,7 @@ export function getEngineProfile(): EngineProfile {
     lineFitEpsilon: isSafari ? 1 / 64 : 0.005,
     carryCJKAfterClosingQuote: isChromium,
     breakKeepAllAfterPunctuation: !isSafari,
+    keepZeroWidthSpaceMarkAtScanStart: isSafari,
     preferPrefixWidthsForBreakableRuns: isSafari,
   }
   return cachedEngineProfile

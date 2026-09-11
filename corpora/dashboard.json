@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T11:06:56.786Z",
+  "generatedAt": "2026-09-11T13:56:49.218Z",
   "sources": {
     "accuracy": {
       "chrome": "accuracy/chrome.json",
@@ -651,15 +651,15 @@
         "mismatches": []
       },
       "chromeStep10": {
-        "exactCount": 57,
+        "exactCount": 61,
         "widthCount": 61
       },
       "safariStep10": {
-        "exactCount": 57,
+        "exactCount": 61,
         "widthCount": 61
       },
       "firefoxStep10": {
-        "exactCount": 57,
+        "exactCount": 61,
         "widthCount": 61
       },
       "notes": "font-sensitive Nastaliq/Naskh canary; anchors are exact with four shared positive one-line misses"
@@ -739,11 +739,11 @@
         "mismatches": []
       },
       "chromeStep10": {
-        "exactCount": 60,
+        "exactCount": 61,
         "widthCount": 61
       },
       "safariStep10": {
-        "exactCount": 60,
+        "exactCount": 61,
         "widthCount": 61
       },
       "firefoxStep10": {
