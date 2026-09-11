@@ -65,6 +65,14 @@ are unchanged; the refreshed files change only provenance and environment
 records. The ordinary suite hash is
 `5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07`.
 
+Chrome and Safari benchmark snapshots were refreshed from `1ce3996`, whose runtime
+source equals the pinned commit: three foreground runs each, with matching
+environments at DPR 2 on the 2560×1440 screen, visible and focused. Hot `layout()`
+reads 0.086 ms in Chrome (previous snapshot 0.089) and 0.103 ms in Safari (0.105);
+rich statistics, range and streaming rows stay within timer granularity. Safari's
+cold `prepare()` row reads 13 ms against 10 ms although preparation source is
+unchanged; that runner reports whole milliseconds.
+
 Suite hash: `24ed06aa2d941776605cd68142ec305e60602143061111150d59dccc9fde3657`.
 Raw rows, frozen sources and the per-case loss table `lost.tsv` are in
 `/private/tmp/pretext-210-landing-20260911/full-vs-2b73992`.
