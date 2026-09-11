@@ -62,7 +62,9 @@ Failed benchmark reports retain their evidence in `<output>.failed.json`, or und
 
 Browser measurements record the test page's starting and ending DPR, screen and
 window dimensions, viewport scale, document language/direction, visibility and
-focus. There is no configured target display: each run reads the screen currently
+focus. Fixture pages set `lang="en"` instead of leaving it absent; see
+[tests/wrapping/README.md](tests/wrapping/README.md) for what page language changes.
+There is no configured target display: each run reads the screen currently
 hosting its browser window. The shared guard retains observed changes, even if
 the page returns to its starting state. A scale or document-context change
 invalidates correctness measurements; rerun rather than clearing caches halfway through. Fixed-width

@@ -235,12 +235,13 @@ Pretext doesn't try to be a full font rendering engine (yet?). It currently targ
 - `line-break: auto`
 - `letter-spacing` as a numeric pixel value passed to `prepare()` / `prepareWithSegments()`
 - Tabs follow the default browser-style `tab-size: 8`
+- In `pre-wrap`, Pretext treats a lone `\r` as a line break, but browsers don't. Normalize `\r` to `\n` in the text you render, not just the text you measure.
 - `{ wordBreak: 'keep-all' }` is supported too. It behaves like you'd expect for CJK/Hangul and no-space mixed Latin/numeric/CJK text, while keeping the same `overflow-wrap: break-word` fallback for overlong runs.
 - `system-ui` and `-apple-system` are unsafe for `layout()` accuracy on macOS. Use a named font. See the [platform bug ledger](PLATFORM_BUGS.md) for the Chrome and Firefox issues.
 - Emoji next to punctuation can still wrap differently from the browser.
 - A paragraph containing only zero-width spaces (ZWSP) occupies one line. A ZWSP at the start of a paragraph or after a hard break gets its own line when the text after it doesn't fit beside it. Other ZWSP beside text, whitespace or hard breaks can still wrap differently from the browser. The rich-inline helper preserves standalone ZWSP items, but still inherits the flat text engine's wrapping limits inside each item.
 - Some fonts, such as Shantell Sans, can produce different line breaks inside long words in Pretext and the browser.
-- If your page sets `lang`, a generic font like `sans-serif` may select a different font from the one Pretext measures. Use a named font and check the result in your browser.
+- Page language changes fonts and line breaks, and without `lang` Chrome and Firefox use the browser's or system's language. A generic font like `sans-serif`, or a character missing from a named font, may use a different font from the one Pretext measures, and curly quotes can wrap differently per language. Set `lang` on `<html>`, use a named font that covers your text, and check the result in your browser.
 - Runtime requires `Intl.Segmenter`, Canvas 2D text measurement, and Unicode property escapes (`\p{...}`). Browsers without these features aren't supported. Without Unicode property escapes, Pretext can't load and throws a `SyntaxError`.
 - Pretext uses the canvas `font` string. Separate CSS settings such as `font-optical-sizing`, `font-feature-settings`, and `font-variation-settings` aren't supported. Variable-font settings only apply when expressed through that string, such as font weight.
 
