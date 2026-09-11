@@ -7,8 +7,8 @@
 - Narrow wrapping around invisible controls and combining marks now more closely matches desktop Chrome and Firefox.
 - Paragraphs made only of zero-width spaces now occupy one line instead of disappearing (#223).
 - A zero-width space at the start of a paragraph or after a hard line break no longer disappears when the following text wraps to the next line (#227).
-- Lines can now break after `?`, and after `!` or other exclamation punctuation such as `؟` and `۔`, before a following word, as browsers do, including after a space or zero-width space. Chrome and Safari still keep `!` with a following ASCII letter or digit; Firefox breaks there too.
-- In Safari, a combining mark after a zero-width space at the start of the text, at the start of a rich-inline item, or after a line break now stays with that zero-width space.
+- Lines can now break after `?`, and after `!` or other exclamation punctuation such as `؟` and `۔`, before a following word, as browsers do, including after a space or zero-width space. Chrome and Safari still keep `!` with a following ASCII letter or digit; Firefox breaks there too (#228).
+- In Safari, a combining mark after a zero-width space at the start of the text, at the start of a rich-inline item, or after a line break now stays with that zero-width space (#228).
 
 ## 0.0.9 - 2026-09-07
 
