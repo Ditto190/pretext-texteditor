@@ -17,6 +17,39 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## English fixture pages
+
+This test-only change starts from published main `a4f17ed`. Fixture pages had no
+document language, so Chrome and Firefox followed the macOS preferred language
+while Safari used root rules. They now use `en`. Runtime sources and the baseline
+pin are unchanged, so no runtime benchmark was needed.
+
+Full native comparisons ran with fixture pages in no language, `en`, `ja`,
+`zh-Hans` and `ko`, on a Mac whose preferred languages are Chinese then English:
+installed Chrome, Safari and Firefox, both directions, DPR 2. Case IDs were
+identical in every run, and installed-context pages did not change. Relative to
+no language:
+
+- Chrome equals `zh-Hans` exactly. `en` changes 428 results, all curly-quote
+  breaks. Pretext's Canvas widths do not change; it now matches 319 of those
+  results and misses 109 it previously matched.
+- Safari equals `en` exactly.
+- Firefox is close to `zh-Hans`. `en` changes 779 results through
+  missing-glyph fallback widths.
+
+`ja`, `zh-Hans` and `ko` also change fallback widths, and Safari breaks around
+curly quotes differently under `ja`. Safari's OffscreenCanvas never follows the
+page language. Two paths still follow the machine language: Chrome treats an
+element's `lang=""` like no language, and the case generator's detached canvas
+ignores `<html lang>` in Chrome and Firefox.
+
+The final harness passes all six legs with zero regressions, required failures or
+execution errors, and nine numeric profiles have no new failures. Its 656,407 rows
+are identical to the `en` comparison run. Regenerated snapshots change only
+provenance and environment records. Suite hash
+`edf54ed053d7e1c0ef387ffcade551a22dfb6508440215746abb388d29245c30`; rows are in
+`/private/tmp/pretext-locale-20260911`.
+
 ## Exclamation breaks and leading ZWSP marks
 
 Runtime commit `14d92ca` starts from the leading-ZWSP branch head `fdb7f01`.
