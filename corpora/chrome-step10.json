@@ -1,16 +1,16 @@
 [
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -25,7 +25,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -43,7 +43,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -84,17 +84,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -109,7 +109,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -127,7 +127,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -257,17 +257,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -282,7 +282,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -300,7 +300,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -390,17 +390,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -415,7 +415,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -433,7 +433,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -515,17 +515,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -540,7 +540,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -558,7 +558,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -599,17 +599,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -624,7 +624,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -642,7 +642,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -683,17 +683,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -708,7 +708,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -726,7 +726,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -912,17 +912,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -937,7 +937,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -955,7 +955,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1053,17 +1053,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1078,7 +1078,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1096,7 +1096,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1154,17 +1154,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1179,7 +1179,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1197,7 +1197,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1247,17 +1247,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1272,7 +1272,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1290,7 +1290,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1331,17 +1331,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1356,7 +1356,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1374,7 +1374,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1415,17 +1415,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1440,7 +1440,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1458,7 +1458,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1499,17 +1499,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1524,7 +1524,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1542,7 +1542,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1592,17 +1592,17 @@
     ]
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1617,7 +1617,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1635,7 +1635,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1676,17 +1676,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1701,7 +1701,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1719,7 +1719,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1760,17 +1760,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1785,7 +1785,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1803,7 +1803,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1844,17 +1844,17 @@
     "mismatches": []
   },
   {
-    "generatedAt": "2026-09-09T09:46:22.685Z",
-    "suiteHash": "16bfd7e5f094c5d2d0245099b719f0f3e846cbd7132280e36c7a8811b5940caf",
+    "generatedAt": "2026-09-11T11:06:56.751Z",
+    "suiteHash": "5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07",
     "source": {
-      "revision": "785297b87973ef285abb884b1af6110ed2aacfd8",
+      "revision": "6ad840952baef51b6a782c1498f27d2715630e8d",
       "files": {
         "analysis.ts": "68a34413572826fcbae8727143af5291ab194ce6bd7ffc327b956a5ccd6dcb39",
         "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
         "entry-geometry.ts": "43ffacd71c3562283135590a06947eef4b2617cb3b6ba680c909dd5e2d2ba9a7",
         "generated/bidi-data.ts": "745211b804d907af78afb6c1ed87eff6d7454a5e85152a6129eb7b3bf0f6f262",
         "layout.ts": "66c36dea8d0191bd005c4c7c1fd9d52e26d0df0c0e3c5df954f379c4560811cf",
-        "line-break.ts": "ae5c22f2f7786eb63e355a7c8886086ea237e82e78ce5c7b6f202936fd4996d3",
+        "line-break.ts": "9fa473da96d6c192056cfd914bebb18e83714c869882313345dcf45ec19157d4",
         "line-text.ts": "5e21684d995df8c30324c03a14b8a0bc3a579ce169a0e10b6d579b6aeee577dc",
         "measurement.ts": "b024684745f51317ef8beb79c73fe8c53b0ddcf5e02654798f4571d28a9923d4",
         "rich-inline.ts": "5a7e5d339e1f703d52928913e3b7d6a5f5df04bdfdd365f47c1890dde3b61964",
@@ -1869,7 +1869,7 @@
           "start": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,
@@ -1887,7 +1887,7 @@
           "end": {
             "dpr": 2,
             "visualViewportScale": 1,
-            "innerWidth": 2287,
+            "innerWidth": 2504,
             "innerHeight": 1268,
             "outerWidth": 2560,
             "outerHeight": 1315,

@@ -53,7 +53,8 @@ Range/span method, and tolerance. Required checks fail on unobserved results as
 well as mismatches. A matching pinned-main failure does not waive them.
 The rich-inline checks cover original item coordinates, callback ownership and
 signed boundary spaces. Fourteen native ZWSP/WJ item witnesses require matching rich
-height; the unresolved flat ZWSP reproduction remains observed separately.
+height; the two flat #210 reproductions separately require matching native height
+and line count.
 The benchmark runner requires every measurement section before writing a
 snapshot; a successful report from an unrelated page is not a benchmark result.
 Failed benchmark reports retain their evidence in `<output>.failed.json`, or under

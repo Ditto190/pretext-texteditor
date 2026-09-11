@@ -1864,7 +1864,9 @@ describe('layout invariants', () => {
   test('consecutive consumed-only chunks retain the visible tail and real empty lines', () => {
     for (const control of ['\u00AD', '\u200B']) for (const prefix of ['', 'a\n']) for (const emptyLine of ['', '\n']) {
       const prepared = prepareWithSegments(prefix + control + '\n' + control + '\n' + emptyLine + 'b', FONT, { whiteSpace: 'pre-wrap' })
-      const expected = [...(prefix ? ['a'] : []), ...(emptyLine ? [''] : []), 'b']
+      // A hard-break chunk that starts with ZWSP retains that source as a line.
+      const retained = control === '\u200B' ? [control, control] : []
+      const expected = [...(prefix ? ['a'] : []), ...retained, ...(emptyLine ? [''] : []), 'b']
       const batch = layoutWithLines(prepared, 100, LINE_HEIGHT)
       expect(batch.lines.map(line => line.text)).toEqual(expected)
       expect(layout(prepared, 100, LINE_HEIGHT).lineCount).toBe(expected.length)

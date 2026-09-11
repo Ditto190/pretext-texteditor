@@ -2,9 +2,10 @@
 
 This branch implements the boundary-policy fixes for #206/#208, #212/#213 and
 #214/#215, plus the separate rich-inline source-identity and signed-space fix.
-The exact flat #210/#211 reproduction remains a known failure. Its twelve native
-rich-inline height witnesses are required, as are two exact-fit admission
-opposites discovered during review.
+The later leading-ZWSP change fixes the exact flat #210/#211 reproduction; its
+deliberate losses are listed in the next section. The twelve native rich-inline
+height witnesses are required, as are two exact-fit admission opposites
+discovered during review.
 [README.md](README.md) explains the runner; [INVENTORY.md](INVENTORY.md) records
 coverage, provenance and research protocols outside its scope.
 
@@ -15,6 +16,66 @@ marker/width contract; keep-all's unwanted marker and width remain known failure
 All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
+
+## Leading zero-width spaces
+
+Runtime commit `6ad8409` starts from published main `5443392`. A ZWSP that starts
+a paragraph or follows a hard break now establishes its line without owning a
+letter-spacing gap; later line starts keep the existing behavior. The flat
+#210/#211 reproduction and its ZWSP-only companion now require native height,
+line count and API agreement, and the visible text also requires source placement.
+
+The full shared inventory ran in installed Chrome, Safari and Firefox, both
+directions, at DPR 2: 656,407 browser/input observations. The candidate was
+compared with pinned main `2b73992` and published main `5443392`:
+
+| Browser | Full LTR / RTL | Gained metrics vs pin / published main | Lost metrics per reference |
+| --- | ---: | ---: | ---: |
+| Chrome | 147,714 / 71,008 | 1,687 / 1,224 | 90 |
+| Safari | 148,019 / 70,974 | 1,210 / 1,202 | 60 |
+| Firefox | 147,680 / 71,012 | 2,437 / 2,045 | 80 |
+
+Gains and losses count separate metric events, not fully correct cases. Both
+references lose the same 40 case IDs, 106 browser/direction observations. There
+are zero failed required checks, execution errors and new API/rich failures;
+nine numeric environment profiles have no new failures or changed TAB behavior.
+The comparison exits 1 only because of the losses below. Each was a success that
+dropping the leading ZWSP line had produced by cancelling another error:
+
+- Raw CR before ZWSP in pre-wrap (`\u000D\u200B`, 16px Arial, widths 0, 8, 20,
+  30 and 48, letter spacing −1, 0 and 1; Chrome and Safari in every row, Firefox
+  except width 0 at spacing 1). The native paragraph occupies one line.
+  Normalization turns the CR into a hard break, and main's dropped ZWSP line had
+  hidden that extra line. LTR: `wrap-595c31eda7a6c15f`, `wrap-13adec9552de2657`, `wrap-71ae7b15dafd960d`, `wrap-6a4d93c6e3dd464c`, `wrap-dd95abdf59599b03`, `wrap-78994ecb2fb65013`, `wrap-57453093d8be2a1b`, `wrap-bd7578135a3da781`, `wrap-5502ed3295ac0ca0`, `wrap-517ebfc10bd5784f`, `wrap-0167b66269f55b72`, `wrap-dbacb16a12fd357a`, `wrap-41dcf8ea521b4fe0`, `wrap-599f859b5064c041`, `wrap-783698080ebb61ae`. RTL: `wrap-9f5cce0510fe1b5f`, `wrap-8b26138d7daf3c57`, `wrap-e926a20d0f36010d`, `wrap-fc7af6c61815b14c`, `wrap-9f46ce17a060b003`, `wrap-81a2f793fb7de513`, `wrap-fb133c5be30c031b`, `wrap-614383db311fee81`, `wrap-3b1c1fb22c54b2a0`, `wrap-54b74c89f06c524f`, `wrap-ba903ee235bcf072`, `wrap-f3fd33ea1d4b0e7a`, `wrap-5a2d7b6a28fd96e0`, `wrap-b7714be3e70d6641`, `wrap-dee603c8f3523bae`.
+- Arabic beh joined across SHY after a leading ZWSP (`\u200B\u0628\u00AD\u0628`,
+  pre-wrap; Amiri at 9.8 and 14.75, Noto Naskh Arabic at 10.48 and 12.32, Arial at
+  11.35, widths rounded; Chrome in every row, Firefox except Amiri 9.8). Chrome and
+  Firefox shape the first letter in context and give two lines. Pretext's isolated
+  letter width needs a separate line after the retained ZWSP.
+  LTR: `wrap-32c73ec5b7c084af`, `wrap-143ad6ae5b0e509a`, `wrap-3ecde897bf2b5e8b`, `wrap-2b6f9266db70279a`, `wrap-d1ad3222978a7fbc`. RTL: `wrap-6f04fe7d9c575eaf`, `wrap-9001042ea595ca9a`, `wrap-f1fbf02f44b8b78b`, `wrap-30fb0e6625f7a19a`, `wrap-8ad5baa21049c9bc`.
+
+After reviewing these per-case changes, the baseline advances to runtime commit
+`6ad8409`. Later changes must preserve its gains, including those of `934141a`,
+`a28b542` and #223 made since the previous pin.
+
+The ordinary snapshots were regenerated against that pin. All six legs pass with
+zero new regressions, required failures or execution errors, and nine numeric
+profiles have no new failures. Accuracy, letter-spacing and corpus result payloads
+are unchanged; the refreshed files change only provenance and environment
+records. The ordinary suite hash is
+`5bb6eadf9109541475c5d6fb8004a7595756e21ddb070226215ec23e267fef07`.
+
+Chrome and Safari benchmark snapshots were refreshed from `1ce3996`, whose runtime
+source equals the pinned commit: three foreground runs each, with matching
+environments at DPR 2 on the 2560×1440 screen, visible and focused. Hot `layout()`
+reads 0.086 ms in Chrome (previous snapshot 0.089) and 0.103 ms in Safari (0.105);
+rich statistics, range and streaming rows stay within timer granularity. Safari's
+cold `prepare()` row reads 13 ms against 10 ms although preparation source is
+unchanged; that runner reports whole milliseconds.
+
+Suite hash: `24ed06aa2d941776605cd68142ec305e60602143061111150d59dccc9fde3657`.
+Raw rows, frozen sources and the per-case loss table `lost.tsv` are in
+`/private/tmp/pretext-210-landing-20260911/full-vs-2b73992`.
 
 ## Browser environment and ownership
 

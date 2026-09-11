@@ -46,8 +46,12 @@ export function isDiscretionaryLineEnd(
   return endGraphemeIndex === 0 && endSegmentIndex > 0 && endSegmentIndex < kinds.length && kinds[endSegmentIndex - 1] === 'soft-hyphen'
 }
 
-function consumesAtLineStart(kind: SegmentBreakKind): boolean {
-  return kind === 'space' || kind === 'zero-width-break' || kind === 'soft-hyphen'
+// At a paragraph or hard-break start, ZWSP is real source: it establishes the
+// line and offers a break after it. UAX #14 forbids an ordinary break before
+// ZWSP. After a forced overflow break browsers can still give ZWSP its own line;
+// that start is consumed here, as before.
+function consumesAtLineStart(kind: SegmentBreakKind, atChunkStart: boolean): boolean {
+  return kind === 'space' || kind === 'soft-hyphen' || (kind === 'zero-width-break' && !atChunkStart)
 }
 
 function breaksAfter(kind: SegmentBreakKind): boolean {
@@ -63,11 +67,12 @@ function breaksAfter(kind: SegmentBreakKind): boolean {
 function normalizeLineStartSegmentIndex(
   prepared: PreparedLineBreakData,
   segmentIndex: number,
-  endSegmentIndex = prepared.widths.length,
+  endSegmentIndex: number,
+  atChunkStart: boolean,
 ): number {
   while (segmentIndex < endSegmentIndex) {
     const kind = prepared.kinds[segmentIndex]!
-    if (!consumesAtLineStart(kind)) break
+    if (!consumesAtLineStart(kind, atChunkStart)) break
     segmentIndex++
   }
   return segmentIndex
@@ -270,7 +275,8 @@ function normalizeLineStartInChunk(
     }
 
     if (segmentIndex < chunk.startSegmentIndex) segmentIndex = chunk.startSegmentIndex
-    segmentIndex = normalizeLineStartSegmentIndex(prepared, segmentIndex, chunk.endSegmentIndex)
+    const atChunkStart = segmentIndex === chunk.startSegmentIndex
+    segmentIndex = normalizeLineStartSegmentIndex(prepared, segmentIndex, chunk.endSegmentIndex, atChunkStart)
     if (segmentIndex < chunk.endSegmentIndex) {
       cursor.segmentIndex = segmentIndex
       cursor.graphemeIndex = 0
@@ -442,7 +448,7 @@ function walkPreparedLinesSimple(
   let i = 0
   while (i < widths.length) {
     if (!hasContent) {
-      i = normalizeLineStartSegmentIndex(prepared, i)
+      i = normalizeLineStartSegmentIndex(prepared, i, widths.length, i === 0)
       if (i >= widths.length) break
     }
 
@@ -713,6 +719,8 @@ function walkPreparedComplexLines(
     pendingBreakFitWidth = 0
     pendingBreakPaintWidth = 0
     pendingBreakKind = null
+    // Retained line-start ZWSP establishes the line without owning a spacing gap.
+    let zeroWidthPrefix = true
 
     const chunk = prepared.chunks[chunkIndex]!
     let lineWidth: number | null = null
@@ -725,7 +733,8 @@ function walkPreparedComplexLines(
         const kind = kinds[i]!
         const breakAfter = breaksAfter(kind)
         const startGraphemeIndex = i === cursor.segmentIndex ? cursor.graphemeIndex : 0
-        const leadingSpacing = getLeadingLetterSpacing(prepared, hasContent, i)
+        const leadingSpacing = getLeadingLetterSpacing(prepared, hasContent && !zeroWidthPrefix, i)
+        if (kind !== 'zero-width-break') zeroWidthPrefix = false
         const w = kind === 'tab'
           ? getTabAdvance(lineW + leadingSpacing, prepared.tabStopAdvance)
           : widths[i]!
