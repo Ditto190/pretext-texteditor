@@ -244,7 +244,7 @@ Pretext doesn't try to be a full font rendering engine (yet?). It currently targ
 - A paragraph containing only zero-width spaces (ZWSP) occupies one line. ZWSP beside other text, whitespace or hard breaks can still wrap differently from the browser. The rich-inline helper preserves standalone ZWSP items, but still inherits the flat text engine's wrapping limits inside each item.
 - Some fonts, such as Shantell Sans, can produce different line breaks inside long words in Pretext and the browser.
 - If your page sets `lang`, a generic font like `sans-serif` may select a different font from the one Pretext measures. Use a named font and check the result in your browser.
-- Runtime requires `Intl.Segmenter` and Canvas 2D text measurement. Browsers or runtimes without `Intl.Segmenter` are currently unsupported.
+- Runtime requires `Intl.Segmenter`, Canvas 2D text measurement, and Unicode property escapes (`\p{...}`). Browsers without these features aren't supported. Without Unicode property escapes, Pretext can't load and throws a `SyntaxError`.
 - CSS text features outside the canvas `font` shorthand, such as `font-optical-sizing`, `font-feature-settings`, and standalone `font-variation-settings`, are not modeled separately. Variable-font axes only help when the active axis is reflected in the canvas font string, for example via weight.
 
 ## Develop
