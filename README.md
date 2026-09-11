@@ -70,7 +70,9 @@ walkLineRanges(prepared, 320, line => { if (line.width > maxW) maxW = line.width
 // maxW is now the widest line — the tightest container width that still fits the text! This multiline "shrink wrap" has been missing from web
 ```
 
-- `layoutNextLineRange()` lets you route text one row at a time when width changes as you go. If you want the actual string too, `materializeLineRange()` turns that one range back into a full line:
+The range APIs return positions and widths without allocating text strings. “Materializing” a range builds the line's text only when needed.
+
+- `layoutNextLineRange()` lets you route text one row at a time when width changes as you go:
 
 ```ts
 import { layoutNextLineRange, materializeLineRange, prepareWithSegments, type LayoutCursor } from '@chenglou/pretext'
@@ -94,11 +96,11 @@ while (true) {
 
 This usage allows rendering to canvas, SVG, WebGL and (eventually) server-side. See the `/demos/dynamic-layout` demo for a richer example.
 
-For hyphenation in manual layout, insert soft hyphens before `prepare()` / `prepareWithSegments()`. Pretext treats them as optional break points: unchosen soft hyphens stay invisible, while chosen breaks materialize as a trailing `-`. A soft hyphen at the end of the paragraph is consumed without painting a hyphen. For mixed-language or user-generated app text, prefer conservative, locale-aware insertion over aggressive pattern hyphenation. Automatic hyphenation is not built in today.
+For hyphenation, insert soft hyphens before calling `prepare()` or `prepareWithSegments()`. They stay invisible unless the line breaks there, in which case it ends with `-`. A soft hyphen at the end of the paragraph is consumed without painting a hyphen. Pretext doesn't insert soft hyphens for you. For mixed-language or user-generated app text, prefer conservative, locale-aware insertion over aggressive pattern hyphenation.
 
-Very narrow SHY fallback remains approximate: Safari can overflow a prefix plus hyphen, while Chromium and Gecko may move part of the prefix to another line.
+At very narrow widths, Pretext may wrap text containing soft hyphens differently from the browser. Safari can overflow a prefix plus hyphen, while Chromium and Gecko may move part of the prefix to another line.
 
-If your manual layout needs a small helper for rich-text inline flow, code spans, mentions, chips, and browser-like boundary whitespace collapse, there is a helper at `@chenglou/pretext/rich-inline`. It stays inline-only and `white-space: normal`-only on purpose:
+To lay out text with mixed fonts, code spans, mentions, or chips, use `@chenglou/pretext/rich-inline`:
 
 ```ts
 import { materializeRichInlineLineRange, prepareRichInline, walkRichInlineLineRanges } from '@chenglou/pretext/rich-inline'
@@ -115,12 +117,7 @@ walkRichInlineLineRanges(prepared, 320, range => {
 })
 ```
 
-It is intentionally narrow:
-- raw inline text in, including boundary spaces
-- caller-owned `extraWidth` for pill chrome
-- `break: 'never'` for atomic items like chips and mentions
-- `white-space: normal` only
-- not a nested markup tree and not a general CSS inline formatting engine
+Pass a flat list of text items. Keep leading and trailing spaces; the helper collapses repeated spaces to one. Use `extraWidth` for padding and borders, and `break: 'never'` to keep an item on one line. Only `white-space: normal` is supported. This is not a general CSS inline formatting engine.
 
 Fragment and cursor `itemIndex` values refer to that original list, including when it contains empty items. A collapsed boundary space uses the first space's font and letter spacing; `gapBefore` can be zero or negative. Zero-width content can still occupy a line and carry a break opportunity.
 
@@ -138,7 +135,7 @@ prepareWithSegments(text: string, font: string, options?: { whiteSpace?: 'normal
 layoutWithLines(prepared: PreparedTextWithSegments, maxWidth: number, lineHeight: number): { height: number, lineCount: number, lines: LayoutLine[] } // high-level api for manual layout needs. Accepts a fixed max width for all lines. Similar to `layout()`'s return, but additionally returns the lines info
 walkLineRanges(prepared: PreparedTextWithSegments, maxWidth: number, onLine: (line: LayoutLineRange) => void): number // low-level api for manual layout needs. Accepts a fixed max width for all lines. Calls `onLine` once per line with its actual calculated line width and start/end cursors, without building line text strings. Very useful for certain cases where you wanna speculatively test a few width and height boundaries (e.g. binary search a nice width value by repeatedly calling walkLineRanges and checking the line count, and therefore height, is "nice" too). You can have text messages shrinkwrap and balanced text layout this way. After walkLineRanges calls, you'd call layoutWithLines once, with your satisfying max width, to get the actual lines info.
 measureLineStats(prepared: PreparedTextWithSegments, maxWidth: number): { lineCount: number, maxLineWidth: number } // returns only how many lines this width produces, and how wide the widest one is. Avoids line/string allocations.
-measureNaturalWidth(prepared: PreparedTextWithSegments): number // returns the widest forced line when width itself is not the thing causing wraps
+measureNaturalWidth(prepared: PreparedTextWithSegments): number // Returns the width of the widest line when only explicit line breaks apply.
 layoutNextLine(prepared: PreparedTextWithSegments, start: LayoutCursor, maxWidth: number): LayoutLine | null // iterator-like api for laying out each line with a different width! Returns the LayoutLine starting from `start`, or `null` when the paragraph's exhausted. Pass the previous line's `end` cursor as the next `start`.
 layoutNextLineRange(prepared: PreparedTextWithSegments, start: LayoutCursor, maxWidth: number): LayoutLineRange | null // same as layoutNextLine(), but without allocating line text strings. Useful for variable-width manual layout, occlusion, and virtualization measurements.
 materializeLineRange(prepared: PreparedTextWithSegments, line: LayoutLineRange): LayoutLine // turns a LayoutLineRange from layoutNextLineRange() or walkLineRanges() into a full line with text
@@ -165,17 +162,17 @@ type LayoutCursor = {
 
 Helper for rich-text inline flow:
 ```ts
-prepareRichInline(items: RichInlineItem[]): PreparedRichInline // compile raw inline items with their original text. The compiler owns cross-item collapsed whitespace and caches each item's natural width
+prepareRichInline(items: RichInlineItem[]): PreparedRichInline // prepares the items for layout and collapses spaces between them
 layoutNextRichInlineLineRange(prepared: PreparedRichInline, maxWidth: number, start?: RichInlineCursor): RichInlineLineRange | null // stream one line of rich-text inline flow at a time without building fragment text strings
 walkRichInlineLineRanges(prepared: PreparedRichInline, maxWidth: number, onLine: (line: RichInlineLineRange) => void): number // non-materializing line walker for rich-text inline flow shrinkwrap/stats work
 materializeRichInlineLineRange(prepared: PreparedRichInline, line: RichInlineLineRange): RichInlineLine // turns one previously computed rich-inline line range back into full fragment text
 measureRichInlineStats(prepared: PreparedRichInline, maxWidth: number): { lineCount: number, maxLineWidth: number } // returns only how many lines this width produces, and how wide the widest one is. Avoids fragment-text allocations.
 type RichInlineItem = {
-  text: string // raw author text, including leading/trailing collapsible spaces
+  text: string // raw text, including leading/trailing collapsible spaces
   font: string // canvas font shorthand for this item
   letterSpacing?: number // extra horizontal spacing between graphemes, in CSS px
-  break?: 'normal' | 'never' // `never` keeps the item atomic, like a chip
-  extraWidth?: number // caller-owned horizontal chrome, e.g. padding + border width
+  break?: 'normal' | 'never' // `never` keeps the item atomic (aka on one line), like a chip
+  extraWidth?: number // extra width around the text, e.g. padding and borders
 }
 type RichInlineCursor = {
   itemIndex: number // Which source RichInlineItem this cursor is currently in
@@ -185,7 +182,7 @@ type RichInlineCursor = {
 type RichInlineFragment = {
   itemIndex: number // index back into the original RichInlineItem array
   text: string // Text slice for this fragment
-  gapBefore: number // collapsed boundary gap paid before this fragment on this line
+  gapBefore: number // collapsed space before this fragment, in pixels; can be zero or negative
   occupiedWidth: number // text width plus extraWidth
   start: LayoutCursor // Start cursor within the item's prepared text
   end: LayoutCursor // End cursor within the item's prepared text
@@ -197,7 +194,7 @@ type RichInlineLine = {
 }
 type RichInlineFragmentRange = {
   itemIndex: number // index back into the original RichInlineItem array
-  gapBefore: number // collapsed boundary gap paid before this fragment on this line
+  gapBefore: number // collapsed space before this fragment, in pixels; can be zero or negative
   occupiedWidth: number // text width plus extraWidth
   start: LayoutCursor // Start cursor within the item's prepared text
   end: LayoutCursor // End cursor within the item's prepared text
@@ -223,8 +220,8 @@ Notes:
 - `PreparedText` is the opaque fast-path handle. `PreparedTextWithSegments` is the richer manual-layout handle.
 - `LayoutCursor` is a segment/grapheme cursor, not a raw string offset.
 - `layout()` with an empty string returns `{ lineCount: 0, height: 0 }`. Browsers still size an empty block to one `line-height`, so clamp with `Math.max(1, lineCount) * lineHeight` if you need that behavior.
-- The richer handle also includes approximate `segLevels` for custom bidi-aware rendering. Base direction and weak/neutral state restart at Unicode bidi paragraph separators in the normalized text. In `pre-wrap`, normalized newlines start fresh paragraphs; in `normal`, ASCII newlines collapse to spaces first. Tabs and U+2028 LINE SEPARATOR do not restart paragraph direction. This is not a full Unicode Bidirectional Algorithm implementation, and the line-breaking APIs do not read these levels.
-- Segment widths are browser-canvas widths for line breaking, not exact glyph-position data for custom Arabic or mixed-direction x-coordinate reconstruction.
+- If you're drawing mixed bidi text, like English and Arabic, `prepareWithSegments()` includes `segLevels`: approximate bidi levels for each text segment, or `null` when no bidi metadata is needed. Levels describe direction and nesting for drawing; they don't affect where lines wrap. Base direction and weak/neutral state restart at Unicode bidi paragraph separators in the normalized text. In `pre-wrap`, normalized newlines start fresh paragraphs; in `normal`, ASCII newlines collapse to spaces first. Tabs and U+2028 LINE SEPARATOR do not restart paragraph direction. This is not a full Unicode Bidirectional Algorithm implementation.
+- Segment widths are browser-canvas widths for line breaking. They aren't enough to position individual characters correctly in Arabic or mixed bidi text.
 - If a soft hyphen wins the break, materialized line text includes the visible trailing `-`.
 - `measureNaturalWidth()` returns the widest forced line. Hard breaks still count.
 - `prepare()` and `prepareWithSegments()` do horizontal-only work. `lineHeight` stays a layout-time input.
@@ -245,7 +242,7 @@ Pretext doesn't try to be a full font rendering engine (yet?). It currently targ
 - Some fonts, such as Shantell Sans, can produce different line breaks inside long words in Pretext and the browser.
 - If your page sets `lang`, a generic font like `sans-serif` may select a different font from the one Pretext measures. Use a named font and check the result in your browser.
 - Runtime requires `Intl.Segmenter`, Canvas 2D text measurement, and Unicode property escapes (`\p{...}`). Browsers without these features aren't supported. Without Unicode property escapes, Pretext can't load and throws a `SyntaxError`.
-- CSS text features outside the canvas `font` shorthand, such as `font-optical-sizing`, `font-feature-settings`, and standalone `font-variation-settings`, are not modeled separately. Variable-font axes only help when the active axis is reflected in the canvas font string, for example via weight.
+- Pretext uses the canvas `font` string. Separate CSS settings such as `font-optical-sizing`, `font-feature-settings`, and `font-variation-settings` aren't supported. Variable-font settings only apply when expressed through that string, such as font weight.
 
 ## Develop
 
