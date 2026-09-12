@@ -60,6 +60,14 @@ execution errors or new API or rich failures. The baseline advances to `53e16ff`
 and the ordinary snapshots were regenerated against it; only provenance and
 environment records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 9.05 ms
+(8.90 on the parent branch) and hot `layout()` at 0.0887 ms (0.0887); Safari reads
+11.0 ms (11.0) and 0.105 ms (0.105). Long-form corpus totals read 118.3 ms in
+Chrome (120.7) and 349 ms in Safari (348); Chrome's total moves mostly with the
+Arabic prose row (41.2 ms against 43.4), which varies between runs.
+
 ## Soft-hyphen retreat in Blink
 
 This runtime change starts from the segment-break removal branch head `daf13ac`.
