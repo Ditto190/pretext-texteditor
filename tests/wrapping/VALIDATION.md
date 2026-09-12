@@ -79,6 +79,13 @@ advances to runtime commit `2f15d72`, and the ordinary snapshots were
 regenerated against it with unchanged results; only provenance and environment
 records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Against the following-space kerning
+branch nothing moves beyond run spread: Chrome reads `prepare()` at 8.85 ms (8.85)
+and hot `layout()` at 0.0887 ms (0.0885), and Safari reads 11.0 ms and 0.100 ms.
+The long-form corpus totals move by -1.2% in Chrome and +2.0% in Safari.
+
 ## Kerning measured with the following space
 
 This runtime change starts from the line-edge kerning head `9535bc6`, where
