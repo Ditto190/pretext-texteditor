@@ -2110,7 +2110,17 @@ function mergeKeepAllTextUnits(
 
 // Ordinary CJK boundaries and emergency overflow permission are separate facts.
 // Keep these decisions in preprocessing; measurement only observes their units.
+// Text of plain keep-all letters is one keep-all run, and each of its code units
+// is a grapheme, so it needs no grapheme segmentation.
+function isPlainKeepAllLetterText(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    if (!isPlainKeepAllLetterCode(text.charCodeAt(i))) return false
+  }
+  return true
+}
+
 export function getCjkTextUnits(text: string, profile: AnalysisProfile, wordBreak: WordBreakMode): TextBreakUnit[] {
+  if (wordBreak === 'keep-all' && isPlainKeepAllLetterText(text)) return [{ text, start: 0, overflow: 'word-like' }]
   const units = buildBaseCjkUnits(text, profile, wordBreak)
   return wordBreak === 'keep-all'
     ? mergeKeepAllTextUnits(text, units, profile)
@@ -2134,6 +2144,10 @@ function isPreferredBreakGrapheme(grapheme: string): boolean {
 // and standalone extenders also retain their existing source-shaping policy.
 export function isIndependentSymbolRun(text: string): boolean {
   if (text.length === 0 || /\p{Cf}/u.test(text)) return false
+  // The first grapheme starts with the first code point, which can refuse the
+  // run before any segmentation.
+  const first = String.fromCodePoint(text.codePointAt(0)!)
+  if (!/[\p{P}\p{S}]/u.test(first) || emojiPresentationRe.test(first) || /\p{Emoji_Modifier}/u.test(first)) return false
   for (const { segment } of getSharedGraphemeSegmenter().segment(text)) {
     const base = String.fromCodePoint(segment.codePointAt(0)!)
     if (!/[\p{P}\p{S}]/u.test(base) || emojiPresentationRe.test(base) || segment.includes('\uFE0F') || /\p{Emoji_Modifier}/u.test(base)) return false
