@@ -1,3 +1,5 @@
+import { getLineBreakClass, LineBreakClass } from './generated/line-break-data.js'
+
 export type WhiteSpaceMode = 'normal' | 'pre-wrap'
 export type WordBreakMode = 'normal' | 'keep-all'
 
@@ -31,14 +33,19 @@ export type TextAnalysis = { source: string; normalized: string } & MergedSegmen
 export type AnalysisProfile = {
   geckoAsciiLineBreaks: boolean
   carryCJKAfterClosingQuote: boolean
-  breakKeepAllAfterPunctuation: boolean
-  breakKeepAllAfterNonstarterLetters: boolean
+  keepAllPairModel: KeepAllPairModel
   keepZeroWidthSpaceMarkAtScanStart: boolean
   breakBeforeConditionalJapaneseStarter: boolean
+  breakAroundEastAsianQuotes: boolean
   wordInitialHyphenLetters: 'none' | 'alphabetic' | 'alphabetic-and-hebrew'
   breakHyphenAfterCollapsedTab: boolean
   segmentBreakRemovalRun: SegmentBreakRemovalRun
 }
+
+// Which pairs `word-break: keep-all` keeps. Blink keeps letters and numbers by
+// general category, Gecko's ICU4X keeps pairs by line-break class, and WebKit
+// breaks only at spaces.
+export type KeepAllPairModel = 'blink-general-category' | 'icu4x-classes' | 'webkit-spaces'
 
 // The collapsible run that a ZWSP removes under the CSS segment break
 // transformation, per engine. WebKit never removes one.
@@ -208,6 +215,7 @@ function endsWithKeepAllDashBreakText(text: string): boolean {
 }
 
 const letterOrNumberRe = /[\p{L}\p{N}]/u
+const letterOrNumberAtRe = /[\p{L}\p{N}]/uy
 
 // Keep-all suppresses breaks between letters. Blink keeps any pair of letters
 // or numbers by general category, so a letter that cannot start a line, such as
@@ -218,15 +226,248 @@ const letterOrNumberRe = /[\p{L}\p{N}]/u
 function endsWithKeepAllLetter(text: string, profile: AnalysisProfile): boolean {
   const last = getLastCodePoint(text)
   if (last === null || !letterOrNumberRe.test(last)) return false
-  return !profile.breakKeepAllAfterNonstarterLetters || !cjkNonstarters.has(last)
+  return profile.keepAllPairModel !== 'icu4x-classes' || !cjkNonstarters.has(last)
 }
 
-export function canContinueKeepAllTextRun(previousText: string, profile: AnalysisProfile): boolean {
-  if (endsWithKeepAllGlueText(previousText)) return false
-  if (!profile.breakKeepAllAfterPunctuation) return true
-  if (endsWithLineStartProhibitedText(previousText)) return endsWithKeepAllLetter(previousText, profile)
-  if (endsWithKeepAllDashBreakText(previousText)) return false
-  return true
+// Ideographs, kana and Hangul syllables, which every keep-all pair model keeps.
+function isPlainKeepAllLetterCode(code: number): boolean {
+  return (
+    (code >= 0x4E00 && code <= 0x9FFF) || (code >= 0xAC00 && code <= 0xD7A3) ||
+    (code >= 0x3400 && code <= 0x4DBF) || (code >= 0x3041 && code <= 0x3096) ||
+    (code >= 0x30A1 && code <= 0x30FA)
+  )
+}
+
+// A UTF-16 code unit that Blink's keep-all rule keeps: a letter or number by
+// general category whose line-break class is not SA. A surrogate is neither.
+function isBlinkKeepAllLetterUnit(text: string, index: number): boolean {
+  const code = text.charCodeAt(index)
+  if (!(code < 0xD800 || code > 0xDFFF)) return false
+  letterOrNumberAtRe.lastIndex = index
+  return letterOrNumberAtRe.test(text) && getLineBreakClass(code) !== LineBreakClass.SA
+}
+
+// Blink keeps a pair when the code unit after the boundary keeps, and so does
+// the one before it, or the one before that when it is a mark.
+function blinkKeepsKeepAllPair(text: string, boundary: number): boolean {
+  let before = boundary - 1
+  const code = text.charCodeAt(before)
+  if (code >= 0x0300 && (code < 0xD800 || code > 0xDFFF)) {
+    combiningMarkAtRe.lastIndex = before
+    if (combiningMarkAtRe.test(text)) before--
+  }
+  return isBlinkKeepAllLetterUnit(text, before) && isBlinkKeepAllLetterUnit(text, boundary)
+}
+
+// The projected classes ICU4X keeps under keep-all. The table reads AI, XX and
+// CB as AL and Hangul classes as ID; ICU4X does not keep XX or CB.
+const icu4xKeepAllClasses =
+  (1 << LineBreakClass.AL) | (1 << LineBreakClass.ID) | (1 << LineBreakClass.NU) |
+  (1 << LineBreakClass.HY) | (1 << LineBreakClass.CJ)
+
+// Classes that UAX #14 never lets start a line inside a run of text: CM and
+// ZWJ (LB9), WJ (LB11), GL (LB12a), CL, CP, EX and SY (LB13), IS (LB15d), QU
+// (LB19), BA, HH, HY and NS (LB21), IN (LB22) and EM (LB30b), and the spaces and
+// breaks a run never holds.
+const noBreakBeforeRunClasses =
+  (1 << LineBreakClass.CM) | (1 << LineBreakClass.WJ) | (1 << LineBreakClass.GL) | (1 << LineBreakClass.CL) |
+  (1 << LineBreakClass.CP) | (1 << LineBreakClass.EX) | (1 << LineBreakClass.SY) | (1 << LineBreakClass.IS) |
+  (1 << LineBreakClass.QU) | (1 << LineBreakClass.BA) | (1 << LineBreakClass.HH) | (1 << LineBreakClass.HY) |
+  (1 << LineBreakClass.NS) | (1 << LineBreakClass.IN) | (1 << LineBreakClass.EM) | (1 << LineBreakClass.BK) |
+  (1 << LineBreakClass.SP) | (1 << LineBreakClass.ZW)
+
+// Classes that UAX #14 never lets end a line inside a run of text: WJ and GL
+// (LB11, LB12), OP (LB14), QU (LB19) and BB (LB21). HY and HH keep a letter at a
+// word start (LB20a) and after a Hebrew letter (LB21a), so they count too.
+const noBreakAfterRunClasses =
+  (1 << LineBreakClass.WJ) | (1 << LineBreakClass.GL) | (1 << LineBreakClass.OP) | (1 << LineBreakClass.QU) |
+  (1 << LineBreakClass.BB) | (1 << LineBreakClass.HY) | (1 << LineBreakClass.HH) | (1 << LineBreakClass.BK) |
+  (1 << LineBreakClass.SP) | (1 << LineBreakClass.ZW)
+
+const alphabeticOrNumericClasses = (1 << LineBreakClass.AL) | (1 << LineBreakClass.HL) | (1 << LineBreakClass.NU)
+const ideographicClasses = (1 << LineBreakClass.ID) | (1 << LineBreakClass.EB) | (1 << LineBreakClass.EM)
+
+// OP code points with East Asian Width F, W or H (EastAsianWidth.txt, Unicode
+// 17), which LB30 does not keep after letters or numbers. No CP code point is
+// East Asian.
+function isEastAsianOpeningPunctuationCode(code: number): boolean {
+  return (
+    (code >= 0x3000 && code <= 0x303F) || (code >= 0xFE10 && code <= 0xFE6F) ||
+    (code >= 0xFF00 && code <= 0xFFEF) || code === 0x2329
+  )
+}
+
+// Whether UAX #14 allows a break between two classes inside a run of text,
+// where no space intervenes. It keeps every pair that some rule keeps in some
+// context, so a break it allows holds in every context. `before` is the class
+// of the base before any trailing marks (LB9), and neither class is SA or CJ.
+function lineBreakClassesBreak(before: number, after: number, afterCodePoint: number): boolean {
+  if (((1 << after) & noBreakBeforeRunClasses) !== 0 || ((1 << before) & noBreakAfterRunClasses) !== 0) return false
+  const afterClass = 1 << after
+  switch (before) {
+    case LineBreakClass.AL:
+    case LineBreakClass.HL:
+      // LB23, LB24 and LB28, a dotted circle in LB28a, and LB30.
+      if (after === LineBreakClass.OP) return isEastAsianOpeningPunctuationCode(afterCodePoint)
+      return (afterClass & (alphabeticOrNumericClasses | numericAffixClasses | (1 << LineBreakClass.AK))) === 0
+    case LineBreakClass.NU:
+      // LB23, LB25 and LB30.
+      if (after === LineBreakClass.OP) return isEastAsianOpeningPunctuationCode(afterCodePoint)
+      return (afterClass & (alphabeticOrNumericClasses | numericAffixClasses)) === 0
+    case LineBreakClass.PR:
+      // LB23a, LB24 and LB25.
+      return (afterClass & (alphabeticOrNumericClasses | ideographicClasses | (1 << LineBreakClass.OP))) === 0
+    case LineBreakClass.PO:
+      // LB24 and LB25.
+      return (afterClass & (alphabeticOrNumericClasses | (1 << LineBreakClass.OP))) === 0
+    case LineBreakClass.ID:
+    case LineBreakClass.EB:
+    case LineBreakClass.EM:
+      // LB23a.
+      return after !== LineBreakClass.PO
+    case LineBreakClass.CL:
+      // LB25 after a number.
+      return (afterClass & numericAffixClasses) === 0
+    case LineBreakClass.CP:
+      // LB25 and LB30.
+      return (afterClass & (numericAffixClasses | alphabeticOrNumericClasses)) === 0
+    case LineBreakClass.SY:
+      // LB21b and LB25.
+      return after !== LineBreakClass.HL && after !== LineBreakClass.NU
+    case LineBreakClass.IS:
+      // LB25 and LB29.
+      return (afterClass & alphabeticOrNumericClasses) === 0
+    case LineBreakClass.B2:
+      // LB17. Pieces of text never split a pair of regional indicators, so
+      // LB30a keeps nothing here.
+      return after !== LineBreakClass.B2
+    case LineBreakClass.AK:
+      // LB28a.
+      return after !== LineBreakClass.AK && after !== LineBreakClass.AL
+    default:
+      return true
+  }
+}
+
+// The start of the base before `end`, past any trailing marks, which take its
+// class (LB9), or -1 when the marks have no base.
+function lineBreakBaseBefore(text: string, end: number): number {
+  while (end > 0) {
+    const start = previousCodePointStart(text, end)
+    if (getLineBreakClass(text.codePointAt(start)!) !== LineBreakClass.CM) return start
+    end = start
+  }
+  return -1
+}
+
+const openingQuoteAtRe = /\p{Pi}/uy
+const closingQuoteAtRe = /\p{Pf}/uy
+const cjkAtRe = new RegExp(cjkRe.source, 'uy')
+
+const emojiPresentationAtRe = /\p{Emoji_Presentation}/uy
+
+// Pretext's CJK ranges and emoji-presentation characters stand in for East
+// Asian Width F, W and H here. Every assigned code point in them is East Asian
+// except U+303F and the regional indicators.
+function isEastAsianCodePointAt(text: string, index: number): boolean {
+  cjkAtRe.lastIndex = index
+  if (cjkAtRe.test(text)) return text.charCodeAt(index) !== 0x303F
+  emojiPresentationAtRe.lastIndex = index
+  return emojiPresentationAtRe.test(text) && getLineBreakClass(text.codePointAt(index)!) !== LineBreakClass.RI
+}
+
+// ICU 78 breaks before an opening quotation mark (QU and \p{Pi}) between East
+// Asian characters, looking past marks on either side (LB19a).
+function breaksBeforeEastAsianOpeningQuote(text: string, boundary: number, base: number, baseClass: number): boolean {
+  if (baseClass === LineBreakClass.OP || baseClass === LineBreakClass.GL) return false
+  openingQuoteAtRe.lastIndex = boundary
+  if (!openingQuoteAtRe.test(text) || !isEastAsianCodePointAt(text, base)) return false
+  let next = openingQuoteAtRe.lastIndex
+  for (let codePoint = text.codePointAt(next); codePoint !== undefined && getLineBreakClass(codePoint) === LineBreakClass.CM;) {
+    next += codePoint > 0xFFFF ? 2 : 1
+    codePoint = text.codePointAt(next)
+  }
+  return next < text.length && isEastAsianCodePointAt(text, next)
+}
+
+// Classes that LB19a still keeps after a closing quotation mark.
+const noBreakAfterEastAsianQuoteClasses =
+  (1 << LineBreakClass.NS) | (1 << LineBreakClass.BA) | (1 << LineBreakClass.EX) | (1 << LineBreakClass.CL) |
+  (1 << LineBreakClass.IN) | (1 << LineBreakClass.IS) | (1 << LineBreakClass.GL) | (1 << LineBreakClass.CM)
+
+// ICU 78 breaks after a closing quotation mark (QU and \p{Pf}) between East
+// Asian characters, unless the next character keeps it (LB19a).
+function breaksAfterEastAsianClosingQuote(text: string, boundary: number, profile: AnalysisProfile): boolean {
+  if (!profile.breakAroundEastAsianQuotes || boundary >= text.length) return false
+  const quote = lineBreakBaseBefore(text, boundary)
+  if (quote < 0 || getLineBreakClass(text.codePointAt(quote)!) !== LineBreakClass.QU) return false
+  closingQuoteAtRe.lastIndex = quote
+  if (!closingQuoteAtRe.test(text)) return false
+  const base = lineBreakBaseBefore(text, quote)
+  return (
+    base >= 0 && isEastAsianCodePointAt(text, base) && isEastAsianCodePointAt(text, boundary) &&
+    ((1 << getLineBreakClass(text.codePointAt(boundary)!)) & noBreakAfterEastAsianQuoteClasses) === 0
+  )
+}
+
+// Where the engine does not keep a pair, its ordinary rules decide, so a run
+// ends where those rules allow a break. Chromium and WebKit decide pairs of
+// code units up to U+00FF from their own tables before any keep-all rule, and
+// Gecko decides ASCII pairs from its own model, so those stay with the
+// punctuation rules below. No break follows ZWJ (LB8a). U+3000 is BA, but
+// engines hang or trim it at a line edge, which needs its own model, so a run
+// does not end next to it.
+function endsKeepAllRunAtPair(text: string, boundary: number, profile: AnalysisProfile): boolean {
+  const beforeCode = text.charCodeAt(boundary - 1)
+  const afterCode = text.charCodeAt(boundary)
+  if ((beforeCode <= 0xFF && afterCode <= 0xFF) || beforeCode === 0x200D || beforeCode === 0x3000 || afterCode === 0x3000) return false
+  if (profile.keepAllPairModel === 'blink-general-category' && blinkKeepsKeepAllPair(text, boundary)) return false
+  // Marks at the start of a segment's text have their base in the text before
+  // it, which this check cannot see.
+  const base = lineBreakBaseBefore(text, boundary)
+  if (base < 0) return false
+  const afterCodePoint = text.codePointAt(boundary)!
+  let after = getLineBreakClass(afterCodePoint)
+  let before = getLineBreakClass(text.codePointAt(base)!)
+  if (
+    profile.keepAllPairModel === 'icu4x-classes' &&
+    ((1 << before) & icu4xKeepAllClasses) !== 0 && ((1 << after) & icu4xKeepAllClasses) !== 0
+  ) {
+    return false
+  }
+  if (after === LineBreakClass.QU) {
+    return profile.breakAroundEastAsianQuotes && breaksBeforeEastAsianOpeningQuote(text, boundary, base, before)
+  }
+  // SA letters read as AL (LB1), except against each other, where a dictionary
+  // decides. CJ is ID under ICU's normal rules and NS under strict rules; before
+  // the boundary ID keeps more pairs, so it stands for both.
+  if (before === LineBreakClass.SA) {
+    if (after === LineBreakClass.SA) return false
+    before = LineBreakClass.AL
+  } else if (after === LineBreakClass.SA) {
+    after = LineBreakClass.AL
+  }
+  if (before === LineBreakClass.CJ) before = LineBreakClass.ID
+  if (after === LineBreakClass.CJ) after = profile.breakBeforeConditionalJapaneseStarter ? LineBreakClass.ID : LineBreakClass.NS
+  return lineBreakClassesBreak(before, after, afterCodePoint)
+}
+
+// Whether a keep-all run ends before the piece of text at `boundary`: 'end'
+// after glue, listed punctuation or a dash, which also ends its keep-all group,
+// or 'split' where the engine's pair rule and ordinary rules allow a break,
+// which splits the group into runs.
+function getKeepAllRunEnd(text: string, boundary: number, previousText: string, profile: AnalysisProfile): 'end' | 'split' | null {
+  if (isPlainKeepAllLetterCode(text.charCodeAt(boundary - 1)) && isPlainKeepAllLetterCode(text.charCodeAt(boundary))) return null
+  if (endsWithKeepAllGlueText(previousText)) return 'end'
+  if (profile.keepAllPairModel === 'webkit-spaces') return null
+  if (
+    endsWithLineStartProhibitedText(previousText)
+      ? !endsWithKeepAllLetter(previousText, profile)
+      : endsWithKeepAllDashBreakText(previousText)
+  ) {
+    return 'end'
+  }
+  return endsKeepAllRunAtPair(text, boundary, profile) ? 'split' : null
 }
 
 // UAX #14 NS code points in the CJK ranges above.
@@ -402,27 +643,16 @@ function getLastSignificantCodePoint(text: string, end = text.length): string | 
   return null
 }
 
-// Unicode line-break PR/PO classes from UAX #14, stored as start/end pairs.
-const lineBreakNumericAffixRanges = [
-  0x0024, 0x0025, 0x002B, 0x002B, 0x005C, 0x005C, 0x00A2, 0x00A5, 0x00B0, 0x00B1,
-  0x058F, 0x058F, 0x0609, 0x060B, 0x066A, 0x066A, 0x07FE, 0x07FF, 0x09F2, 0x09F3,
-  0x09F9, 0x09FB, 0x0AF1, 0x0AF1, 0x0BF9, 0x0BF9, 0x0D79, 0x0D79, 0x0E3F, 0x0E3F,
-  0x17DB, 0x17DB, 0x2030, 0x2037, 0x2057, 0x2057, 0x20A0, 0x20CF, 0x2103, 0x2103,
-  0x2109, 0x2109, 0x2116, 0x2116, 0x2212, 0x2213, 0xA838, 0xA838, 0xFDFC, 0xFDFC,
-  0xFE69, 0xFE6A, 0xFF04, 0xFF05, 0xFFE0, 0xFFE1, 0xFFE5, 0xFFE6,
-  0x11FDD, 0x11FE0, 0x1E2FF, 0x1E2FF, 0x1ECAC, 0x1ECAC, 0x1ECB0, 0x1ECB0,
-] as const
+// UAX #14 PR and PO.
+const numericAffixClasses = (1 << LineBreakClass.PR) | (1 << LineBreakClass.PO)
 
-function isCodePointInRanges(codePoint: number, ranges: readonly number[]): boolean {
-  for (let i = 0; i < ranges.length; i += 2) {
-    if (codePoint >= ranges[i]! && codePoint <= ranges[i + 1]!) return true
-  }
-  return false
+function isLineBreakNumericAffixCode(codePoint: number): boolean {
+  return ((1 << getLineBreakClass(codePoint)) & numericAffixClasses) !== 0
 }
 
 function isLineBreakNumericAffix(ch: string): boolean {
   const codePoint = ch.codePointAt(0)
-  return codePoint !== undefined && isCodePointInRanges(codePoint, lineBreakNumericAffixRanges)
+  return codePoint !== undefined && isLineBreakNumericAffixCode(codePoint)
 }
 
 function endsWithLineBreakNumericAffix(text: string): boolean {
@@ -823,47 +1053,23 @@ function endsWithNoSpaceWordJoiner(text: string): boolean {
   return false
 }
 
-// UAX #14 EX from LineBreak.txt (Unicode 17), stored as start/end pairs.
-const exclamationLineBreakRanges = [
-  0x0021, 0x0021, 0x003F, 0x003F, 0x05C6, 0x05C6, 0x061B, 0x061B, 0x061D, 0x061F,
-  0x06D4, 0x06D4, 0x07F9, 0x07F9, 0x0F0D, 0x0F11, 0x0F14, 0x0F14, 0x1802, 0x1803,
-  0x1808, 0x1809, 0x1944, 0x1945, 0x2762, 0x2763, 0x2CF9, 0x2CF9, 0x2CFE, 0x2CFE,
-  0x2E2E, 0x2E2E, 0x2E53, 0x2E54, 0xA60E, 0xA60E, 0xA876, 0xA877, 0xFE15, 0xFE16,
-  0xFE56, 0xFE57, 0xFF01, 0xFF01, 0xFF1F, 0xFF1F, 0x115C4, 0x115C5, 0x11C71, 0x11C71,
-] as const
-
 // Letters, numbers and symbols above U+00FF whose UAX #14 class forbids a break
-// before them (BA, CL, CM, EX, IN, IS, NS or QU in LineBreak.txt, Unicode 17),
-// such as the iteration marks U+3005 and U+309D. Stored as start/end pairs.
-const noBreakBeforeRanges = [
-  0x0F34, 0x0F34, 0x0FBE, 0x0FBF, 0x2044, 0x2044, 0x22EF, 0x22EF, 0x275B, 0x2760,
-  0x2762, 0x2763, 0x2800, 0x2800, 0x3005, 0x3005, 0x3035, 0x3035, 0x303B, 0x303C,
-  0x309B, 0x309E, 0x30FD, 0x30FE, 0xA015, 0xA015, 0xA9CF, 0xA9CF, 0xAA40, 0xAA42,
-  0xAA44, 0xAA4B, 0xFF9E, 0xFF9F, 0x1133D, 0x1133D, 0x1135D, 0x1135D, 0x11EF2, 0x11EF2,
-  0x1325B, 0x1325D, 0x13282, 0x13282, 0x13287, 0x13287, 0x13289, 0x13289, 0x1337A, 0x1337B,
-  0x145CF, 0x145CF, 0x16FE0, 0x16FE1, 0x16FE3, 0x16FE3, 0x16FF2, 0x16FF3, 0x1F676, 0x1F67B,
-] as const
-
-// UAX #14 CJ from LineBreak.txt (Unicode 17): small kana and prolonged sound
-// marks. Strict rules treat CJ as NS; ICU's normal rules treat it as ID.
-const conditionalJapaneseStarterRanges = [
-  0x3041, 0x3041, 0x3043, 0x3043, 0x3045, 0x3045, 0x3047, 0x3047, 0x3049, 0x3049,
-  0x3063, 0x3063, 0x3083, 0x3083, 0x3085, 0x3085, 0x3087, 0x3087, 0x308E, 0x308E,
-  0x3095, 0x3096, 0x30A1, 0x30A1, 0x30A3, 0x30A3, 0x30A5, 0x30A5, 0x30A7, 0x30A7,
-  0x30A9, 0x30A9, 0x30C3, 0x30C3, 0x30E3, 0x30E3, 0x30E5, 0x30E5, 0x30E7, 0x30E7,
-  0x30EE, 0x30EE, 0x30F5, 0x30F6, 0x30FC, 0x30FC, 0x31F0, 0x31FF, 0xFF67, 0xFF70,
-  0x1B132, 0x1B132, 0x1B150, 0x1B152, 0x1B155, 0x1B155, 0x1B164, 0x1B167,
-] as const
+// before them: BA, CL, CM, EX, IN, IS, NS or QU, such as the iteration marks
+// U+3005 and U+309D.
+const noBreakBeforeLetterClasses =
+  (1 << LineBreakClass.BA) | (1 << LineBreakClass.CL) | (1 << LineBreakClass.CM) | (1 << LineBreakClass.EX) |
+  (1 << LineBreakClass.IN) | (1 << LineBreakClass.IS) | (1 << LineBreakClass.NS) | (1 << LineBreakClass.QU)
 
 // Up to U+00FF, the UAX #14 classes that forbid a break before them are CM
-// (controls), BA, CL, CP, EX, GL, HY, IS, QU and SY.
+// (controls), BA, CL, CP, EX, GL, HY, IS, QU and SY, besides spaces and line
+// breaks.
+const latin1NoBreakBeforeClasses =
+  (1 << LineBreakClass.CM) | (1 << LineBreakClass.BA) | (1 << LineBreakClass.CL) | (1 << LineBreakClass.CP) |
+  (1 << LineBreakClass.EX) | (1 << LineBreakClass.GL) | (1 << LineBreakClass.HY) | (1 << LineBreakClass.IS) |
+  (1 << LineBreakClass.QU) | (1 << LineBreakClass.SY) | (1 << LineBreakClass.SP) | (1 << LineBreakClass.BK)
+
 function isLatin1NoBreakBeforeCode(code: number): boolean {
-  switch (code) {
-    case 0x21: case 0x22: case 0x27: case 0x29: case 0x2C: case 0x2D: case 0x2E: case 0x2F:
-    case 0x3A: case 0x3B: case 0x3F: case 0x5D: case 0x7C: case 0x7D: case 0xAB: case 0xAD: case 0xBB:
-      return true
-  }
-  return code < 0x21 || (code >= 0x7F && code <= 0xA0)
+  return ((1 << getLineBreakClass(code)) & latin1NoBreakBeforeClasses) !== 0
 }
 
 const exclamationFollowerAtRe = /[\p{L}\p{N}\p{S}\p{Ps}]/uy
@@ -889,18 +1095,20 @@ function breaksAfterExclamation(
   if (boundary <= 0 || boundary >= source.length) return false
   const lastCode = source.charCodeAt(boundary - 1)
   if (lastCode < 0x0300 && lastCode !== 0x21 && lastCode !== 0x3F) return false
-  // Safari's keep-all breaks only at spaces, even after punctuation.
-  if (wordBreak === 'keep-all' && !profile.breakKeepAllAfterPunctuation) return false
+  // WebKit's keep-all breaks only at spaces, even after punctuation.
+  if (wordBreak === 'keep-all' && profile.keepAllPairModel === 'webkit-spaces') return false
   for (let end = boundary; end > 0;) {
     const start = previousCodePointStart(source, end)
     const codePoint = source.codePointAt(start)!
-    if (isCodePointInRanges(codePoint, exclamationLineBreakRanges)) {
+    if (getLineBreakClass(codePoint) === LineBreakClass.EX) {
       const next = source.codePointAt(boundary)!
       if (next > 0xFF) {
         exclamationFollowerAtRe.lastIndex = boundary
-        if (!exclamationFollowerAtRe.test(source)) return isCodePointInRanges(next, lineBreakNumericAffixRanges)
-        if (isCodePointInRanges(next, conditionalJapaneseStarterRanges)) return profile.breakBeforeConditionalJapaneseStarter
-        return !isCodePointInRanges(next, noBreakBeforeRanges)
+        if (!exclamationFollowerAtRe.test(source)) return isLineBreakNumericAffixCode(next)
+        const nextClass = getLineBreakClass(next)
+        // Strict rules treat CJ as NS; ICU's normal rules treat it as ID.
+        if (nextClass === LineBreakClass.CJ) return profile.breakBeforeConditionalJapaneseStarter
+        return ((1 << nextClass) & noBreakBeforeLetterClasses) === 0
       }
       // The pair table sees the code unit before the boundary, not a mark's base.
       if (!profile.geckoAsciiLineBreaks && end === boundary && codePoint <= 0xFF && next < 0x80) {
@@ -916,38 +1124,6 @@ function breaksAfterExclamation(
   }
   return false
 }
-
-// Letters above U+00FF whose UAX #14 class is not AL, AI, SA, SG, XX or HL in
-// LineBreak.txt (Unicode 17): ideographs, kana, Hangul, Bopomofo, Yi, Brahmic
-// AK/AS/AP letters, BB modifier letters and NS/BA/CL/OP/CM letters. Stored as
-// start/end pairs.
-const nonAlphabeticLetterRanges = [
-  0x02C8, 0x02C8, 0x02CC, 0x02CC, 0x1100, 0x11FF, 0x1B05, 0x1B33, 0x1B45, 0x1B4C,
-  0x1BC0, 0x1BE5, 0x3005, 0x3006, 0x3031, 0x3035, 0x303B, 0x303C, 0x3041, 0x3096,
-  0x309D, 0x309F, 0x30A1, 0x30FA, 0x30FC, 0x30FF, 0x3105, 0x312F, 0x3131, 0x318E,
-  0x31A0, 0x31BF, 0x31F0, 0x31FF, 0x3400, 0x4DBF, 0x4E00, 0xA48C, 0xA960, 0xA97C,
-  0xA984, 0xA9B2, 0xA9CF, 0xA9CF, 0xAA00, 0xAA28, 0xAA40, 0xAA42, 0xAA44, 0xAA4B,
-  0xAC00, 0xD7A3, 0xD7B0, 0xD7C6, 0xD7CB, 0xD7FB, 0xF900, 0xFA6D, 0xFA70, 0xFAD9,
-  0xFF21, 0xFF3A, 0xFF41, 0xFF5A, 0xFF66, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF,
-  0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC, 0x11003, 0x11037, 0x11071, 0x11072, 0x11075, 0x11075,
-  0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328, 0x1132A, 0x11330, 0x11332, 0x11333,
-  0x11335, 0x11339, 0x1133D, 0x1133D, 0x11350, 0x11350, 0x1135D, 0x11361, 0x11380, 0x11389,
-  0x1138B, 0x1138B, 0x1138E, 0x1138E, 0x11390, 0x113B5, 0x113B7, 0x113B7, 0x113D1, 0x113D1,
-  0x113D3, 0x113D3, 0x11900, 0x11906, 0x11909, 0x11909, 0x1190C, 0x11913, 0x11915, 0x11916,
-  0x11918, 0x1192F, 0x1193F, 0x1193F, 0x11941, 0x11941, 0x11EE0, 0x11EF2, 0x11F02, 0x11F02,
-  0x11F04, 0x11F10, 0x11F12, 0x11F33, 0x13258, 0x1325D, 0x13282, 0x13282, 0x13286, 0x13289,
-  0x13379, 0x1337B, 0x1342F, 0x1342F, 0x145CE, 0x145CF, 0x16100, 0x1611D, 0x16FE0, 0x16FE1,
-  0x16FE3, 0x16FE3, 0x16FF2, 0x16FF3, 0x17000, 0x18AFF, 0x18D00, 0x18D1E, 0x18D80, 0x18DF2,
-  0x1B000, 0x1B122, 0x1B132, 0x1B132, 0x1B150, 0x1B152, 0x1B155, 0x1B155, 0x1B164, 0x1B167,
-  0x1B170, 0x1B2FB, 0x20000, 0x2A6DF, 0x2A700, 0x2B81D, 0x2B820, 0x2CEAD, 0x2CEB0, 0x2EBE0,
-  0x2EBF0, 0x2EE5D, 0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x33479,
-] as const
-
-// UAX #14 HL from LineBreak.txt (Unicode 17), stored as start/end pairs.
-const hebrewLetterRanges = [
-  0x05D0, 0x05EA, 0x05EF, 0x05F2, 0xFB1D, 0xFB1D, 0xFB1F, 0xFB28, 0xFB2A, 0xFB36,
-  0xFB38, 0xFB3C, 0xFB3E, 0xFB3E, 0xFB40, 0xFB41, 0xFB43, 0xFB44, 0xFB46, 0xFB4F,
-] as const
 
 const hyphenWithMarksRe = /^.\p{M}+$/u
 const letterAtRe = /\p{L}/uy
@@ -979,8 +1155,11 @@ function keepsWordInitialHyphen(source: string, hyphenStart: number, letterStart
   const letter = source.codePointAt(letterStart)!
   if (source.charCodeAt(hyphenStart) === 0x2D && letter <= 0xFF) return false
   letterAtRe.lastIndex = letterStart
-  if (!letterAtRe.test(source) || isCodePointInRanges(letter, nonAlphabeticLetterRanges)) return false
-  return profile.wordInitialHyphenLetters === 'alphabetic-and-hebrew' || !isCodePointInRanges(letter, hebrewLetterRanges)
+  if (!letterAtRe.test(source)) return false
+  // SA letters are AL here (LB1).
+  const letterClass = getLineBreakClass(letter)
+  return letterClass === LineBreakClass.AL || letterClass === LineBreakClass.SA ||
+    (letterClass === LineBreakClass.HL && profile.wordInitialHyphenLetters === 'alphabetic-and-hebrew')
 }
 
 const asciiAlphabeticBoundaryRe = /[A-Za-z#&*<=>@^_`~]/
@@ -1657,6 +1836,9 @@ function mergeKeepAllTextSegments(
 
   let groupStart = -1
   let groupContainsCJK = false
+  let groupWordLike = false
+  // Where the current keep-all group splits into runs.
+  let splits: number[] | null = null
 
   function pushOriginalText(index: number): void {
     texts.push(segmentation.texts[index]!)
@@ -1665,36 +1847,39 @@ function mergeKeepAllTextSegments(
     starts.push(segmentation.starts[index]!)
   }
 
-  function pushMergedText(start: number, end: number): void {
-    let wordLike = false
-
-    for (let i = start; i < end; i++) {
-      wordLike = wordLike || segmentation.isWordLike[i]!
-    }
-
+  // Under keep-all, a word-like segment takes emergency grapheme breaks. A
+  // keep-all group takes them when any of its pieces is a word, and every run it
+  // splits into keeps them, as U+300C U+2605 does between ideographs.
+  function pushKeepAllRun(start: number, end: number): void {
     const sourceStart = segmentation.starts[start]!
     const sourceEnd = end < segmentation.len ? segmentation.starts[end]! : normalized.length
-    texts.push(normalized.slice(sourceStart, sourceEnd))
-    isWordLike.push(wordLike)
+    texts.push(start + 1 === end ? segmentation.texts[start]! : normalized.slice(sourceStart, sourceEnd))
+    isWordLike.push(groupWordLike)
     kinds.push('text')
     starts.push(sourceStart)
   }
 
+  // A group with CJK text becomes keep-all runs. Every such run stays a keep-all
+  // run even when its own pieces hold no CJK text, such as U+2768 U+1F60A U+2769
+  // between ideographs.
   function flushGroup(end: number): void {
     if (groupStart < 0) return
 
     if (groupContainsCJK) {
-      if (groupStart + 1 === end) {
-        pushOriginalText(groupStart)
-      } else {
-        pushMergedText(groupStart, end)
+      let start = groupStart
+      for (let k = 0; splits !== null && k < splits.length; k++) {
+        pushKeepAllRun(start, splits[k]!)
+        start = splits[k]!
       }
+      pushKeepAllRun(start, end)
     } else {
       for (let i = groupStart; i < end; i++) pushOriginalText(i)
     }
 
     groupStart = -1
     groupContainsCJK = false
+    groupWordLike = false
+    splits = null
   }
 
   for (let i = 0; i < segmentation.len; i++) {
@@ -1702,15 +1887,18 @@ function mergeKeepAllTextSegments(
     const kind = segmentation.kinds[i]!
 
     if (kind === 'text') {
-      if (
-        groupStart >= 0 &&
-        (!canContinueKeepAllTextRun(segmentation.texts[i - 1]!, profile) ||
-          numericAffixBoundary(normalized, segmentation.starts[i]!, profile) === false)
-      ) {
-        flushGroup(i)
+      if (groupStart >= 0) {
+        const start = segmentation.starts[i]!
+        const runEnd = getKeepAllRunEnd(normalized, start, segmentation.texts[i - 1]!, profile)
+        if (runEnd === 'end' || numericAffixBoundary(normalized, start, profile) === false) {
+          flushGroup(i)
+        } else if (runEnd === 'split') {
+          (splits ??= []).push(i)
+        }
       }
       if (groupStart < 0) groupStart = i
       groupContainsCJK = groupContainsCJK || isCJK(text)
+      groupWordLike = groupWordLike || segmentation.isWordLike[i]!
       continue
     }
 
@@ -1760,6 +1948,7 @@ type TextBreakUnit = {
 function buildBaseCjkUnits(
   segText: string,
   profile: AnalysisProfile,
+  wordBreak: WordBreakMode,
 ): TextBreakUnit[] {
   const units: TextBreakUnit[] = []
   let unitStart = 0
@@ -1827,7 +2016,8 @@ function buildBaseCjkUnits(
       (unitHasNumericHyphen && !graphemeContainsCJK) ||
       (profile.carryCJKAfterClosingQuote &&
         graphemeContainsCJK &&
-        unitEndsWithClosingQuote)
+        unitEndsWithClosingQuote &&
+        !(wordBreak === 'keep-all' && breaksAfterEastAsianClosingQuote(segText, gs.index, profile)))
     ) {
       appendToUnit(grapheme, graphemeContainsCJK)
       continue
@@ -1856,8 +2046,13 @@ function mergeKeepAllTextUnits(
   const merged: TextBreakUnit[] = []
   let groupStart = -1
   let groupContainsCJK = false
+  let splits: number[] | null = null
 
-  function pushMergedUnit(start: number, end: number): void {
+  function pushRun(start: number, end: number): void {
+    if (start + 1 === end) {
+      merged.push(units[start]!)
+      return
+    }
     const sourceStart = units[start]!.start
     const sourceEnd = end < units.length ? units[end]!.start : segText.length
 
@@ -1872,27 +2067,30 @@ function mergeKeepAllTextUnits(
     if (groupStart < 0) return
 
     if (groupContainsCJK) {
-      if (groupStart + 1 === end) {
-        merged.push(units[groupStart]!)
-      } else {
-        pushMergedUnit(groupStart, end)
+      let start = groupStart
+      for (let k = 0; splits !== null && k < splits.length; k++) {
+        pushRun(start, splits[k]!)
+        start = splits[k]!
       }
+      pushRun(start, end)
     } else {
       for (let i = groupStart; i < end; i++) merged.push(units[i]!)
     }
 
     groupStart = -1
     groupContainsCJK = false
+    splits = null
   }
 
   for (let i = 0; i < units.length; i++) {
     const unit = units[i]!
-    if (
-      groupStart >= 0 &&
-      (!canContinueKeepAllTextRun(units[i - 1]!.text, profile) ||
-        numericAffixBoundary(segText, unit.start, profile) === false)
-    ) {
-      flushGroup(i)
+    if (groupStart >= 0) {
+      const runEnd = getKeepAllRunEnd(segText, unit.start, units[i - 1]!.text, profile)
+      if (runEnd === 'end' || numericAffixBoundary(segText, unit.start, profile) === false) {
+        flushGroup(i)
+      } else if (runEnd === 'split') {
+        (splits ??= []).push(i)
+      }
     }
     if (groupStart < 0) groupStart = i
     groupContainsCJK = groupContainsCJK || isCJK(unit.text)
@@ -1905,7 +2103,7 @@ function mergeKeepAllTextUnits(
 // Ordinary CJK boundaries and emergency overflow permission are separate facts.
 // Keep these decisions in preprocessing; measurement only observes their units.
 export function getCjkTextUnits(text: string, profile: AnalysisProfile, wordBreak: WordBreakMode): TextBreakUnit[] {
-  const units = buildBaseCjkUnits(text, profile)
+  const units = buildBaseCjkUnits(text, profile, wordBreak)
   return wordBreak === 'keep-all'
     ? mergeKeepAllTextUnits(text, units, profile)
     : units

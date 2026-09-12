@@ -21,6 +21,7 @@
 - Reported line widths are now clamped at 0 instead of going negative, for example with strongly negative `letterSpacing` (#236).
 - Chrome, Firefox, Edge and other browsers on iPhone and iPad, and in-app web views on iPhone, iPad and Mac, now wrap text as Safari does, since they use WebKit. Previously, some of them got rules meant for other browsers, such as breaks after punctuation with `word-break: keep-all`. In Safari, text prepared in a web worker now gets the same rules as on the page (#237).
 - In Chrome and Firefox, a newline next to a zero-width space no longer adds a space in `white-space: normal`, matching the browser (#238).
+- With `word-break: keep-all` in Chrome and Firefox, lines can now break before an opening bracket such as `(` or `¡` after CJK text, as in `서울(한국)에서`, before `「` or `（` after Latin letters or digits, after a closing bracket such as `❩` before CJK text, and next to Thai text. In Chrome, they can also break next to emoji and symbols such as `★` or `～`, after punctuation such as `/` or `‼` that follows an emoji, after keycaps, between flags, and before an opening quotation mark or after a closing one between CJK characters, as in `他说“你好”然后`.
 
 ## 0.0.9 - 2026-09-07
 

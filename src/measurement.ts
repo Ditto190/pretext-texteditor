@@ -1,4 +1,4 @@
-import { getSharedGraphemeSegmenter, type SegmentBreakRemovalRun } from './analysis.js'
+import { getSharedGraphemeSegmenter, type KeepAllPairModel, type SegmentBreakRemovalRun } from './analysis.js'
 import type { SegmentEntryGeometry } from './entry-geometry.js'
 
 type EntryMeasurement = {
@@ -30,10 +30,11 @@ export type EngineProfile = {
   geckoAsciiLineBreaks: boolean
   lineFitEpsilon: number
   carryCJKAfterClosingQuote: boolean
-  breakKeepAllAfterPunctuation: boolean
-  // Under keep-all, Gecko's ICU4X keeps letter pairs by line-break class and
-  // breaks after NS letters such as U+3005. Blink keeps any pair of letters.
-  breakKeepAllAfterNonstarterLetters: boolean
+  // Which pairs keep-all keeps. Blink keeps letters and numbers by general
+  // category, tested per UTF-16 code unit. Gecko's ICU4X keeps pairs by
+  // line-break class, so it also keeps symbols such as U+2605 but breaks after
+  // NS letters such as U+3005. WebKit breaks only at spaces.
+  keepAllPairModel: KeepAllPairModel
   // WebKit keeps a basic combining mark after a ZWSP that starts a text node or
   // follows a mandatory break. Gecko keeps ZWSP with any following cluster
   // extender in every position; that granularity is not modeled.
@@ -41,6 +42,11 @@ export type EngineProfile = {
   // Chromium's ICU root line rules are the normal rules, where small kana and
   // U+30FC (CJ) resolve to ID. WebKit's root rules and Gecko's auto are strict.
   breakBeforeConditionalJapaneseStarter: boolean
+  // ICU 78, which Chromium and WebKit use, breaks before an opening quotation
+  // mark such as U+201C and after a closing one such as U+201D between East
+  // Asian characters (UAX #14 LB19a). Gecko's ICU4X rules follow Unicode 15.0,
+  // with no break next to a quotation mark. Only keep-all runs model it.
+  breakAroundEastAsianQuotes: boolean
   // Letters that keep a word-initial hyphen (LB20a). 'alphabetic-and-hebrew'
   // models ICU 78, which Chromium and WebKit use: AL and HL letters after
   // U+002D or any Unicode 17 HH dash. It is also the default without a
@@ -206,10 +212,10 @@ export function getEngineProfile(): EngineProfile {
     geckoAsciiLineBreaks: engine === 'gecko',
     lineFitEpsilon: engine === 'webkit' ? 1 / 64 : 0.005,
     carryCJKAfterClosingQuote: engine === 'blink',
-    breakKeepAllAfterPunctuation: engine !== 'webkit',
-    breakKeepAllAfterNonstarterLetters: engine === 'gecko',
+    keepAllPairModel: engine === 'gecko' ? 'icu4x-classes' : engine === 'webkit' ? 'webkit-spaces' : 'blink-general-category',
     keepZeroWidthSpaceMarkAtScanStart: engine === 'webkit',
     breakBeforeConditionalJapaneseStarter: engine === 'blink',
+    breakAroundEastAsianQuotes: engine !== 'gecko',
     wordInitialHyphenLetters: engine === 'gecko' ? 'none' : 'alphabetic-and-hebrew',
     breakHyphenAfterCollapsedTab: engine === 'webkit',
     preferPrefixWidthsForBreakableRuns: engine === 'webkit',

@@ -58,6 +58,7 @@
     "corpus-status": "bun run scripts/corpus-status.ts",
     "corpus-taxonomy": "bun run scripts/corpus-taxonomy.ts",
     "generate:bidi-data": "bun run scripts/generate-bidi-data.ts",
+    "generate:line-break-data": "bun run scripts/generate-line-break-data.ts",
     "package-smoke-test": "bun run scripts/package-smoke-test.ts",
     "prepack": "rm -rf dist && tsc -p tsconfig.build.json",
     "probe-check": "bun run scripts/probe-check.ts",
