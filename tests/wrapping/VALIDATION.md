@@ -71,10 +71,13 @@ view runs Chromium 47 but sends `AppleWebKit/538.1`, so it takes WebKit's
 profile; it predates `Intl.Segmenter`. Shared and service workers were not
 probed.
 
-`bun test` and `bun run check` pass. The installed three-browser gate will run
-from this branch. The pin still names `8b1f538`. After review it advances to
-this runtime commit, and the ordinary and benchmark snapshots are regenerated
-against it.
+`bun test` and `bun run check` pass. The installed gate ran from this branch against pinned `8b1f538`: Chrome through
+the Playwright transport, Safari and Firefox natively, both directions. Every leg
+has zero fixed or lost metrics, required failures, execution errors or new
+API/rich failures, and nine numeric profiles have no new failures. The baseline
+advances to runtime commit `2f15d72`, and the ordinary snapshots were
+regenerated against it with unchanged results; only provenance and environment
+records change.
 
 ## Kerning with a following space
 
