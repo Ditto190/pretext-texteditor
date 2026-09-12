@@ -66,6 +66,15 @@ matches 28 more widths: `zh-zhufu` 43 to 61, `zh-guxiang` 54 to 61,
 `48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
 `/private/tmp/pretext-eng-20260912/stage1b-full`.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Against the pair-table branch, Chrome
+reads `prepare()` at 8.90 ms (8.70) and hot `layout()` at 0.0885 ms (0.0893), and
+Safari reads 10.0 ms (11.0) and 0.100 ms. The long-form corpus totals move by
+-1.2% in Chrome and +0.3% in Safari. The Japanese and Chinese corpora gain
+segments from the new CJK units, such as zh-zhufu from 7,944 to 7,992, with
+unchanged line counts.
+
 ## Exclamation followers, joiners and word-initial hyphens
 
 This runtime change starts from the figure-space branch head `b55311e`. Chrome
