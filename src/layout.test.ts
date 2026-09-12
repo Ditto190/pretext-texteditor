@@ -27,6 +27,7 @@ let measureLineStats: LayoutModule['measureLineStats']
 let measureNaturalWidth: LayoutModule['measureNaturalWidth']
 let walkLineRanges: LayoutModule['walkLineRanges']
 let setLocale: LayoutModule['setLocale']
+let clearCache: LayoutModule['clearCache']
 let countPreparedLines: LineBreakModule['countPreparedLines']
 let measurePreparedLineGeometry: LineBreakModule['measurePreparedLineGeometry']
 let stepPreparedLineGeometry: LineBreakModule['stepPreparedLineGeometry']
@@ -292,6 +293,7 @@ beforeAll(async () => {
     measureNaturalWidth,
     walkLineRanges,
     setLocale,
+    clearCache,
   } = mod)
   ;({ countPreparedLines, measurePreparedLineGeometry, stepPreparedLineGeometry, walkPreparedLinesRaw } = lineBreakMod)
   ;({ getSegmentBreakableFitAdvances } = measurementMod)
@@ -1142,6 +1144,49 @@ describe('prepare invariants', () => {
     setLocale(undefined)
     const latin = prepare('hello world', FONT)
     expect(layout(latin, 200, LINE_HEIGHT)).toEqual({ lineCount: 1, height: LINE_HEIGHT })
+  })
+
+  test('later prepares measure under a changed document language', () => {
+    // Like Chrome's OffscreenCanvas, this context resolves a font under the
+    // document language only when a different font string is assigned.
+    const root = { lang: 'en' }
+    class LanguageResolvingContext {
+      resolvedFont = ''
+      resolvedLanguage = ''
+
+      get font(): string {
+        return this.resolvedFont
+      }
+
+      set font(value: string) {
+        if (value === this.resolvedFont) return
+        this.resolvedFont = value
+        this.resolvedLanguage = root.lang
+      }
+
+      measureText(text: string): { width: number } {
+        return { width: measureWidth(text, this.resolvedFont) * (this.resolvedLanguage === 'ko' ? 0.75 : 1) }
+      }
+    }
+    Reflect.set(globalThis, 'OffscreenCanvas', class {
+      getContext(): LanguageResolvingContext {
+        return new LanguageResolvingContext()
+      }
+    })
+    Reflect.set(globalThis, 'document', { documentElement: root })
+    try {
+      const english = measureNaturalWidth(prepareWithSegments('中文 日本語', FONT))
+      root.lang = 'ko'
+      expect(measureNaturalWidth(prepareWithSegments('中文 日本語', FONT))).toBeCloseTo(english * 0.75, 10)
+      root.lang = 'en'
+      clearCache()
+      expect(measureNaturalWidth(prepareWithSegments('中文 日本語', FONT))).toBeCloseTo(english, 10)
+    } finally {
+      Reflect.set(globalThis, 'OffscreenCanvas', TestOffscreenCanvas)
+      Reflect.deleteProperty(globalThis, 'document')
+    }
+    // The restored backend replaces the language-resolving context.
+    expect(measureNaturalWidth(prepareWithSegments('中文 日本語', FONT))).toBeCloseTo(measureWidth('中文日本語', FONT) + measureWidth(' ', FONT), 10)
   })
 
   test('pure LTR text skips rich bidi metadata', () => {

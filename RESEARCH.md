@@ -288,6 +288,15 @@ one width can still fail nearby thresholds. A matching canvas `lang` helped
 Chrome and Firefox generic-font measurements, but did not fix Safari. `setLocale()`
 currently controls segmentation, not Canvas font language.
 
+Chrome's OffscreenCanvas takes the page language when it resolves a font, and
+assigning an unchanged font string keeps the resolved font. After `<html lang>`
+changed, a reused context kept the first language even after `clearCache()`, so
+preparation now replaces the context and its caches when that language changes.
+Replacing the context on every `clearCache()` also fixed it, but was rejected:
+Chrome caches shaped text per canvas, so earlier measurements change later ones.
+A fresh context for each suite preparation moved unrelated Amiri results in both
+directions. See [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
+
 Feature detection must precede assignment. In the tested Safari OffscreenCanvas,
 `fontKerning` and `textRendering` were absent; assigning and reading them back only
 created ordinary JavaScript properties, without enabling the browser feature.
