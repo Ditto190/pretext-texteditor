@@ -86,6 +86,13 @@ newline to a space. The baseline advances to runtime commit `e5e66be`, and the
 ordinary snapshots were regenerated against it with unchanged results; only
 provenance and environment records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Against the WebKit engine routing
+branch, Chrome reads `prepare()` at 9.00 ms (8.85) and hot `layout()` at
+0.0877 ms (0.0887), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.100). The
+long-form corpus totals move by -4.1% in Chrome and -0.3% in Safari.
+
 ## WebKit engine routing
 
 This runtime change starts from the line-edge kerning branch head `9535bc6`.
