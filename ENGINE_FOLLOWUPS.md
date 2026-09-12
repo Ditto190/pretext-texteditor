@@ -7,9 +7,6 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Decide the public output changes the combined engine rules need: segment kinds for controls and for U+3000, raw CR, FF and VT kept in `line.text`, and U+00AD stripped from `line.text` when an unhyphenated soft hyphen stays inside text.
 - Confirm that rich line widths may go negative in Safari, as the line-edge-kerning draft documents, or clamp them at 0. A line holding only a word joiner and a space measures about -1px in WebKit.
 - Decide what the iOS profile patch does outside real devices: jsdom reports Apple's vendor string and would get the WebKit profile, and Blink emulating an iOS user agent would get the default profile. Also decide whether headless user-agent replays are enough without an iOS device.
-- Write the no-DOM rule into AGENTS.md, and decide what happens to the DOM reads `prepare()` already makes: the emoji-correction span, `ctx.direction` and `document.documentElement.lang`. The answer also settles the `system-ui` question below.
-- Decide whether line breaking takes a content language, through `setLocale()` or a prepare option, or keeps the README limitation. Chrome's Chinese rules, Safari's Japanese small-kana and quote rules, and Firefox's East Asian newline removal all depend on it.
-- Decide whether to file a Chromium bug: measureText depends on what the same canvas shaped earlier (an Amiri `)` measures 7.328px or 4.080px depending on order). Until then, read gate rows with brackets next to joined Arabic as order-sensitive.
 - Decide whether Safari cursors may land inside a grapheme. WebKit's emergency breaks step by code point on its simple font path and by ICU cluster on its complex path, while the API promises grapheme boundaries.
 - Decide between a dedicated no-DOM study of Firefox's joined Arabic advances and documenting them as a limitation. Several Firefox halves of planned rules wait on it.
 - Decide on a feature-detected `fontKerning` prepare option (#199, #216), which would be a no-op on Safari's OffscreenCanvas, and on other Canvas font settings (#107).
@@ -18,6 +15,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 
 ## Line breaking
 
+- Take a content language for line breaking (approved). Chrome's Chinese quote rules, Safari's Japanese small-kana and quote rules and Firefox's East Asian newline removal depend on it. Build it on the generated line-break class table once keep-all settles, keep `setLocale()` segmenter-only, and add no expensive browser work to `prepare()` or `layout()`.
 - Land keep-all boundaries that follow each engine's pair rule: Blink keeps a pair only when both sides are letters or numbers (with a one-mark lookback), Firefox uses ICU4X's class keep set, and Safari breaks only at spaces. A first version lost rows on VS16 emoji, Thai-type digits, quote-like symbols and iOS browsers.
 - In Chrome and Safari, keep a word-initial hyphen with Hebrew letters and with the Unicode 17 hyphen dashes (U+2012, U+2013, U+058A, U+05BE, U+1400, U+2E17 and others). Installed Chrome 153 keeps them all where #233 breaks, and Firefox breaks after several of these dashes, which Pretext doesn't model.
 - Safari keeps `-` after U+2007 with the following letter but breaks after `-` following NBSP. Chrome and Safari keep U+2010 after either glue. Model both with the glue context rules.
@@ -104,7 +102,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Record `Intl.Segmenter` word-likeness for emoji, U+2605 and digit strings in installed Safari and Firefox.
 - The iOS profile patch has no device evidence: iOS fonts, older iOS ICU without the Hebrew LB20a rule, EU alternative engines, and Edge's iPad desktop user agent.
 - On each new Safari, recheck WebKit changes that haven't shipped yet: keep-all punctuation breaks, first-glyph kinsoku and the 0.5ch tab minimum.
-- Say in README and PLATFORM_BUGS that Safari's canvas never follows page language (WebKit bug 285993). Also correct FONT_DIAGNOSTICS' Safari number, which came from a detached canvas.
+- Say in README that Safari's OffscreenCanvas doesn't follow the page language, while a connected canvas does (WebKit bug 285993). Also correct FONT_DIAGNOSTICS' Safari number, which came from a detached canvas.
 - No canvas follows an element's own `lang`, a Worker's context, or a runtime Content-Language change. Add a short README note.
 - Safari page-language attribution left two things open: why Amiri `il` at a line start measures 2.544px or 7.416px, and 1,117 Japanese width-only differences. Revisit with the content-language decision.
 
@@ -136,8 +134,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 ## External actions
 
 - File the JavaScriptCore `Intl.Segmenter` `containing()` bug (Safari 26.5.2 fails 17 of 29 cases), then name it in #233's PLATFORM_BUGS row.
-- Post the drafted comment on WebKit bug 285993: canvas text ignores page language.
-- Recheck the platform trackers, last checked June 22, and rerun the Retina emoji and `system-ui` repros headed at DPR 2.
+- Rerun the Retina emoji and `system-ui` repros headed at DPR 2. The trackers were rechecked on September 12.
 - Compare the gallery's local Pretext 0.0.8 patch, which changes overflow fit, overflow-word kerning, continuation widths, tabs and caret ranges, with upstream.
 - Review and merge #226, which fixes broken preload links in the published bubbles demo.
 - Close the superseded draft PRs #218 and #112.
