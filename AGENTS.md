@@ -26,6 +26,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing ones. 
 - `pages/accuracy.ts` — viewer for the shared suite’s checked-in accuracy snapshots
 - `pages/benchmark.ts` — performance comparisons
 - `PLATFORM_BUGS.md` — current browser/OS bug ledger, issue links, workarounds, and investigated non-bugs
+- `ENGINE_FOLLOWUPS.md` — deferred engine decisions, known gaps and harness debt; update it when an item lands or is dropped
 - `RESEARCH.md` — durable findings and rejected approaches, including script-specific wrapping and corpus lessons
 - `FONT_DIAGNOSTICS.md` — contextual font measurement findings and limitations
 - `pages/diagnostic-utils.ts` — shared grapheme-safe diagnostic helpers used by the browser check pages
@@ -49,6 +50,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing ones. 
 - `prepare()` is internally split into a text-analysis phase and a measurement phase; keep that seam clear, but keep the public API simple unless requirements force a change.
 - The internal segment model now distinguishes at least eight break kinds: normal text, collapsible spaces, preserved spaces, tabs, non-breaking glue (`NBSP` / `NNBSP` / `WJ`-like runs), zero-width break opportunities, soft hyphens, and hard breaks. Do not collapse those back into one boolean unless the model gets richer in a better way.
 - `layout()` is the resize hot path: no DOM reads, no canvas calls, no string work, and avoid gratuitous allocations.
+- Don't add DOM access, computed-style reads, or anything that forces style or layout to `prepare()` or `layout()`. The emoji-correction span and the `<html lang>` attribute read are the existing exceptions.
 - Segment metrics cache is `Map<font, Map<segment, metrics>>`; shared across texts and resettable via `clearCache()`. Width is only one cached fact now; grapheme widths and other segment-derived facts can be populated lazily.
 - Preparation replaces the measurement context and clears the segment metrics caches when `document.documentElement.lang` changes. Chrome's OffscreenCanvas re-resolves a font under the page language only when the font string changes. Do not replace the context on every `clearCache()`: Chrome caches shaped text per canvas, so that moves unrelated widths. See `RESEARCH.md`.
 - Word and grapheme segmenters are hoisted at module scope. Any locale reset should also clear the word cache.

@@ -31,6 +31,8 @@ import {
   getEntryMeasurementProfile,
   getSegmentBreakableFitAdvances,
   getEngineProfile,
+  getFollowingSpaceMetricCache,
+  getFollowingSpaceMetrics,
   getFontMeasurementState,
   getSegmentMetrics,
   textMayContainEmoji,
@@ -267,30 +269,43 @@ function measureAnalysis(
 
   // A WebKit text item runs to its next break opportunity, so it also owns any
   // zero-width breaks before the space. The item is measured with one following
-  // U+0020 minus an unshaped space; the difference is the kerning between the
-  // item's last glyph and that space. With letter spacing the same measurement
-  // also moves the space's gap onto the item and clamps the item at zero, which
-  // the per-grapheme gap model does not represent, so only the unspaced case
-  // takes the kerning. A soft hyphen before the space also takes none: on an
-  // RTL page WebKit needs about a hyphen's width more to fit such an item, and
-  // preparation cannot see the page direction.
-  function getFollowingSpaceKerning(analysisIndex: number, text: string): number {
-    if (!engineProfile.measureTextWithFollowingSpace || hasLetterSpacing) return 0
+  // U+0020 minus an unshaped space, which keeps the kerning between the item's
+  // end and that space. With letter spacing the same measurement also moves the
+  // space's gap onto the item and clamps the item at zero, which the
+  // per-grapheme gap model does not represent, so only the unspaced case takes
+  // the kerning. A soft hyphen before the space also takes none: on an RTL page
+  // WebKit needs about a hyphen's width more to fit such an item, and
+  // preparation cannot see the page direction. Returns the zero-width breaks
+  // between the text and the space, or null when the text takes no kerning.
+  function getFollowingSpaceTail(analysisIndex: number, text: string): string | null {
+    if (!engineProfile.measureTextWithFollowingSpace || hasLetterSpacing) return null
     let tail = ''
     let next = analysisIndex + 1
     while (next < analysis.len && analysis.kinds[next] === 'zero-width-break') {
       tail += analysis.texts[next]!
       next++
     }
-    if (next >= analysis.len) return 0
+    if (next >= analysis.len) return null
     const nextKind = analysis.kinds[next]!
-    if ((nextKind !== 'space' && nextKind !== 'preserved-space') || getSpaceSourceCode(next) !== 0x20) return 0
-    const item = tail === '' ? text : text + tail
-    if (!formatTailStaysWithWord(item, analysis.starts[next]!)) return 0
-    const itemMetrics = getSegmentMetrics(item, cache)
-    itemMetrics.followingSpaceKerning ??=
-      getSegmentMetrics(item + ' ', cache).width - itemMetrics.width - getSegmentMetrics(' ', cache).width
-    return itemMetrics.followingSpaceKerning
+    if ((nextKind !== 'space' && nextKind !== 'preserved-space') || getSpaceSourceCode(next) !== 0x20) return null
+    return formatTailStaysWithWord(tail === '' ? text : text + tail, analysis.starts[next]!) ? tail : null
+  }
+
+  // Text directly before such a space is measured together with the space
+  // instead of alone, so its kerned width costs no extra Canvas call. Other
+  // occurrences of the same text measure it alone.
+  let followingSpaceCache: Map<string, SegmentMetrics> | null = null
+  function getTextMetrics(text: string, followingSpaceTail: string | null): SegmentMetrics {
+    if (followingSpaceTail !== '') return getSegmentMetrics(text, cache)
+    followingSpaceCache ??= getFollowingSpaceMetricCache(font)
+    return getFollowingSpaceMetrics(text, followingSpaceCache)
+  }
+
+  // A zero-width break before the space ends the measured item, so only the
+  // item's kerning with the space is added to the text's own width.
+  function getTailKerning(item: string): number {
+    followingSpaceCache ??= getFollowingSpaceMetricCache(font)
+    return getFollowingSpaceMetrics(item, followingSpaceCache).width - getSegmentMetrics(item, cache).width - spaceWidth
   }
 
   // WebKit splits text items where resolved bidi levels change before it
@@ -492,13 +507,15 @@ function measureAnalysis(
     if (kind !== 'text' && kind !== 'glue' && kind !== 'soft-hyphen') previousJoinablePiece = null
   }
 
+  // With an empty following-space tail, textMetrics measured the text together
+  // with the space; with a zero-width tail, the item's kerning is added.
   function pushMeasuredTextSegment(
     text: string,
     textMetrics: SegmentMetrics,
     kind: SegmentBreakKind,
     start: number,
     allowOverflowBreaks: boolean,
-    followingSpaceKerning: number,
+    followingSpaceTail: string | null,
   ): void {
     if (kind === 'text' || kind === 'glue') {
       previousJoinablePiece = text
@@ -507,8 +524,12 @@ function measureAnalysis(
     const spacingGraphemeCount = hasLetterSpacing
       ? countRenderedSpacingGraphemes(text, kind)
       : 0
+    const measuredWithSpace = followingSpaceTail === ''
+    const followingSpaceKerning = followingSpaceTail === null || measuredWithSpace
+      ? 0
+      : getTailKerning(text + followingSpaceTail)
     const width = addInternalLetterSpacing(
-      getCorrectedSegmentWidth(text, textMetrics, emojiCorrection) + followingSpaceKerning,
+      getCorrectedSegmentWidth(text, textMetrics, emojiCorrection) - (measuredWithSpace ? spaceWidth : 0) + followingSpaceKerning,
       spacingGraphemeCount,
       letterSpacing,
     )
@@ -540,6 +561,7 @@ function measureAnalysis(
         cache,
         emojiCorrection,
         fitMode,
+        measuredWithSpace ? spaceWidth : null,
       )
       // The cached advances are shared by every occurrence of this text; only
       // the final grapheme touches the following space.
@@ -638,22 +660,23 @@ function measureAnalysis(
 
       for (let i = 0; i < measuredUnits.length; i++) {
         const unit = measuredUnits[i]!
-        const unitMetrics = getSegmentMetrics(unit.text, cache)
+        const followingSpaceTail = i === measuredUnits.length - 1 ? getFollowingSpaceTail(mi, unit.text) : null
         pushMeasuredTextSegment(
           unit.text,
-          unitMetrics,
+          getTextMetrics(unit.text, followingSpaceTail),
           'text',
           segStart + unit.start,
           unit.overflow === 'grapheme' || (analysis.isWordLike[mi]! && (wordBreak === 'keep-all' || unit.overflow === 'word-like')),
-          i === measuredUnits.length - 1 ? getFollowingSpaceKerning(mi, unit.text) : 0,
+          followingSpaceTail,
         )
       }
       continue
     }
 
-    pushMeasuredTextSegment(segText, getSegmentMetrics(segText, cache), segKind, segStart,
+    const followingSpaceTail = segKind === 'text' || segKind === 'glue' ? getFollowingSpaceTail(mi, segText) : null
+    pushMeasuredTextSegment(segText, getTextMetrics(segText, followingSpaceTail), segKind, segStart,
       segKind === 'text' && (analysis.isWordLike[mi]! || isIndependentSymbolRun(segText)),
-      segKind === 'text' || segKind === 'glue' ? getFollowingSpaceKerning(mi, segText) : 0)
+      followingSpaceTail)
   }
 
   if (chunkStartSegmentIndex < widths.length) {
