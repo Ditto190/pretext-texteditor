@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-09-12T01:13:04.438Z",
-  "suiteHash": "edf54ed053d7e1c0ef387ffcade551a22dfb6508440215746abb388d29245c30",
+  "generatedAt": "2026-09-12T07:23:02.404Z",
+  "suiteHash": "48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1",
   "source": {
-    "revision": "ab47385942cc88df6017d1165e4fbdd5e9bc334b",
+    "revision": "460398ac2787a912082fc2e86aaa9c78e70139fb",
     "files": {
       "analysis.ts": "a57b2a0cff6e0710d2c3d3444b9c0f8c1a4b78dae51b66b2535c3c16204a3747",
       "bidi.ts": "70f7f01dcd866076b68dbf2a3c398364aceaba2ccf98037e77e0b3b8bcfbeaa5",
@@ -21,11 +21,11 @@
       "browser": "chrome",
       "direction": "ltr",
       "measurement": {
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
         "start": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -36,14 +36,14 @@
           "screenAvailWidth": 2560,
           "screenAvailHeight": 1315,
           "visibility": "visible",
-          "focused": false,
+          "focused": true,
           "language": "en",
           "direction": "ltr"
         },
         "end": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -58,13 +58,19 @@
           "language": "en",
           "direction": "ltr"
         },
-        "changes": []
+        "changes": [
+          {
+            "field": "focused",
+            "value": false,
+            "evidence": "snapshot"
+          }
+        ]
       },
       "context": {
         "kind": "installed",
         "lang": "en"
       },
-      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
       "dpr": 2,
       "locale": "zh-CN",
       "visibility": "visible",
@@ -75,11 +81,11 @@
       "browser": "chrome",
       "direction": "ltr",
       "measurement": {
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
         "start": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -90,14 +96,14 @@
           "screenAvailWidth": 2560,
           "screenAvailHeight": 1315,
           "visibility": "visible",
-          "focused": false,
+          "focused": true,
           "language": "he",
           "direction": "ltr"
         },
         "end": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -108,7 +114,7 @@
           "screenAvailWidth": 2560,
           "screenAvailHeight": 1315,
           "visibility": "visible",
-          "focused": false,
+          "focused": true,
           "language": "he",
           "direction": "ltr"
         },
@@ -118,22 +124,22 @@
         "kind": "installed",
         "lang": "he"
       },
-      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
       "dpr": 2,
       "locale": "zh-CN",
       "visibility": "visible",
-      "focused": false,
+      "focused": true,
       "fonts": []
     },
     {
       "browser": "chrome",
       "direction": "ltr",
       "measurement": {
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
         "start": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -151,7 +157,7 @@
         "end": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -172,7 +178,7 @@
         "kind": "installed",
         "lang": "ja"
       },
-      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
       "dpr": 2,
       "locale": "zh-CN",
       "visibility": "visible",
@@ -183,11 +189,11 @@
       "browser": "chrome",
       "direction": "ltr",
       "measurement": {
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
         "start": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -198,14 +204,14 @@
           "screenAvailWidth": 2560,
           "screenAvailHeight": 1315,
           "visibility": "visible",
-          "focused": false,
+          "focused": true,
           "language": "zh",
           "direction": "ltr"
         },
         "end": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -220,13 +226,19 @@
           "language": "zh",
           "direction": "ltr"
         },
-        "changes": []
+        "changes": [
+          {
+            "field": "focused",
+            "value": false,
+            "evidence": "snapshot"
+          }
+        ]
       },
       "context": {
         "kind": "installed",
         "lang": "zh"
       },
-      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
       "dpr": 2,
       "locale": "zh-CN",
       "visibility": "visible",
@@ -237,11 +249,11 @@
       "browser": "chrome",
       "direction": "rtl",
       "measurement": {
-        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
         "start": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -259,7 +271,7 @@
         "end": {
           "dpr": 2,
           "visualViewportScale": 1,
-          "innerWidth": 2504,
+          "innerWidth": 2320,
           "innerHeight": 1268,
           "outerWidth": 2560,
           "outerHeight": 1315,
@@ -280,7 +292,7 @@
         "kind": "installed",
         "lang": "ar"
       },
-      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
       "dpr": 2,
       "locale": "zh-CN",
       "visibility": "visible",
@@ -522,7 +534,7 @@
           "screenAvailWidth": 1440,
           "screenAvailHeight": 2530,
           "visibility": "visible",
-          "focused": true,
+          "focused": false,
           "language": "ar",
           "direction": "rtl"
         },
@@ -544,13 +556,7 @@
           "language": "ar",
           "direction": "rtl"
         },
-        "changes": [
-          {
-            "field": "focused",
-            "value": false,
-            "evidence": "snapshot"
-          }
-        ]
+        "changes": []
       },
       "context": {
         "kind": "installed",

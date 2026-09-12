@@ -17,6 +17,68 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Attached generator canvas
+
+This test-only change starts from published main `20ad703`. The case generator
+measured width recipes with a detached canvas, which ignores `<html lang>` in all
+three browsers: Chrome and Firefox measure in the machine language, and Safari
+passes no language, so its fallback follows the machine's preferred languages. It
+now measures with a hidden canvas attached to the fixture page, so recipe
+thresholds use the page language that paragraphs without their own `lang`
+inherit. Explicit-language recipes still reuse those widths. Runtime sources and
+the baseline pin are unchanged.
+
+The recorded no-language, `en`, `ja`, `zh-Hans` and `ko` fixture runs generated
+identical IDs. Selected by origin, each browser has 3,635 LTR recipe rows, 3,322
+of them with measured widths, and 144 RTL recipe rows, all measured. Comparing
+their natives on pages without a language and under `en` shows which thresholds
+the old canvas missed:
+
+- Firefox paints `Ⅷ` at 27.53px under `en`, but at 16px without a language and
+  under `ja` or `zh-Hans`, and the detached canvas measured 16px. The 55%, 80%
+  and natural-width-plus-one `Ⅷ%` thresholds (16.63, 24.19 and 31.23px) therefore
+  described a `zh-Hans` paragraph; under `en` even the natural-width-plus-one
+  paragraph wraps to two lines. As a methodology correction, the change replaced
+  six LTR observations that main passed, each with two native lines:
+  `wrap-eadf3c82cdbb9ece`, `wrap-74fcdac0799992cc` and `wrap-9181306059a20016` in
+  normal whitespace, and `wrap-6639f89b6eb01e63`, `wrap-179b7d018231d861` and
+  `wrap-176497a1d936cb3b` in `pre-wrap`. Main and candidates share the generated
+  inventory, so the comparison cannot report them as lost. Installed Firefox 155's
+  attached canvas returns about 41.77px for `Ⅷ%` under `en`, so the replacements
+  use about 22.97, 33.41 and 42.77px: `wrap-b7ffe298cc61c6f0`,
+  `wrap-5a0227e23cc7c1b2` and `wrap-5a08270ecc4ea094` in normal whitespace, and
+  `wrap-70e339a94111979d`, `wrap-36cf587b7f499adf` and `wrap-8691b11fca22d5b9` in
+  `pre-wrap`. Their native paragraphs have two, two and one lines, as the
+  recorded `en` painted widths predicted, and main passes every observed metric
+  on all six.
+- In Chrome, 205 measured LTR rows and 17 measured RTL rows paint differently
+  under `en` than under the Chinese app language, and 64 and 9 of them change
+  line count. All of them contain curly quotes, and no painted glyph width
+  changes, so their thresholds and IDs did not move. Safari paints every recipe
+  row the same under both. Headless Chromium 147 resolves `Ⅷ` under `en` to a
+  wider fallback and moves the corresponding six `Ⅷ%` rows, but installed Chrome
+  paints no such difference.
+
+Empty element language remains a reset input. In the recorded runs, Chrome
+resolves `lang=""` to its Chinese app language: in the 15 groups where `en` and
+`zh` differ, it matches `zh`, and four of those differ in line count.
+
+The full shared inventory ran with this harness in installed Chrome
+153.0.8010.36, Safari 26.5.2 and Firefox 155.0.1, both directions, at DPR 2:
+656,407 browser/input observations, with pinned `14d92ca` as the reference.
+Relative to the previous full comparison, case IDs are identical in Chrome,
+Safari and both RTL legs, and Firefox LTR replaces exactly the six observations
+above. The runtime at `20ad703` fixes and loses no metric. There are zero failed
+required checks, execution errors and new API/rich failures, and nine numeric
+profiles have no new failures. Suite hash
+`48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
+`/private/tmp/pretext-eng-20260912/stage1b-full`.
+
+The ordinary snapshots were regenerated from this commit: all six legs pass with
+zero new regressions, required failures or execution errors, and nine numeric
+profiles have no new failures. Snapshot results are unchanged; only provenance
+and environment records change.
+
 ## Page-language measurement context
 
 This runtime change starts from published main `efa958a`. Chrome's OffscreenCanvas
