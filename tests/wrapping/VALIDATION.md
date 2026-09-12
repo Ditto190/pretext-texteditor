@@ -50,9 +50,19 @@ coincided with WebKit's on numeric signs (27) and quote splits (4). Installed
 Firefox measured the joined rule at +768 and -93 rows, including 40 Myanmar
 split-word rows lost to Gecko's segmentation, so Firefox keeps main's behavior.
 
-`bun test` and `bun run check` pass. The baseline advances to runtime commit
-`06c850f`, and the ordinary snapshots were regenerated against it with unchanged
-results; only provenance and environment records change.
+Merging onto #239 also made this branch's end-limited walks return from an unfit
+soft hyphen in Chrome, as the continuing text does. When an item boundary cuts a
+line right after a chosen soft hyphen, or an overflowing partial unit follows one,
+the line now ends at the earlier opportunity instead of painting an overflowing
+hyphen. A fuzz over 2,574 rich-inline item splits moved 697 widths, all of them
+to match flat text.
+
+`bun test` and `bun run check` pass. After #240 landed, this branch was merged
+onto it and gated again in installed browsers against #240's pin `53e16ff`.
+Chrome fixes 7 LTR and 0 RTL metrics, Safari 6 and 0, and Firefox 0 and 0.
+No leg loses a metric or has required failures, execution errors or new API or
+rich failures. The baseline advances to `8e01c01`, and the ordinary snapshots were
+regenerated against it; only provenance and environment records change.
 
 ## Safari next-line and tab stops
 
