@@ -49,6 +49,13 @@ or faster on the chat datasets after the plain-letter fast path.
 ordinary snapshots were regenerated against it; only provenance and environment
 records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 8.75 ms
+(9.10 on the parent branch) and hot `layout()` at 0.0885 ms (0.0893); Safari reads
+11.0 ms (11.0) and 0.105 ms (0.105). Long-form corpus totals read 119.4 ms in
+Chrome (121.2) and 351 ms in Safari (346).
+
 ## Rich-inline boundaries in Chrome and Safari
 
 This runtime change starts from the Safari next-line branch pin `1771ab8`.
