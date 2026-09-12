@@ -212,16 +212,35 @@ spaces, glue, listed punctuation and dashes. Every run of a group with CJK text
 stays merged, as `❨😊❩` does between ideographs, and keeps its group's emergency
 grapheme breaks, which a group takes when any of its pieces is a word.
 
-ICU 78 breaks before an opening quotation mark and after a closing one between East
-Asian characters (LB19a). Gecko's ICU4X rules follow Unicode 15.0 and keep both;
+ICU 77 and 78 break before an opening quotation mark and after a closing one between
+East Asian characters (LB19a). Gecko's ICU4X rules follow Unicode 15.0 and keep both;
 `breakAroundEastAsianQuotes` records the difference. Pretext's CJK ranges and
 emoji-presentation characters stand in for East Asian Width there. Under keep-all,
 the Chromium profile's CJK units no longer carry CJK text after a closing quote
 where LB19a breaks, so `文|“漢字”|文` ends both runs. Chrome restarts its ICU context
 at each line start, so when an emergency break lands just before a closing quote,
-Chrome keeps the quote with the next ideograph, while Pretext breaks there. An
-emoji and a following opening quote form one piece, so the break between them stays
-hidden.
+Chrome no longer sees the East Asian character before the quote and keeps the quote
+with the next ideograph, while Pretext breaks after it. That loses 16 installed
+Chrome 153 rows, 8 per direction: `signed-spacing/keep-all/curly-double-close` and
+`curly-single-close` at letter spacing 1.5, where Chrome gives `中文中文|”漢字kan|a`
+and Pretext `中文中文|”|漢字kan|a`. Pretext passed them before only because it did
+not model the break after a closing quote. Without that break those rows pass, but
+Pretext gains 24 fewer installed rows per direction and loses 238 headless Chromium
+widths, where the carry hides Chrome's break after the quote, as in `他说“你好”然后走了`.
+An emoji and a following opening quote form one piece, so the break between them
+stays hidden.
+
+Headless Chromium 147, which most headless keep-all evidence comes from, runs ICU
+77.1 with Unicode 16 data, while installed Chrome 153 runs ICU 78.2 with Unicode 17
+data, which the generated table follows. The headless build cannot check three
+families. HH: ICU 77.1 counts only U+2010, and Unicode 17 moves ten more dashes, such
+as U+2013 and U+05BE, from BA to HH. LB21a: ICU 77.1 keeps the character after a
+Hebrew letter and any BA but U+3000, and ICU 78.2 only after HY or HH, so headless
+Chromium keeps `א|文` together where the Chromium profile ends a run. LB20a: ICU 78.2
+adds Hebrew letters, as described above. The ICU4C 77.1 and 78.3 libraries show the
+same differences. Unicode 17 also moves eight pictographs such as U+1F777 from ID to
+AL, U+034F from GL to CM and U+2800 from AL to BA. The two versions' LB19a rules are
+identical, so the quotation mark evidence carries over.
 
 WebKit's pair scan never breaks before a basic combining mark. It reports the
 break between ZWSP and that mark (LB8) only from an ICU lookup that started

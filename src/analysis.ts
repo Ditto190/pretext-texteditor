@@ -379,8 +379,8 @@ function isEastAsianCodePointAt(text: string, index: number): boolean {
   return emojiPresentationAtRe.test(text) && getLineBreakClass(text.codePointAt(index)!) !== LineBreakClass.RI
 }
 
-// ICU 78 breaks before an opening quotation mark (QU and \p{Pi}) between East
-// Asian characters, looking past marks on either side (LB19a).
+// ICU 77 and 78 break before an opening quotation mark (QU and \p{Pi})
+// between East Asian characters, looking past marks on either side (LB19a).
 function breaksBeforeEastAsianOpeningQuote(text: string, boundary: number, base: number, baseClass: number): boolean {
   if (baseClass === LineBreakClass.OP || baseClass === LineBreakClass.GL) return false
   openingQuoteAtRe.lastIndex = boundary
@@ -398,8 +398,8 @@ const noBreakAfterEastAsianQuoteClasses =
   (1 << LineBreakClass.NS) | (1 << LineBreakClass.BA) | (1 << LineBreakClass.EX) | (1 << LineBreakClass.CL) |
   (1 << LineBreakClass.IN) | (1 << LineBreakClass.IS) | (1 << LineBreakClass.GL) | (1 << LineBreakClass.CM)
 
-// ICU 78 breaks after a closing quotation mark (QU and \p{Pf}) between East
-// Asian characters, unless the next character keeps it (LB19a).
+// ICU 77 and 78 break after a closing quotation mark (QU and \p{Pf}) between
+// East Asian characters, unless the next character keeps it (LB19a).
 function breaksAfterEastAsianClosingQuote(text: string, boundary: number, profile: AnalysisProfile): boolean {
   if (!profile.breakAroundEastAsianQuotes || boundary >= text.length) return false
   const quote = lineBreakBaseBefore(text, boundary)

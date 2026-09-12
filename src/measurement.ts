@@ -42,10 +42,11 @@ export type EngineProfile = {
   // Chromium's ICU root line rules are the normal rules, where small kana and
   // U+30FC (CJ) resolve to ID. WebKit's root rules and Gecko's auto are strict.
   breakBeforeConditionalJapaneseStarter: boolean
-  // ICU 78, which Chromium and WebKit use, breaks before an opening quotation
-  // mark such as U+201C and after a closing one such as U+201D between East
-  // Asian characters (UAX #14 LB19a). Gecko's ICU4X rules follow Unicode 15.0,
-  // with no break next to a quotation mark. Only keep-all runs model it.
+  // ICU's line rules break before an opening quotation mark such as U+201C and
+  // after a closing one such as U+201D between East Asian characters (UAX #14
+  // LB19a), identically in ICU 77 and 78. Gecko's ICU4X rules follow Unicode
+  // 15.0, with no break next to a quotation mark. Only keep-all runs model it,
+  // and WebKit's keep-all breaks only at spaces, so only Blink reads it.
   breakAroundEastAsianQuotes: boolean
   // Letters that keep a word-initial hyphen (LB20a). 'alphabetic-and-hebrew'
   // models ICU 78, which Chromium and WebKit use: AL and HL letters after
