@@ -17,6 +17,38 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Keep-all runs from generated line-break classes
+
+This runtime change starts from the rich-inline boundaries branch. Keep-all runs
+now end where each engine's pair rule and the ordinary line-break rules allow a
+break, decided from a generated UAX #14 line-break class table (Unicode 17,
+refreshed with `bun run generate:line-break-data`) instead of hand-maintained
+class sets. Chrome keeps a pair when both sides are letters or numbers, with a
+one-mark lookback. Firefox keeps ICU4X's keep-all class pairs, including LB21a
+after a Hebrew letter and HY or BA. Safari still breaks only at spaces. The table
+ships as one string literal, and plain keep-all letters skip grapheme
+segmentation.
+
+The installed gate ran this branch, merged onto #241, against #241's pin
+`8e01c01`: Chrome 153 through the Playwright transport, Safari 26.5.2 and Firefox
+155 natively, both directions. Chrome fixes 1090 LTR and 514 RTL metrics and loses
+28 and 28 in 8 and 8 curly closing-quote keep-all rows at letter spacing 1.5.
+After an emergency break just before the quote, Chrome restarts its ICU context
+and doesn't break after the quote; the parent matched only because it lacked the
+LB19a rule, so these are accidents. Safari changes nothing. Firefox fixes 617 LTR
+and 257 RTL metrics and loses none. No leg has required failures, execution errors
+or new API or rich failures.
+
+Headless Chromium 147 sweeps over 270 keep-all texts cut wrong widths from 20,037
+to 2,337. Headless Chromium runs ICU 77.1 while installed Chrome 153 runs ICU
+78.2, so the HH, LB21a and LB20a families rest on the installed gate and ICU
+source. The table adds about 3.1 KB gzip; warm `prepare()` in headless V8 is even
+or faster on the chat datasets after the plain-letter fast path.
+
+`bun test` and `bun run check` pass. The baseline advances to `7652cad`, and the
+ordinary snapshots were regenerated against it; only provenance and environment
+records change.
+
 ## Rich-inline boundaries in Chrome and Safari
 
 This runtime change starts from the Safari next-line branch pin `1771ab8`.
