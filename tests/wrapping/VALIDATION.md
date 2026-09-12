@@ -93,6 +93,16 @@ and in converged prepares the time inside `measureText` is 0 to 3ms for
 `bf93e2e`, `9535bc6` and this change alike. Headless Chromium 147 does not
 change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome is unchanged against the CJK
+closing-bracket branch: `prepare()` reads 8.85 ms (8.90), hot `layout()` 0.0885
+ms, and the corpus totals move by -0.2%. Safari's hot `layout()` stays at 0.100
+ms and `prepare()` reads 11.0 ms (10.0). Its long-form corpus measurement grows by
+11.4% and its prepare totals by 8.2% (316 to 342 ms), from the remaining
+word-plus-space measurements: Arabic prose 120 to 133 ms, Hindi 21 to 25 ms, Urdu
+30 to 34 ms and Thai 21 to 23 ms.
+
 ## Kerning with a following space
 
 This runtime change starts from the CJK closing-bracket branch head `bf93e2e`.
