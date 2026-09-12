@@ -17,6 +17,32 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Page-language measurement context
+
+This runtime change starts from published main `efa958a`. Chrome's OffscreenCanvas
+re-resolves a font under the page language only when the font string changes, so
+after `<html lang>` changed, a reused measurement context and its cached widths
+kept the previous language even after `clearCache()`. Preparation now replaces the
+context and clears width caches when the document language differs from the one
+the context was created under.
+
+Suite pages never change language, so the full native comparison against pinned
+`14d92ca` changes nothing: installed Chrome, Safari and Firefox, both directions,
+DPR 2, 656,407 observations, zero fixed or lost metrics, required failures,
+execution errors and new API/rich failures, and nine numeric profiles have no new
+failures. That run used the candidate before a null guard for documents without a
+root element was added; suite pages never reach that guard. Headless Chromium 147
+reproduces the fix on a language switch (`<html lang>` en → ko with an unchanged
+font string: 3 → 2 lines, matching the DOM), and headless WebKit is unchanged. The
+pin stays at `14d92ca` because no suite result changes. Suite hash
+`edf54ed053d7e1c0ef387ffcade551a22dfb6508440215746abb388d29245c30`; rows are in
+`/private/tmp/pretext-gallery-fixes-20260911/staleness-full`.
+
+The ordinary snapshots were regenerated from this commit: all six legs pass with
+zero new regressions, required failures or execution errors, and nine numeric
+profiles have no new failures. Snapshot results are unchanged; only provenance
+and environment records change.
+
 ## English fixture pages
 
 This test-only change starts from published main `a4f17ed`. Fixture pages had no
