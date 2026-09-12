@@ -147,13 +147,9 @@ function buildSource(table: LineBreakTable, sourceLabel: string): string {
     const id = table.stage1[i]!
     stage1 += encodeDigit(id >> 5) + encodeDigit(id & (DIGIT_LIMIT - 1))
   }
-  // One stage-2 block per line.
-  const stage2Lines: string[] = []
-  for (let offset = 0; offset < table.stage2.length; offset += BLOCK_SIZE) {
-    let line = ''
-    for (let i = offset; i < offset + BLOCK_SIZE; i++) line += encodeDigit(table.stage2[i]!)
-    stage2Lines.push(`  ${JSON.stringify(line)}`)
-  }
+  // One literal, so emitted JavaScript has no concatenation left to evaluate.
+  let stage2 = ''
+  for (let i = 0; i < table.stage2.length; i++) stage2 += encodeDigit(table.stage2[i]!)
   const classRows = GENERATED_CLASSES.map((name, code) => `  ${name}: ${code},`).join('\n')
   const tailChecks = table.tailRanges
     .map(([start, end, code]) => start === end
@@ -176,8 +172,7 @@ ${classRows}
 // code point. Each digit is a character code minus ${formatHex(CHARACTER_BASE)}. Each string has one
 // reference, so a minifier has no reason to copy it.
 const stage1 = ${JSON.stringify(stage1)}
-const stage2 =
-${stage2Lines.join(' +\n')}
+const stage2 = ${JSON.stringify(stage2)}
 
 export function getLineBreakClass(codePoint: number): number {
   let index = codePoint
