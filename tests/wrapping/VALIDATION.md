@@ -155,6 +155,16 @@ and in converged prepares the time inside `measureText` is 0 to 3ms for
 `bf93e2e`, `9535bc6` and this change alike. Headless Chromium 147 does not
 change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome is unchanged against the CJK
+closing-bracket branch: `prepare()` reads 8.85 ms (8.90), hot `layout()` 0.0885
+ms, and the corpus totals move by -0.2%. Safari's hot `layout()` stays at 0.100
+ms and `prepare()` reads 11.0 ms (10.0). Its long-form corpus measurement grows by
+11.4% and its prepare totals by 8.2% (316 to 342 ms), from the remaining
+word-plus-space measurements: Arabic prose 120 to 133 ms, Hindi 21 to 25 ms, Urdu
+30 to 34 ms and Thai 21 to 23 ms.
+
 ## Kerning with a following space
 
 This runtime change starts from the CJK closing-bracket branch head `bf93e2e`.
@@ -281,6 +291,15 @@ matches 28 more widths: `zh-zhufu` 43 to 61, `zh-guxiang` 54 to 61,
 `48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
 `/private/tmp/pretext-eng-20260912/stage1b-full`.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Against the pair-table branch, Chrome
+reads `prepare()` at 8.90 ms (8.70) and hot `layout()` at 0.0885 ms (0.0893), and
+Safari reads 10.0 ms (11.0) and 0.100 ms. The long-form corpus totals move by
+-1.2% in Chrome and +0.3% in Safari. The Japanese and Chinese corpora gain
+segments from the new CJK units, such as zh-zhufu from 7,944 to 7,992, with
+unchanged line counts.
+
 ## Exclamation followers, joiners and word-initial hyphens
 
 This runtime change starts from the figure-space branch head `b55311e`. Chrome
@@ -357,6 +376,15 @@ change. The stacked gate's suite hash is
 `31db9695b8a03843670809f12a13c9af6cb5b632147f05191e3441dacaece5a3`, with rows in
 `/private/tmp/pretext-eng-20260912/gate-233rev`.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Against the figure-space glue branch,
+Chrome reads `prepare()` at 8.70 ms (8.80) and hot `layout()` at 0.0893 ms
+(0.0878), inside its run spread, and Safari reads 11.0 ms and 0.100 ms, unchanged.
+The long-form corpus totals move by +1.3% in Chrome and +1.0% in Safari. The
+Arabic prose row reads 120 ms in installed Safari (118 before), so the warm split
+seen in Playwright's WebKit build doesn't appear there.
+
 ## Figure space glue
 
 This runtime change starts from the attached-generator-canvas branch head
@@ -392,6 +420,14 @@ failures. Snapshot results are unchanged; only provenance and environment
 records change. Suite hash
 `48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
 `/private/tmp/pretext-eng-20260912/stage1b-full`.
+
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Hot `layout()` reads 0.0878 ms in
+Chrome and 0.100 ms in Safari, as on main. `prepare()` reads 8.80 ms in Chrome
+(8.55 on main) and 11.0 ms in Safari (10.0), inside Chrome's run spread and
+Safari's 0.5 ms timer steps, and the long-form corpus totals move by +4.1% in
+Chrome and +0.3% in Safari.
 
 ## Attached generator canvas
 
