@@ -64,6 +64,14 @@ No leg loses a metric or has required failures, execution errors or new API or
 rich failures. The baseline advances to `8e01c01`, and the ordinary snapshots were
 regenerated against it; only provenance and environment records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 9.10 ms
+(9.05 on the parent branch) and hot `layout()` at 0.0893 ms (0.0887); Safari reads
+11.0 ms (11.0) and 0.105 ms (0.105). Long-form corpus totals read 121.2 ms in
+Chrome (118.3) and 346 ms in Safari (349); Chrome's total moves mostly with the
+Arabic prose row (43.8 ms against 41.2), which varies between runs.
+
 ## Safari next-line and tab stops
 
 This runtime change starts from the segment-break removal branch head `daf13ac`.
