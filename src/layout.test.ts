@@ -1466,6 +1466,16 @@ describe('prepare invariants', () => {
       expect(segments('\u4E2D\u6587\u201C\u6F22\u5B57\u201D\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u201C\u6F22\u5B57\u201D\u4E2D\u6587'])
       profile.carryCJKAfterClosingQuote = previous.carryCJKAfterClosingQuote
 
+      // After a Hebrew letter, ICU 78 keeps the next character only after HY or
+      // HH (LB21a), so a run ends after U+007C (BA). ICU4X's Unicode 15.0 rules
+      // also keep it after BA, past marks, though a Hebrew letter still starts a
+      // run after an ideograph.
+      expect(segments('\u4E2D\u6587\u05D0|\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u05D0|', '\u4E2D\u6587'])
+      profile.keepAllPairModel = 'icu4x-classes'
+      expect(segments('\u4E2D\u6587\u05D0|\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u05D0|\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u05D0\u05B8\u2027\u0301\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u05D0\u05B8\u2027\u0301\u4E2D\u6587'])
+      profile.keepAllPairModel = previous.keepAllPairModel
+
       // ICU4X keeps symbols, supplementary ideographs and variation selectors by
       // class, but still breaks before an opening bracket, after a closing one and
       // next to an SA letter, though not before small kana (CJ) under its strict

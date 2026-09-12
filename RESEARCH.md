@@ -188,14 +188,20 @@ closing and other punctuation there, but not after letters.
 Where the engine does not keep a pair, Pretext ends a keep-all run where UAX #14
 allows a break between the two line-break classes. The classes come from a table
 generated from LineBreak.txt. A mark takes its base's class (LB9), and the check
-keeps every pair that some rule keeps in some context, such as the numeric pairs of
-LB25. So a run ends before an opening bracket after an ideograph (`文|「文`,
+keeps every pair that some Unicode 17 rule keeps in some context, such as the
+numeric pairs of LB25. So a run ends before an opening bracket after an ideograph (`文|「文`,
 `文|¡文`), after a closing bracket before an ideograph (`❩|文`), between CJK text and
 Thai letters, emoji or symbols (`文|★|文`, `🎉|🎉`), after punctuation whose class
 breaks after it (`😊/|文`, `😊‼|文`, `★||文`), after a keycap, between two flags, and
 between a letter or number and an East Asian opener, which LB30 does not keep
 (`a|「`). It does not end before a closing bracket, after an opening bracket, after
-BB such as `´`, or between AL symbols such as `©` and `→`. Chromium and WebKit decide
+BB such as `´`, or between AL symbols such as `©` and `→`. Older rules keep more.
+ICU4X's Unicode 15.0 rules keep any character after a Hebrew letter and HY or BA
+(LB21a), so the Firefox profile keeps `א|文` in one run. ICU 78 keeps that
+character only after HY or HH, so the Chromium profile ends the run after `א|`.
+ICU4X still breaks between an ideograph and a Hebrew letter under keep-all, since
+it keeps only pairs of AI, AL, ID, NU, HY, Hangul and CJ classes. So `文א|文` ends
+a run before `א` in Firefox and after `|` in Chrome. Chromium and WebKit decide
 pairs of code units up to U+00FF from their own tables, and Gecko decides ASCII
 pairs from its own model, so Pretext's punctuation rules keep deciding those.
 U+3000 is BA, but engines hang or trim it at a line edge, so a run does not end next

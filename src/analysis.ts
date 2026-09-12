@@ -298,9 +298,12 @@ function isEastAsianOpeningPunctuationCode(code: number): boolean {
 }
 
 // Whether UAX #14 allows a break between two classes inside a run of text,
-// where no space intervenes. It keeps every pair that some rule keeps in some
-// context, so a break it allows holds in every context. `before` is the class
-// of the base before any trailing marks (LB9), and neither class is SA or CJ.
+// where no space intervenes. It follows the Unicode 17 rules and keeps every
+// pair that one of them keeps in some context, so a break it allows holds in
+// every context under those rules. Engines on older rules can keep more:
+// ICU4X's LB21a also keeps what follows a Hebrew letter and BA, which the
+// caller checks. `before` is the class of the base before any trailing marks
+// (LB9), and neither class is SA or CJ.
 function lineBreakClassesBreak(before: number, after: number, afterCodePoint: number): boolean {
   if (((1 << after) & noBreakBeforeRunClasses) !== 0 || ((1 << before) & noBreakAfterRunClasses) !== 0) return false
   const afterClass = 1 << after
@@ -429,11 +432,16 @@ function endsKeepAllRunAtPair(text: string, boundary: number, profile: AnalysisP
   const afterCodePoint = text.codePointAt(boundary)!
   let after = getLineBreakClass(afterCodePoint)
   let before = getLineBreakClass(text.codePointAt(base)!)
-  if (
-    profile.keepAllPairModel === 'icu4x-classes' &&
-    ((1 << before) & icu4xKeepAllClasses) !== 0 && ((1 << after) & icu4xKeepAllClasses) !== 0
-  ) {
-    return false
+  if (profile.keepAllPairModel === 'icu4x-classes') {
+    if (((1 << before) & icu4xKeepAllClasses) !== 0 && ((1 << after) & icu4xKeepAllClasses) !== 0) return false
+    // ICU4X's Unicode 15.0 rules keep any character after a Hebrew letter and HY
+    // or BA, past marks on either side (LB21a). ICU 78 replaced BA there with HH.
+    // HY and HH never end a run, and runs never end next to U+3000, the one East
+    // Asian BA, so only BA needs this check.
+    if (before === LineBreakClass.BA) {
+      const letter = lineBreakBaseBefore(text, base)
+      if (letter >= 0 && getLineBreakClass(text.codePointAt(letter)!) === LineBreakClass.HL) return false
+    }
   }
   if (after === LineBreakClass.QU) {
     return profile.breakAroundEastAsianQuotes && breaksBeforeEastAsianOpeningQuote(text, boundary, base, before)
