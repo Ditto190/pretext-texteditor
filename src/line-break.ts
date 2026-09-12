@@ -79,26 +79,13 @@ function normalizeLineStartSegmentIndex(
   return segmentIndex
 }
 
-function getTabAdvance(lineWidth: number, tabStopAdvance: number): number {
+function getTabAdvance(lineWidth: number, tabStopAdvance: number, minimumAdvance: number): number {
   if (tabStopAdvance <= 0) return 0
 
   const remainder = lineWidth % tabStopAdvance
   if (Math.abs(remainder) <= 1e-6) return tabStopAdvance
-  return tabStopAdvance - remainder
-}
-
-function getLeadingLetterSpacing(
-  prepared: PreparedLineBreakData,
-  hasContent: boolean,
-  segmentIndex: number,
-): number {
-  return (
-    prepared.letterSpacing !== 0 &&
-    hasContent &&
-    prepared.spacingGraphemeCounts[segmentIndex]! > 0
-  )
-    ? prepared.letterSpacing
-    : 0
+  const advance = tabStopAdvance - remainder
+  return advance < minimumAdvance ? advance + tabStopAdvance : advance
 }
 
 function getLineEndContribution(leadingSpacing: number, segmentContribution: number): number {
@@ -573,6 +560,8 @@ function walkPreparedComplexLines(
     breakableFitAdvances,
     breakablePreferredBreaks,
     discretionaryHyphenWidth,
+    letterSpacing,
+    spacingGraphemeCounts,
   } = prepared
   const engineProfile = getEngineProfile()
   const lineFitEpsilon = engineProfile.lineFitEpsilon
@@ -598,6 +587,9 @@ function walkPreparedComplexLines(
   // discretionary hyphen does not fit, with that line's painted width.
   let fitBreakSegmentIndex: number
   let fitBreakPaintWidth: number
+  // The last whole segment appended after other line content, and its advance.
+  let appendedSegmentIndex: number
+  let appendedSegmentAdvance = 0
 
   function getCurrentLinePaintWidth(): number {
     return (
@@ -756,8 +748,10 @@ function walkPreparedComplexLines(
     pendingBreakKind = null
     fitBreakSegmentIndex = -1
     fitBreakPaintWidth = 0
+    appendedSegmentIndex = -1
     // Retained line-start ZWSP establishes the line without owning a spacing gap.
     let zeroWidthPrefix = true
+    let afterUnspacedControl = false
 
     const chunk = prepared.chunks[chunkIndex]!
     let lineWidth: number | null = null
@@ -770,10 +764,18 @@ function walkPreparedComplexLines(
         const kind = kinds[i]!
         const breakAfter = breaksAfter(kind)
         const startGraphemeIndex = i === cursor.segmentIndex ? cursor.graphemeIndex : 0
-        const leadingSpacing = getLeadingLetterSpacing(prepared, hasContent && !zeroWidthPrefix, i)
+        // The gap before a segment belongs to the grapheme before it. A control
+        // that takes no letter spacing still follows that gap but adds none
+        // after itself; zero-width breaks and soft hyphens leave it as it was.
+        let leadingSpacing = 0
+        if (letterSpacing !== 0 && (spacingGraphemeCounts[i]! > 0 || kind === 'control')) {
+          if (hasContent && !zeroWidthPrefix && !afterUnspacedControl) leadingSpacing = letterSpacing
+          afterUnspacedControl = spacingGraphemeCounts[i] === 0
+        }
         if (kind !== 'zero-width-break') zeroWidthPrefix = false
+        // Tab stops are eight spaces apart, so half a space is a sixteenth of one.
         const w = kind === 'tab'
-          ? getTabAdvance(lineW + leadingSpacing, prepared.tabStopAdvance)
+          ? getTabAdvance(lineW + leadingSpacing, prepared.tabStopAdvance, engineProfile.skipNarrowTabStops ? prepared.tabStopAdvance / 16 : 0)
           : widths[i]!
         const advance = leadingSpacing + w
         const fitAdvance = getWholeSegmentFitContribution(prepared, kind, i, leadingSpacing, w)
@@ -823,6 +825,14 @@ function walkPreparedComplexLines(
 
         const newFitW = lineW + fitAdvance
         if (newFitW > fitLimit) {
+          // UAX #14 LB6: no ordinary break before NEL. The line ends before the
+          // text or glue that NEL follows instead. When that content started
+          // the line, overflow still breaks right before the NEL.
+          if (kind === 'control' && appendedSegmentIndex === i - 1 && (kinds[i - 1] === 'text' || kinds[i - 1] === 'glue')) {
+            lineW -= appendedSegmentAdvance
+            lineEndSegmentIndex = i - 1
+            lineEndGraphemeIndex = 0
+          }
           const currentBreakFitWidth =
             lineW + getBreakOpportunityFitContribution(prepared, kind, i, leadingSpacing)
           const currentBreakPaintWidth =
@@ -876,6 +886,8 @@ function walkPreparedComplexLines(
           fitBreakSegmentIndex = pendingBreakSegmentIndex
           fitBreakPaintWidth = pendingBreakPaintWidth
         }
+        appendedSegmentIndex = i
+        appendedSegmentAdvance = advance
       }
 
       if (lineWidth === null) {

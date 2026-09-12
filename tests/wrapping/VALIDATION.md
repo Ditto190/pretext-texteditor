@@ -17,6 +17,57 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Safari next-line and tab stops
+
+This runtime change starts from the segment-break removal branch head `daf13ac`.
+NEL (U+0085) is UAX #14 class NL: a break follows it and no ordinary break
+precedes it. In the WebKit profile, analysis gives each NEL its own control
+segment, the walker offers a break after it, and a NEL that overflows right after
+text or glue ends the line before that content. WebKit's simple text path gives
+NEL no letter spacing, so NEL takes spacing only next to complex text or before a
+combining mark. Safari also moves a `pre-wrap` tab to the following stop when
+less than half a space would remain before the next one. The profile fields
+`breakOnlyAfterNextLine`, `letterSpaceNextLine` and `skipNarrowTabStops` key on
+the layout engine; Chrome and Firefox keep NEL as ordinary text and the previous
+tab rule.
+
+The installed gate ran this change on `daf13ac` against pinned `e5e66be`: Chrome
+153 through the Playwright transport, Safari 26.5.2 and Firefox 155 natively,
+both directions. Safari fixes 627 metrics in 235 LTR rows and 442 in 170 RTL
+rows, in the hidden-control spacing, NEL, discretionary and tab families. Chrome
+and Firefox change nothing. Each Safari direction loses one row, 3 metrics:
+`a\u05D0\u05D1aabb((\u0628\u0628\u0628\u0628\t\tword` in 16px Arial, pre-wrap,
+at width 64. Safari moves the first tab to the next stop and hangs both tabs.
+Pretext now reaches the same stop but hangs only the first overflowing tab, and
+main matched only because its tab stayed at the nearer stop. Three rows per
+direction that fail either way change widths only. No leg has required failures,
+execution errors or new API or rich failures, and nine numeric profiles have no
+new failures. Every leg still exits with an error, because the numeric companion
+fails when an unverified profile's tab sizing changes: the iOS Chrome, Edge and
+Firefox profiles and iPad desktop mode follow the same WebKit threshold, which
+installed Safari verifies.
+
+Headless replays in WebKit 26.4 with the Safari 26.5.2 user agent reproduce the
+suite result. On installed research NEL observations they gain 310 LTR and 116
+RTL rows and lose 8 LTR rows of `aa\u0085\u2060bb` at 1px, where Safari gives the
+word joiner no letter spacing.
+
+`bun test` and `bun run check` pass. After #239 landed, this branch was merged
+onto it and gated again in installed browsers against #239's pin `81c0c6a`.
+Safari fixes 627 LTR and 442 RTL metrics and loses the same trailing tab-run row per
+direction, Chrome and Firefox change nothing, and no leg has required failures,
+execution errors or new API or rich failures. The baseline advances to `53e16ff`,
+and the ordinary snapshots were regenerated against it; only provenance and
+environment records change.
+
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 9.05 ms
+(8.90 on the parent branch) and hot `layout()` at 0.0887 ms (0.0887); Safari reads
+11.0 ms (11.0) and 0.105 ms (0.105). Long-form corpus totals read 118.3 ms in
+Chrome (120.7) and 349 ms in Safari (348); Chrome's total moves mostly with the
+Arabic prose row (41.2 ms against 43.4), which varies between runs.
+
 ## Soft-hyphen retreat in Blink
 
 This runtime change starts from the segment-break removal branch head `daf13ac`.
@@ -63,8 +114,10 @@ Chrome and Safari benchmark snapshots were refreshed from this branch: three
 foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
 screen and Safari on the 1440x2560 screen. Against the segment-break removal
 branch, Chrome reads `prepare()` at 8.90 ms (9.00) and hot `layout()` at
-0.0887 ms (0.0877), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.105). The
-long-form corpus totals move by +8.1% in Chrome and +0.0% in Safari. The benchmark
+0.0887 ms (0.0877), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.105). Chrome's
+long-form corpus rows are unchanged beyond run spread, and its total moves only with
+the Arabic prose row, which read 43.4, 36.0 and 44.7 ms across the three runs.
+Safari's total is unchanged. The benchmark
 corpora contain no soft hyphens, so these rows don't exercise the retreat itself.
 
 ## Newlines next to zero-width spaces
@@ -140,8 +193,9 @@ Chrome and Safari benchmark snapshots were refreshed from this branch: three
 foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
 screen and Safari on the 1440x2560 screen. Against the WebKit engine routing
 branch, Chrome reads `prepare()` at 9.00 ms (8.85) and hot `layout()` at
-0.0877 ms (0.0887), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.100). The
-long-form corpus totals move by -4.1% in Chrome and -0.3% in Safari.
+0.0877 ms (0.0887), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.100). Chrome's
+long-form corpus rows are unchanged beyond run spread, and its total moves only with
+the Arabic prose row, which varies between runs. Safari's total moves by -0.3%.
 
 ## WebKit engine routing
 
