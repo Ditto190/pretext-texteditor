@@ -456,3 +456,18 @@ Cold-cache scaling probes distinguish those costs from reuse. Lower retained
 memory alone does not establish faster preparation, and numeric Canvas doubles
 measure algorithmic work rather than browser throughput. Shared font/segment
 caches accumulating until `clearCache()` are a separate lifetime concern.
+
+Repeating `clearCache()` and `prepare()` on one text is not a stable timing in
+Playwright's WebKit build. Its per-font width cache samples one Canvas call in 21
+after a run of misses, counts only strings of up to 64 UTF-16 units, and returns
+to dense sampling only after a hit. A prepare submits each string once, so hits
+need the sampled positions to line up again: after 21 / gcd(n, 21) prepares for
+n counted strings. The Arabic corpus submitted 21,336, a multiple of 21, and its
+prepare fell from about 120ms to 35ms within five repeats. Breaking after U+061B
+removed four prefix measurements, and the same prepare stayed at 120ms until the
+21st repeat. The first prepares cost the same, replaying the submitted strings
+without library code showed the same split, and four extra Canvas calls per
+prepare restored the drop. Fresh text never reaches those hits. Compare submitted
+Canvas text and first cold prepares, and treat a warm-only change there as a
+cache phase until installed Safari shows it; its benchmark snapshot read the
+Arabic row at the cold level before the change.
