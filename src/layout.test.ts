@@ -844,6 +844,23 @@ describe('boundary-policy regressions', () => {
       // A rich item that ends in NEL breaks before the next item.
       const rich = prepareRichInline([{ text: 'ab\u0085', font: FONT }, { text: 'cd', font: FONT }])
       expect(measureRichInlineStats(rich, measureWidth('ab\u0085', FONT) + 0.5).lineCount).toBe(2)
+      // A rich item that starts with NEL keeps the word before it, as the joined text does.
+      const previousItemBreaks = profile.inlineItemBreaks
+      profile.inlineItemBreaks = 'item-text'
+      try {
+        const parts = ['ab foo', '\u0085b'] as const
+        const width = measureWidth('ab foo', FONT) + 0.5
+        const leading = prepareRichInline(parts.map(part => ({ text: part, font: FONT })))
+        const richLines: string[] = []
+        walkRichInlineLineRanges(leading, width, range => {
+          richLines.push(materializeRichInlineLineRange(leading, range).fragments.map(fragment => fragment.text).join('').trimEnd())
+        })
+        const flatLines = lines(parts.join(''), width).map(line => line.text.trimEnd())
+        expect(flatLines).toEqual(['ab', 'foo\u0085b'])
+        expect(richLines).toEqual(flatLines)
+      } finally {
+        profile.inlineItemBreaks = previousItemBreaks
+      }
 
       // NEL takes no letter spacing at either sign, but the gap after the
       // grapheme before it stays.

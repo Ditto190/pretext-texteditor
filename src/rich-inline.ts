@@ -212,7 +212,8 @@ function getJoinedBreakOffsets(text: string, afterWhitespace: boolean, profile: 
     const units = kind === 'text' && isCJK(segText) ? getCjkTextUnits(segText, profile, 'normal') : null
     const unitCount = units === null ? 1 : units.length
     for (let unitIndex = 0; unitIndex < unitCount; unitIndex++) {
-      if (previousKind !== null && (breaksAfter(previousKind) || !breaksAfter(kind))) {
+      // No ordinary break precedes NEL (UAX #14 LB6).
+      if (previousKind !== null && kind !== 'control' && (breaksAfter(previousKind) || !breaksAfter(kind))) {
         offsets.push(units === null ? start : start + units[unitIndex]!.start)
       }
       previousKind = kind
@@ -236,7 +237,7 @@ function getLastRunStart(portion: JoinedPortion, breakOffsets: readonly number[]
 
 // Whether the line walker can end a line before an item's own segment.
 function breaksBeforeItemSegment(kinds: readonly SegmentBreakKind[], segmentIndex: number): boolean {
-  return breaksAfter(kinds[segmentIndex - 1]!) || !breaksAfter(kinds[segmentIndex]!)
+  return kinds[segmentIndex] !== 'control' && (breaksAfter(kinds[segmentIndex - 1]!) || !breaksAfter(kinds[segmentIndex]!))
 }
 
 // The item's own last ordinary break inside a portion that ends the item; the
