@@ -46,9 +46,14 @@ each change's own, so the two do not interact. The gains are `!!!!<<aabb`, where
 `!` now breaks before `<`, in four LTR `ascii-matrix` cases and three
 `signed-spacing/ascii-matrix` cases per direction, and pre-wrap
 `\u200D\u0628\u00AD\u0628` in `U+200D/start`: 16px Amiri at width 14.75 in both
-directions, plus 16px Noto Naskh Arabic at width 12.42 in Safari. These numbers
-predate the revision that keeps Hebrew letters in Chrome and the other HH dashes
-in both engines, and the installed full gate is being rerun for it.
+directions, plus 16px Noto Naskh Arabic at width 12.42 in Safari. The installed
+full gate was rerun on the revision that keeps Hebrew letters in Chrome and the
+other HH dashes in both engines, against pinned `fd54445`: the same 21/9, 24/12
+and 0 metrics are fixed, with zero lost metrics and no numeric failures. On the
+installed research rows for these shapes, the revision fixes 964 LTR and 430 RTL
+rows in Chrome and 432 and 160 in Safari over the previous revision, and loses
+only the two Chrome pre-wrap rows described below, which the previous revision
+matched by breaking in the wrong place.
 
 Headless Chromium 147 and WebKit 26.4 sweeps outside the suite lose shapes that
 main matched only through a second error. In `https://x.com/p?-a`, browsers break
@@ -78,10 +83,15 @@ nothing on U+2E17, U+1400 or U+05BE. It loses two Chrome rows, pre-wrap
 preserved space after `a`, and Pretext now gives it its own line, as it already
 does in Safari.
 
-The pin still names `fd54445`. After review it advances to this runtime commit,
-and the ordinary and benchmark snapshots are regenerated against it. Suite hash
-`48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
-`/private/tmp/pretext-eng-20260912/stage1b-full`.
+The baseline advances to runtime commit `09c7f20`, and the ordinary snapshots
+were regenerated against it: all six legs pass with zero new regressions,
+required failures or execution errors, and nine numeric profiles have no new
+failures. Snapshot results are unchanged; only provenance and environment records
+change. The stacked gate's suite hash is
+`48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`, with rows in
+`/private/tmp/pretext-eng-20260912/stage1b-full`; the revision gate's is
+`31db9695b8a03843670809f12a13c9af6cb5b632147f05191e3441dacaece5a3`, with rows in
+`/private/tmp/pretext-eng-20260912/gate-233rev`.
 
 ## Figure space glue
 
