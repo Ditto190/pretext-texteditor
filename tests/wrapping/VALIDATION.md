@@ -45,8 +45,11 @@ model's existing gaps next to U+2007: a dash or soft hyphen before glue, CJK
 beside glue, and glued emoji, symbol or non-word digit runs that get no emergency
 breaks. RESEARCH.md records them.
 
-The pin still names `14d92ca`. After review it advances to this runtime commit,
-and the ordinary and benchmark snapshots are regenerated against it. Suite hash
+The baseline advances to runtime commit `fd54445`, and the ordinary snapshots
+were regenerated against it: all six legs pass with zero new regressions,
+required failures or execution errors, and nine numeric profiles have no new
+failures. Snapshot results are unchanged; only provenance and environment
+records change. Suite hash
 `48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
 `/private/tmp/pretext-eng-20260912/stage1b-full`.
 
