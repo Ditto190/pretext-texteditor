@@ -93,7 +93,14 @@ export async function runBrowser(variants: Variant[]): Promise<void> {
     await loadFonts(fonts)
     guard = createBrowserEnvironmentGuard('correctness')
     guard.assertStable()
+    // Width recipes are thresholds for paragraphs that inherit the document
+    // language. Only an attached canvas inherits it in every browser: a detached
+    // canvas ignores it in Chrome, Firefox and Safari, and Safari has no ctx.lang.
+    // The canvas also inherits page font properties that the paragraph's font
+    // shorthand resets, so keep this page unstyled.
     const canvas = document.createElement('canvas')
+    canvas.hidden = true
+    document.body.append(canvas)
     const context = canvas.getContext('2d')
     if (context === null) throw new Error('Canvas 2D is unavailable.')
     const generated = generateCases((text, font, letterSpacing) => {
@@ -105,6 +112,8 @@ export async function runBrowser(variants: Variant[]): Promise<void> {
       schedule: config.schedule, browser: config.browser, direction: config.direction,
       ...(config.family === null ? {} : { family: config.family }),
     })
+    // Generation is synchronous. After removal, a new font string resolves as detached.
+    canvas.remove()
     const selected = config.caseId === null ? generated : generated.filter(input => input.id === config.caseId)
     const browserContext = config.context
     const inputs = selected.filter(input => browserContext.kind === 'fixtures' ? input.context === undefined : input.context?.lang === browserContext.lang)

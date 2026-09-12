@@ -37,10 +37,21 @@ quotes on pages without a language and in `en`, `zh-Hans` and `ko`, but not `ja`
 Glyphs missing from the named font fall back to a language-specific font with
 different widths. Under `ja`, `zh-Hans` and `ko`, Safari and Firefox also shape
 some of the named font's own punctuation differently. Pretext's OffscreenCanvas
-follows `<html lang>` in Chrome and Firefox, never in Safari. Chrome treats an
-element's `lang=""` like no language, and the case generator's detached canvas
-still uses the machine language in Chrome and Firefox. Give standalone probe
-pages an explicit, non-empty `lang`.
+follows `<html lang>` in Chrome and Firefox, never in Safari. The case generator
+measures width recipes with a hidden canvas attached to the page, which inherits
+`<html lang>` in all three browsers. A detached canvas ignores it in all three:
+Chrome and Firefox measure in the machine language, and Safari passes no
+language, so its fallback follows the machine's preferred languages. An
+element's `lang=""` marks its language as unknown rather than inheriting the
+page's, and remains a reset input. Chrome resolves it to its app language, which
+the report records as `locale`, so these results can differ between machines.
+In their sources, Firefox maps it to its generic `x-unicode` font group and
+Safari passes no language. Firefox's fallback glyphs then follow the machine
+language too: on a Mac preferring `zh-Hans`, U+2167 under `lang=""` measured
+16px, as with no language, against 27.53px under `en`. Safari's matched `en`.
+No recorded empty-language row contains a fallback glyph, so no recorded result
+separates from `en` yet. Give standalone probe pages an explicit, non-empty
+`lang`.
 
 The environment guard starts after font readiness and before case generation or
 preparation. It records the page's start/end environment and latches observed
