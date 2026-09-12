@@ -11,6 +11,9 @@
 - In Safari, a combining mark after a zero-width space at the start of the text, at the start of a rich-inline item, or after a line break now stays with that zero-width space (#228).
 - In Chrome, text prepared after changing `<html lang>` now uses the fonts for the new language, even when the font string is unchanged.
 - Figure spaces (U+2007) now keep adjacent text on the same line, like no-break spaces, as browsers do (#232).
+- Lines can now break after `?` before `$`, `%`, `+`, `\`, `-` or `|`, after `!` or `?` before a symbol such as `©`, `¿` or `€`, and after the Arabic semicolon `؛` before a word, as browsers do. Firefox still keeps `?` with a following `-` or `|`. In Chrome, `ー` after `！` or `？` can now start a line (#233).
+- A zero-width joiner at the start of a paragraph, after a zero-width space, or after a tab or line break in `pre-wrap` now stays with the character after it (#233).
+- In Chrome and Safari, a hyphen or dash such as U+2010 HYPHEN, U+2012 FIGURE DASH or U+2013 EN DASH at the start of a word now stays with a following letter of an alphabetic script, such as Latin, Cyrillic, Arabic, Hebrew or Thai. For `-`, only letters outside Latin-1 count (#233).
 
 ## 0.0.9 - 2026-09-07
 
