@@ -38,6 +38,10 @@ export type EngineProfile = {
 export type BreakableFitMode = 'sum-graphemes' | 'segment-prefixes' | 'pair-context'
 
 let measureContext: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null
+// Canvas resolves fonts under the document language. Chrome keeps a resolved
+// font while its font string is unchanged, so the context, and every width
+// measured through it, belong to the language it was created under.
+let measureContextLanguage: string | null = null
 const segmentMetricCaches = new Map<string, Map<string, SegmentMetrics>>()
 let cachedEngineProfile: EngineProfile | null = null
 
@@ -51,8 +55,15 @@ const emojiPresentationRe = /\p{Emoji_Presentation}/u
 const maybeEmojiRe = /[\p{Emoji_Presentation}\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u20E3]/u
 const emojiCorrectionCache = new Map<string, number>()
 
+function getDocumentLanguage(): string | null {
+  if (typeof document === 'undefined') return null
+  const root = document.documentElement as HTMLElement | null | undefined
+  return root == null || typeof root.lang !== 'string' ? null : root.lang
+}
+
 export function getMeasureContext(): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D {
   if (measureContext !== null) return measureContext
+  measureContextLanguage = getDocumentLanguage()
 
   if (typeof OffscreenCanvas !== 'undefined') {
     measureContext = new OffscreenCanvas(1, 1).getContext('2d')!
@@ -328,6 +339,13 @@ export function getFontMeasurementState(font: string, needsEmojiCorrection: bool
   cache: Map<string, SegmentMetrics>
   emojiCorrection: number
 } {
+  // Preparation starts here. After the page language changes, start again with
+  // a new context and empty caches; clearing the caches alone would re-measure
+  // with fonts resolved under the old language.
+  if (measureContext !== null && getDocumentLanguage() !== measureContextLanguage) {
+    measureContext = null
+    clearMeasurementCaches()
+  }
   const ctx = getMeasureContext()
   ctx.font = font
   const cache = getSegmentMetricCache(font)

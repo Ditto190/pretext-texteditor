@@ -60,6 +60,18 @@ includes language context. Pretext's `setLocale()` controls word segmentation,
 not Canvas font language. If measurements gain language context, cached
 measurements for different languages must stay separate.
 
+In headless Chromium 147, `20px "Helvetica Neue"` measured `骨直中文` at 80px under
+`<html lang=en>`. After switching to `ko`, assigning the same font string to that
+OffscreenCanvas context still gave 80px; a new context and the DOM gave 69.2px.
+Preparation therefore starts with a new context and empty caches after the page
+language changes. Headless WebKit 26.4's OffscreenCanvas gave 80px in both
+languages.
+
+Chromium also caches shaped text per canvas. With the Amiri fixture at 24px, a
+new context measured `ב(` at 24.50px (DOM 24.52px), but 19.63px after measuring
+`(` alone first. Widths in one context can depend on what it measured earlier;
+see [RESEARCH.md](RESEARCH.md) for why the context survives `clearCache()`.
+
 These probes did not retest the Retina emoji or `system-ui` bugs in
 [PLATFORM_BUGS.md](PLATFORM_BUGS.md). The September 3 Firefox capture used DPR 1;
 do not use those results to judge Retina-specific bugs.

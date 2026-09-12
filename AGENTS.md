@@ -50,6 +50,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing ones. 
 - The internal segment model now distinguishes at least eight break kinds: normal text, collapsible spaces, preserved spaces, tabs, non-breaking glue (`NBSP` / `NNBSP` / `WJ`-like runs), zero-width break opportunities, soft hyphens, and hard breaks. Do not collapse those back into one boolean unless the model gets richer in a better way.
 - `layout()` is the resize hot path: no DOM reads, no canvas calls, no string work, and avoid gratuitous allocations.
 - Segment metrics cache is `Map<font, Map<segment, metrics>>`; shared across texts and resettable via `clearCache()`. Width is only one cached fact now; grapheme widths and other segment-derived facts can be populated lazily.
+- Preparation replaces the measurement context and clears the segment metrics caches when `document.documentElement.lang` changes. Chrome's OffscreenCanvas re-resolves a font under the page language only when the font string changes. Do not replace the context on every `clearCache()`: Chrome caches shaped text per canvas, so that moves unrelated widths. See `RESEARCH.md`.
 - Word and grapheme segmenters are hoisted at module scope. Any locale reset should also clear the word cache.
 - Punctuation can join word or symbol runs depending on context; `isWordLike` alone does not determine break opportunities.
 - Keep script-specific break-policy fixes in preprocessing, not `layout()`. See `RESEARCH.md` for the rules and rejected approaches.
