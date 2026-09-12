@@ -52,9 +52,13 @@ suite result. On installed research NEL observations they gain 310 LTR and 116
 RTL rows and lose 8 LTR rows of `aa\u0085\u2060bb` at 1px, where Safari gives the
 word joiner no letter spacing.
 
-`bun test` and `bun run check` pass. The baseline advances to runtime commit
-`5ba3247`, and the ordinary snapshots were regenerated against it with unchanged
-results; only provenance and environment records change.
+`bun test` and `bun run check` pass. After #239 landed, this branch was merged
+onto it and gated again in installed browsers against #239's pin `81c0c6a`.
+Safari fixes 627 LTR and 442 RTL metrics and loses the same trailing tab-run row per
+direction, Chrome and Firefox change nothing, and no leg has required failures,
+execution errors or new API or rich failures. The baseline advances to `53e16ff`,
+and the ordinary snapshots were regenerated against it; only provenance and
+environment records change.
 
 ## Soft-hyphen retreat in Blink
 
@@ -102,8 +106,10 @@ Chrome and Safari benchmark snapshots were refreshed from this branch: three
 foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
 screen and Safari on the 1440x2560 screen. Against the segment-break removal
 branch, Chrome reads `prepare()` at 8.90 ms (9.00) and hot `layout()` at
-0.0887 ms (0.0877), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.105). The
-long-form corpus totals move by +8.1% in Chrome and +0.0% in Safari. The benchmark
+0.0887 ms (0.0877), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.105). Chrome's
+long-form corpus rows are unchanged beyond run spread, and its total moves only with
+the Arabic prose row, which read 43.4, 36.0 and 44.7 ms across the three runs.
+Safari's total is unchanged. The benchmark
 corpora contain no soft hyphens, so these rows don't exercise the retreat itself.
 
 ## Newlines next to zero-width spaces
@@ -179,8 +185,9 @@ Chrome and Safari benchmark snapshots were refreshed from this branch: three
 foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
 screen and Safari on the 1440x2560 screen. Against the WebKit engine routing
 branch, Chrome reads `prepare()` at 9.00 ms (8.85) and hot `layout()` at
-0.0877 ms (0.0887), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.100). The
-long-form corpus totals move by -4.1% in Chrome and -0.3% in Safari.
+0.0877 ms (0.0887), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.100). Chrome's
+long-form corpus rows are unchanged beyond run spread, and its total moves only with
+the Arabic prose row, which varies between runs. Safari's total moves by -0.3%.
 
 ## WebKit engine routing
 
