@@ -153,8 +153,8 @@ Playwright WebKit 2272 do.
 Chromium breaks between a fullwidth closing bracket such as `」` or `）` (UAX #14
 CL) and a following ideograph. The Chromium profile used to carry CJK text after
 those brackets as it does after closing quotes, which hid Chrome's breaks in the
-Chinese and Japanese corpora; the carry now follows quotes (QU) only. It is still
-broader than UAX #14 LB19a, which allows a break after a quote between East Asian
+Chinese and Japanese corpora; the carry now follows quotes (QU) only. Outside
+keep-all it is still broader than UAX #14 LB19a, which allows a break after a quote between East Asian
 characters (`文”|文`), though not after `.”` before Hangul. Chromium's ICU rules for
 Chinese pages treat `”` as CL and break there too (`다.”|라|고`).
 
@@ -171,18 +171,81 @@ for line breaking. U+30FC is CJ: Chromium breaks before it and WebKit does not.
 It stays listed but keeps the whole-piece rule, so this change leaves it as it
 was.
 
-Under `word-break: keep-all`, Blink keeps any pair of letters or numbers by
-general category, so a listed letter such as `々`, `ゝ`, `〼`, `〵` or `ー` does not
-end a run in the Chromium profile, while punctuation such as `」`, `・` or `゛`
-still does. Gecko's ICU4X keeps pairs by line-break class instead. It keeps `ー`
-(CJ) and, after an ideograph, `〵` (CM), but breaks after NS letters such as `々`
-or `〼`; `breakKeepAllAfterNonstarterLetters` records that split. Pretext also
-keeps `〵` after a closing bracket, where ICU4X gives it the bracket's class and
-breaks. Neither rule reaches the Safari profile, whose keep-all breaks only at
-spaces; newer WebKit source also breaks after opening, closing and other
-punctuation there, but not after letters. Pretext decides a keep-all boundary from
-the text before it only, so it keeps a letter with a following opening bracket
-where Blink breaks (`文|「文`).
+Under `word-break: keep-all`, Blink keeps a pair only when both sides are letters
+or numbers by general category and neither is SA. It tests UTF-16 code units and
+looks past one combining mark before the boundary, so it never keeps a symbol or a
+supplementary character, and it leaves every other pair to ICU's ordinary rules.
+So a listed letter such as `々`, `ゝ`, `〼`, `〵` or `ー` does not end a run in the
+Chromium profile, while punctuation such as `」`, `・` or `゛` does. Gecko's ICU4X
+keeps pairs by line-break class instead (AI, AL, ID, NU, HY, the Hangul classes and
+CJ), where a mark takes its base's class. It keeps `ー`, symbols such as `★`,
+supplementary ideographs and, after an ideograph, `〵` or an ideographic variation
+selector, but breaks after NS letters such as `々` or `〼`, and after `〵` following
+a closing bracket. `keepAllPairModel` picks Blink's rule, ICU4X's, or WebKit's,
+whose keep-all breaks only at spaces; newer WebKit source also breaks after opening,
+closing and other punctuation there, but not after letters.
+
+Where the engine does not keep a pair, Pretext ends a keep-all run where UAX #14
+allows a break between the two line-break classes. The classes come from a table
+generated from LineBreak.txt. A mark takes its base's class (LB9), and the check
+keeps every pair that some Unicode 17 rule keeps in some context, such as the
+numeric pairs of LB25. So a run ends before an opening bracket after an ideograph (`文|「文`,
+`文|¡文`), after a closing bracket before an ideograph (`❩|文`), between CJK text and
+Thai letters, emoji or symbols (`文|★|文`, `🎉|🎉`), after punctuation whose class
+breaks after it (`😊/|文`, `😊‼|文`, `★||文`), after a keycap, between two flags, and
+between a letter or number and an East Asian opener, which LB30 does not keep
+(`a|「`). It does not end before a closing bracket, after an opening bracket, after
+BB such as `´`, or between AL symbols such as `©` and `→`. Older rules keep more.
+ICU4X's Unicode 15.0 rules keep any character after a Hebrew letter and HY or BA
+(LB21a), so the Firefox profile keeps `א|文` in one run. ICU 78 keeps a
+following character other than CB or a Hebrew letter only after HY or HH, so the
+Chromium profile ends the run after `א|`.
+ICU4X still breaks between an ideograph and a Hebrew letter under keep-all, since
+it keeps only pairs of AI, AL, ID, NU, HY, Hangul and CJ classes. So `文א|文` ends
+a run before `א` in Firefox and after `|` in Chrome. Pretext still ends a run after
+`-`, U+2010 and U+2013, and after U+0964, U+0965, U+104A and U+104B, even after a
+Hebrew letter, where both engines keep the next character (LB21a); main does the
+same. Chromium and WebKit decide
+pairs of code units up to U+00FF from their own tables, and Gecko decides ASCII
+pairs from its own model, so Pretext's punctuation rules keep deciding those.
+U+3000 is BA, but engines hang or trim it at a line edge, so a run does not end next
+to it until U+3000 has a line-edge model: splitting there lost installed Chrome and
+Firefox rows where a line starts with U+3000, and headless Chromium widths where
+Chrome trims `「` after it. These run ends split a keep-all group, the text between
+spaces, glue, listed punctuation and dashes. Every run of a group with CJK text
+stays merged, as `❨😊❩` does between ideographs, and keeps its group's emergency
+grapheme breaks, which a group takes when any of its pieces is a word.
+
+ICU 77 and 78 break before an opening quotation mark and after a closing one between
+East Asian characters (LB19a). Gecko's ICU4X rules follow Unicode 15.0 and keep both;
+`breakAroundEastAsianQuotes` records the difference. Pretext's CJK ranges and
+emoji-presentation characters stand in for East Asian Width there. Under keep-all,
+the Chromium profile's CJK units no longer carry CJK text after a closing quote
+where LB19a breaks, so `文|“漢字”|文` ends both runs. Chrome restarts its ICU context
+at each line start, so when an emergency break lands just before a closing quote,
+Chrome no longer sees the East Asian character before the quote and keeps the quote
+with the next ideograph, while Pretext breaks after it. That loses 16 installed
+Chrome 153 rows, 8 per direction: `signed-spacing/keep-all/curly-double-close` and
+`curly-single-close` at letter spacing 1.5, where Chrome gives `中文中文|”漢字kan|a`
+and Pretext `中文中文|”|漢字kan|a`. Pretext passed them before only because it did
+not model the break after a closing quote. Without that break those rows pass, but
+Pretext gains 24 fewer installed rows per direction and loses 238 headless Chromium
+widths, where the carry hides Chrome's break after the quote, as in `他说“你好”然后走了`.
+An emoji and a following opening quote form one piece, so the break between them
+stays hidden.
+
+Headless Chromium 147, which most headless keep-all evidence comes from, runs ICU
+77.1 with Unicode 16 data, while installed Chrome 153 runs ICU 78.2 with Unicode 17
+data, which the generated table follows. The headless build cannot check three
+families. HH: ICU 77.1 counts only U+2010, and Unicode 17 moves ten more dashes, such
+as U+2013 and U+05BE, from BA to HH. LB21a: ICU 77.1 keeps the character after a
+Hebrew letter and HY or any BA but U+3000, and ICU 78.2 only after HY or HH;
+neither keeps a following CB or Hebrew letter. So headless
+Chromium keeps `א|文` together where the Chromium profile ends a run. LB20a: ICU 78.2
+adds Hebrew letters, as described above. The ICU4C 77.1 and 78.3 libraries show the
+same differences. Unicode 17 also moves eight pictographs such as U+1F777 from ID to
+AL, U+034F from GL to CM and U+2800 from AL to BA. The two versions' LB19a rules are
+identical, so the quotation mark evidence carries over.
 
 WebKit's pair scan never breaks before a basic combining mark. It reports the
 break between ZWSP and that mark (LB8) only from an ICU lookup that started

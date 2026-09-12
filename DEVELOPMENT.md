@@ -32,6 +32,7 @@ widths with their existing numeric tolerance.
 - `bun run package-smoke-test` — pack the tarball and verify temporary JS + TS consumers
 - `bun run site:build` — build the static demo site into `site/`
 - `bun run generate:bidi-data` — refresh the checked-in simplified Unicode bidi ranges
+- `bun run generate:line-break-data` — refresh the checked-in projected Unicode line-break class table; `--check` compares it with `scripts/unicode/LineBreak-17.0.0.txt`
 
 `prepack` also rebuilds `dist/` through plain `tsc`, so source imports need `.js` specifiers that remain valid in the emitted files.
 

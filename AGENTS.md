@@ -65,6 +65,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing ones. 
 - Emoji correction is auto-detected per font size, constant per emoji grapheme, and effectively font-independent.
 - Bidi levels now stay on the rich `prepareWithSegments()` path as custom-rendering metadata only. The opaque fast `prepare()` handle should not pay for bidi metadata that `layout()` does not consume, and line breaking itself does not read those levels.
 - The rich-path bidi classifier now comes from checked-in generated Unicode range data. Refresh it manually with `bun run generate:bidi-data`; do not turn that into a normal build step.
+- Keep-all run ends and several punctuation checks read UAX #14 line-break classes from checked-in generated data. Refresh it manually with `bun run generate:line-break-data`; do not turn that into a normal build step.
 - A larger pure-TS Unicode stack like `text-shaper` is useful as reference material, especially for Unicode coverage and richer bidi metadata, but its runtime segmentation and greedy glyph-line breaker are not replacements for our browser-facing `Intl.Segmenter` + preprocessing + canvas-measurement model.
 - Supported CSS target is still the common app-text configuration: `white-space: normal`, `word-break: normal`, `overflow-wrap: break-word`, `line-break: auto`.
 - Narrow widths may still break inside words, but only at grapheme boundaries. Keep stricter editorial whole-word handling in userland instead of changing the library default.

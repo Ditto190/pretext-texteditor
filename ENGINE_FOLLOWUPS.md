@@ -14,7 +14,6 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 ## Line breaking
 
 - Take a content language for line breaking (approved). Chrome's Chinese quote rules, Safari's Japanese small-kana and quote rules and Firefox's East Asian newline removal depend on it. Build it on the generated line-break class table once keep-all settles, keep `setLocale()` segmenter-only, and add no expensive browser work to `prepare()` or `layout()`.
-- Land keep-all boundaries that follow each engine's pair rule: Blink keeps a pair only when both sides are letters or numbers (with a one-mark lookback), Firefox uses ICU4X's class keep set, and Safari breaks only at spaces. A first version lost rows on VS16 emoji, Thai-type digits, quote-like symbols and iOS browsers.
 - At the start of a word, Firefox breaks after each observed hyphen dash, but Pretext still keeps U+05BE, U+1400, U+2E17 and U+058A with the next letter there. No installed browser was observed on U+2E40, U+2E5D, U+10D6E or U+10EAD.
 - Safari keeps `-` after U+2007 with the following letter but breaks after `-` following NBSP. Chrome and Safari keep U+2010 after either glue. Model both with the glue context rules.
 - A dash before no-break glue should break after the dash (LB12a). Pretext breaks before it, for NBSP and U+2007 alike.
@@ -43,6 +42,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Narrow the closing-quote carry and the boundary before opening quotes to UAX #14 LB19 and LB19a. Chrome breaks before `“` between East Asian characters under keep-all.
 - Under keep-all, Firefox breaks after `」〵` before a letter because the mark takes the bracket's class. Pretext continues the run.
 - Keep-all still differs for numeric prefixes and suffixes (`中文$100中文`), for Po symbols such as `@` and `/` in Chrome, for Blink's one-mark lookback, and for symbol and dash classes in Firefox.
+- Under keep-all, a run still ends after a Hebrew letter followed by `-`, U+2010, U+2013, U+0964, U+0965, U+104A or U+104B, where both engines keep the next character (LB21a).
 - Chrome 153 changed native results for four RTL full-width bracket rows, which main now fails. Find the mechanism, or record it as browser drift.
 - Model Chrome's `text-spacing-trim` on full-width punctuation, which fits on one line text that Pretext puts on two. This waits on kinsoku emergency breaks and the U+3000 hang.
 - Before rerunning the CJK line-start and trim candidate, read three review findings nobody swept: untrusted Firefox rows counted as passes, trimmed paint ignoring terminal letter spacing, and one allocation per stepper call.
@@ -107,7 +107,6 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 
 - Differences found only outside the suite, in headless probes or research families, don't block a change that loses nothing in the installed gate. Name them in the PR and VALIDATION.md, and list the ones worth fixing here.
 - A candidate that changes the harness normalization contract gates from its own harness and also runs once from main's harness, so contract-masked losses stay visible. For newline removal next to ZWSP, its own harness shows +20 metrics per Chrome and Firefox direction, and main's shows the same 12 rows per direction as losses.
-- A generated UAX #14 line-break class table (a two-stage ASCII string, about 2.6KB min+gz) could replace hand-maintained class sets, but today it would add about 1.7KB gz to every bundle while fixing only U+09FA. Land it with the first change whose class sets would cost more as range arrays, never ahead of one. Meanwhile, a hand-run script could check each hand set against `LineBreak.txt` without shipping data.
 - Read `<html lang>` once per `prepare()` in the next measurement change; it reads twice today. Record the measured cost in RESEARCH.md: about 3-16ns per read in headless WebKit and Chromium, with no style or layout work.
 - Run an installed full-suite Firefox sweep before enabling any Gecko rule; Chromium with a Gecko user agent can't see thousands of rows.
 - Record installed observations for the planned engine rules, whose numbers are still headless. Rules that change the harness contract need their own harnesses.

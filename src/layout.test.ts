@@ -554,9 +554,9 @@ describe('boundary-policy regressions', () => {
   test('Gecko ASCII opener attachment does not broaden the Unicode-affix model', async () => {
     const { analyzeText } = await import('./analysis.ts')
     const profile = {
-      geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: true,
-      breakKeepAllAfterNonstarterLetters: true, keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false,
+      geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, keepAllPairModel: 'icu4x-classes' as const,
+      keepZeroWidthSpaceMarkAtScanStart: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: false,
       wordInitialHyphenLetters: 'none' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -573,9 +573,9 @@ describe('boundary-policy regressions', () => {
   test('exclamation punctuation keeps the break browsers offer before a word', async () => {
     const { analyzeText } = await import('./analysis.ts')
     const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: true,
-      breakKeepAllAfterNonstarterLetters: false, keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false,
+      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
+      keepZeroWidthSpaceMarkAtScanStart: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -611,9 +611,9 @@ describe('boundary-policy regressions', () => {
   test('ZWJ and a word-initial hyphen keep the following character', async () => {
     const { analyzeText, getBreakablePreferredBreaks } = await import('./analysis.ts')
     const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: true,
-      breakKeepAllAfterNonstarterLetters: false, keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false,
+      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
+      keepZeroWidthSpaceMarkAtScanStart: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -688,9 +688,9 @@ describe('boundary-policy regressions', () => {
   test('segmenting a ZWJ after a space grows linearly with the text', async () => {
     const { analyzeText, clearAnalysisCaches } = await import('./analysis.ts')
     const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: true,
-      breakKeepAllAfterNonstarterLetters: false, keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false,
+      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
+      keepZeroWidthSpaceMarkAtScanStart: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -724,9 +724,9 @@ describe('boundary-policy regressions', () => {
   test('a ZWSP that starts a WebKit scan keeps a basic combining mark', async () => {
     const { analyzeText } = await import('./analysis.ts')
     const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, breakKeepAllAfterPunctuation: false,
-      breakKeepAllAfterNonstarterLetters: false, keepZeroWidthSpaceMarkAtScanStart: true,
-      breakBeforeConditionalJapaneseStarter: false,
+      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'webkit-spaces' as const,
+      keepZeroWidthSpaceMarkAtScanStart: true,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: true,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: true,
     }
@@ -813,12 +813,12 @@ describe('boundary-policy regressions', () => {
   test('the WebKit profile keeps NEL with the content before it, breaks after it and gives it no letter spacing', async () => {
     const { getEngineProfile } = await import('./measurement.ts')
     const profile = getEngineProfile()
-    const previous = [profile.breakOnlyAfterNextLine, profile.letterSpaceNextLine, profile.breakKeepAllAfterPunctuation] as const
+    const previous = [profile.breakOnlyAfterNextLine, profile.letterSpaceNextLine, profile.keepAllPairModel] as const
     // Blink and Gecko keep NEL as ordinary text.
     expect(prepareWithSegments('zz ab\u0085cd', FONT).kinds).not.toContain('control')
     profile.breakOnlyAfterNextLine = true
     profile.letterSpaceNextLine = false
-    profile.breakKeepAllAfterPunctuation = false
+    profile.keepAllPairModel = 'webkit-spaces'
     try {
       const lines = (text: string, width: number, options?: { whiteSpace?: 'pre-wrap', letterSpacing?: number }) => {
         const prepared = prepareWithSegments(text, FONT, options)
@@ -881,7 +881,7 @@ describe('boundary-policy regressions', () => {
       // A preserved space does not hang after a NEL that already overflows.
       expect(lines('a\u0085 b', nel - 0.5, { whiteSpace: 'pre-wrap', letterSpacing: 1 }).map(line => line.text)).toEqual(['a', '\u0085', ' ', 'b'])
     } finally {
-      [profile.breakOnlyAfterNextLine, profile.letterSpaceNextLine, profile.breakKeepAllAfterPunctuation] = previous
+      [profile.breakOnlyAfterNextLine, profile.letterSpaceNextLine, profile.keepAllPairModel] = previous
     }
   })
 
@@ -1556,8 +1556,8 @@ describe('prepare invariants', () => {
     // after U+3035 (CM) or U+30FC (CJ).
     const { getEngineProfile } = await import('./measurement.ts')
     const profile = getEngineProfile()
-    const previous = profile.breakKeepAllAfterNonstarterLetters
-    profile.breakKeepAllAfterNonstarterLetters = true
+    const previous = profile.keepAllPairModel
+    profile.keepAllPairModel = 'icu4x-classes'
     try {
       for (const letter of ['\u3005', '\u303C', '\u309D', '\u30FD']) {
         const text = `\u4E2D\u6587${letter}\u4E2D\u6587`
@@ -1568,7 +1568,197 @@ describe('prepare invariants', () => {
         expect(prepareWithSegments(text, FONT, keepAll).segments).toEqual([text])
       }
     } finally {
-      profile.breakKeepAllAfterNonstarterLetters = previous
+      profile.keepAllPairModel = previous
+    }
+  })
+
+  test('keep-all runs end where the engine does not keep a pair and its ordinary rules break', async () => {
+    const keepAll = { wordBreak: 'keep-all' } as const
+    const segments = (text: string) => prepareWithSegments(text, FONT, keepAll).segments
+    // Engines break before an opening bracket (UAX #14 OP) after an ideograph,
+    // including a letter that cannot start a line, and next to an SA letter.
+    for (const letter of ['\u6587', '\u3005', '\u30FC']) {
+      expect(segments(`\u4E2D\u6587${letter}\u300C\u4E2D\u6587`)).toEqual([`\u4E2D\u6587${letter}`, '\u300C\u4E2D\u6587'])
+    }
+    expect(segments('\uC11C\uC6B8(\uD55C\uAD6D)\uC5D0\uC11C')).toEqual(['\uC11C\uC6B8', '(\uD55C\uAD6D)', '\uC5D0\uC11C'])
+    expect(segments('\u4E2D\u6587\u00A1\u6F22\u5B57')).toEqual(['\u4E2D\u6587', '\u00A1\u6F22\u5B57'])
+    expect(segments('\u4E2D\u6587\u0E44\u0E17\u0E22\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u0E44\u0E17\u0E22', '\u4E2D\u6587'])
+    // SA letters read as AL, which keeps a following Latin letter (LB28).
+    expect(segments('\u4E2D\u6587\u0E44\u0E17\u0E22abc\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u0E44\u0E17\u0E22abc\u4E2D\u6587'])
+    // Blink never keeps a symbol or a supplementary character, whatever marks
+    // follow it. U+09FA is AL, not a numeric affix.
+    for (const symbol of ['\u2605', '\u2665\uFE0F', '\u09FA', '\u{20000}']) {
+      expect(segments(`\u4E2D\u6587${symbol}\u4E2D\u6587`)).toEqual(['\u4E2D\u6587', symbol, '\u4E2D\u6587'])
+    }
+    // Blink looks past one mark, so an ideographic variation selector, a
+    // surrogate to Blink, or a second mark hides the letter before it.
+    expect(segments('\u4E2D\u6587\u845B\u{E0100}\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u845B\u{E0100}', '\u4E2D\u6587'])
+    expect(segments('\u4E2D\u6587\u6587\u0301\u0301\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u6587\u0301\u0301', '\u4E2D\u6587'])
+    expect(segments('\u4E2D\u6587\u6587\u0301\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u6587\u0301\u4E2D\u6587'])
+    // Emoji and fullwidth symbols are ID, so the ordinary rules break next to
+    // them, but not between AL pictographs such as U+1F4AF. A closing bracket
+    // ends a run before an ideograph, and the run inside the brackets stays whole.
+    expect(segments('\u8F9B\u82E6\u4E86\u{1F389}\u{1F389}')).toEqual(['\u8F9B\u82E6\u4E86', '\u{1F389}', '\u{1F389}'])
+    expect(segments('\u660E\u5929\u89C1\u{1F44B}\uFF5E')).toEqual(['\u660E\u5929\u89C1', '\u{1F44B}', '\uFF5E'])
+    expect(segments('\u4E2D\u6587\u{1F4AF}\u{1F4AF}\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u{1F4AF}\u{1F4AF}', '\u4E2D\u6587'])
+    expect(segments('\u4E2D\u6587\u2768\u{1F60A}\u2769\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u2768\u{1F60A}\u2769', '\u4E2D\u6587'])
+    // Punctuation whose class breaks after it ends a run before an ideograph (SY,
+    // NS, IN and BA), and so does a keycap. AL symbols such as U+00A9 and U+2192
+    // keep each other but break before an East Asian opener (LB30), and a pair of
+    // regional indicators breaks against the next pair (LB30a). BB keeps what
+    // follows, and fullwidth digits are ID.
+    for (const [text, expected] of [
+      ['\u4E2D\u6587\u{1F60A}/\u4E2D\u6587', ['\u4E2D\u6587', '\u{1F60A}/', '\u4E2D\u6587']],
+      ['\u4E2D\u6587\u{1F60A}\u203C\u4E2D\u6587', ['\u4E2D\u6587', '\u{1F60A}\u203C', '\u4E2D\u6587']],
+      ['\u4E2D\u6587\u{1F60A}\u2025\u4E2D\u6587', ['\u4E2D\u6587', '\u{1F60A}\u2025', '\u4E2D\u6587']],
+      ['\u4E2D\u6587\u2605|\u4E2D\u6587', ['\u4E2D\u6587', '\u2605|', '\u4E2D\u6587']],
+      ['\u4E2D\u65871\uFE0F\u20E3\u4E2D\u6587', ['\u4E2D\u65871\uFE0F\u20E3', '\u4E2D\u6587']],
+      ['\u4E2D\u6587\u00A9\u00A9\u2192\u300C\u4E2D\u6587', ['\u4E2D\u6587', '\u00A9\u00A9\u2192', '\u300C\u4E2D\u6587']],
+      ['\u4E2D\u6587\u{1F1EF}\u{1F1F5}\u{1F1F0}\u{1F1F7}\u4E2D\u6587', ['\u4E2D\u6587', '\u{1F1EF}\u{1F1F5}', '\u{1F1F0}\u{1F1F7}', '\u4E2D\u6587']],
+      ['\u4E2D\u6587\u00B4\u{E0100}\u4E2D\u6587', ['\u4E2D\u6587', '\u00B4\u{E0100}\u4E2D\u6587']],
+      ['\u4E2D\u6587\uFF11\uFF10\uFF5E\uFF12\uFF10\u4E2D\u6587', ['\u4E2D\u6587\uFF11\uFF10', '\uFF5E', '\uFF12\uFF10\u4E2D\u6587']],
+    ] as const) {
+      expect(segments(text)).toEqual([...expected])
+    }
+    // Where some rule keeps the pair, a run continues: before a closing bracket
+    // or U+3002, after an opening bracket or ZWJ, and next to a mark, which takes
+    // its base's class, even U+3035 (CM) after an opening bracket. U+035C is GL
+    // and keeps the next character. Listed punctuation ends the keep-all group,
+    // so text without CJK after it keeps its ordinary boundaries.
+    for (const [text, expected] of [
+      ['\u597D\u7684\u{1F60A}\u3002', ['\u597D\u7684', '\u{1F60A}\u3002']],
+      ['\u8A55\u4FA1\uFF3B\u2605\u2605\uFF3D\u3067\u3059', ['\u8A55\u4FA1', '\uFF3B\u2605\u2605\uFF3D', '\u3067\u3059']],
+      ['\u4E2D\u200D\u2665\u4E2D\u6587', ['\u4E2D\u200D\u2665', '\u4E2D\u6587']],
+      ['\u4E2D\u6587\u300C\u3035\u2605\u4E2D\u6587', ['\u4E2D\u6587', '\u300C\u3035\u2605', '\u4E2D\u6587']],
+      ['\u4E2D\u6587\u2605\u035C\u4E2D\u6587', ['\u4E2D\u6587', '\u2605\u035C\u4E2D\u6587']],
+      ['\u4E2D\u6587\u300D\u{1F60A}abc def', ['\u4E2D\u6587\u300D', '\u{1F60A}', 'abc', ' ', 'def']],
+      // LB30 keeps a letter or number only with an opener that is not East
+      // Asian, and a BB letter such as U+02C8 keeps any following character.
+      ['\u4E2D\u6587a\u300Cb\u4E2D\u6587', ['\u4E2D\u6587a', '\u300Cb\u4E2D\u6587']],
+      ['\u4E2D\u6587a(b\u4E2D\u6587', ['\u4E2D\u6587a(b\u4E2D\u6587']],
+      ['\u4E2D\u6587\u02C8\u300C\u6F22\u5B57', ['\u4E2D\u6587\u02C8\u300C\u6F22\u5B57']],
+    ] as const) {
+      expect(segments(text)).toEqual([...expected])
+    }
+    // Latin letters, digits such as Thai digits (NU) and symbols whose class keeps
+    // a neighbor, such as U+275D (QU), continue a run. So does U+3000, which
+    // engines hang or trim at a line edge.
+    for (const text of [
+      '\u4E2D\u6587abc\u4E2D\u6587', '\u4E2D\u6587\uFF11\uFF12\u4E2D\u6587',
+      '\u4E2D\u6587\u0E51\u0E52\u0E53\u4E2D\u6587', '\u4E2D\u6587\u275D\u6F22\u5B57\u275E\u4E2D\u6587',
+      '\u4E2D\u6587\u6587\u3000\u300C\u4E2D\u6587',
+    ]) {
+      expect(segments(text)).toEqual([text])
+    }
+    // A run split from a keep-all group keeps the group's emergency grapheme
+    // breaks, even when none of its own pieces is a word.
+    for (const [narrow, lines] of [
+      ['\u4E2D\u6587\u2605\u3001\u4E2D\u6587', ['\u4E2D', '\u6587', '\u2605', '\u3001', '\u4E2D', '\u6587']],
+      ['\u4E2D\u6587\u300C\u2605\u4E2D\u6587', ['\u4E2D', '\u6587', '\u300C', '\u2605', '\u4E2D', '\u6587']],
+    ] as const) {
+      expect(layoutWithLines(prepareWithSegments(narrow, FONT, keepAll), 16.1, LINE_HEIGHT).lines.map(line => line.text))
+        .toEqual([...lines])
+      expect(layout(prepare(narrow, FONT, keepAll), 16.1, LINE_HEIGHT).lineCount).toBe(6)
+    }
+
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = { ...profile }
+    try {
+      // A conditional Japanese starter such as U+30FC starts a line where the
+      // profile resolves it to ID.
+      profile.breakBeforeConditionalJapaneseStarter = true
+      expect(segments('\u4E2D\u6587\u2605\u30FC\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u2605', '\u30FC\u4E2D\u6587'])
+      profile.breakBeforeConditionalJapaneseStarter = false
+      expect(segments('\u4E2D\u6587\u2605\u30FC\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u2605\u30FC\u4E2D\u6587'])
+
+      // ICU 78 breaks before an opening quotation mark and after a closing one
+      // between East Asian characters (LB19a), even where Chromium otherwise
+      // carries CJK text after a closing quote, but not after a period.
+      profile.carryCJKAfterClosingQuote = true
+      expect(segments('\u4E2D\u6587\u201C\u6F22\u5B57\u201D\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u201C\u6F22\u5B57\u201D', '\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u2018\u6F22\u5B57\u2019\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u2018\u6F22\u5B57\u2019', '\u4E2D\u6587'])
+      expect(segments('\uC5B4.\u201D\uB77C\uACE0')).toEqual(['\uC5B4.\u201D\uB77C\uACE0'])
+      expect(segments('\u4E2D\u6587a\u201C\u6F22\u5B57')).toEqual(['\u4E2D\u6587a\u201C\u6F22\u5B57'])
+      // Emoji-presentation characters count as East Asian, and U+303F does not.
+      expect(segments('\u4E2D\u6587\u201C\u{1F60A}\u201D\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u201C\u{1F60A}\u201D', '\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u303F\u201C\u6F22\u5B57')).toEqual(['\u4E2D\u6587', '\u303F\u201C\u6F22\u5B57'])
+      profile.breakAroundEastAsianQuotes = false
+      expect(segments('\u4E2D\u6587\u201C\u6F22\u5B57\u201D\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u201C\u6F22\u5B57\u201D\u4E2D\u6587'])
+      profile.carryCJKAfterClosingQuote = previous.carryCJKAfterClosingQuote
+
+      // After a Hebrew letter, ICU 78 keeps the next character only after HY or
+      // HH (LB21a), so a run ends after U+007C (BA). ICU4X's Unicode 15.0 rules
+      // also keep it after BA, past marks, though a Hebrew letter still starts a
+      // run after an ideograph.
+      expect(segments('\u4E2D\u6587\u05D0|\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u05D0|', '\u4E2D\u6587'])
+      profile.keepAllPairModel = 'icu4x-classes'
+      expect(segments('\u4E2D\u6587\u05D0|\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u05D0|\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u05D0\u05B8\u2027\u0301\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u05D0\u05B8\u2027\u0301\u4E2D\u6587'])
+      profile.keepAllPairModel = previous.keepAllPairModel
+
+      // ICU4X keeps symbols, supplementary ideographs and variation selectors by
+      // class, but still breaks before an opening bracket, after a closing one and
+      // next to an SA letter, though not before small kana (CJ) under its strict
+      // rules. A mark takes its base's class, so U+3035 after a closing bracket
+      // breaks. WebKit breaks only at spaces.
+      profile.keepAllPairModel = 'icu4x-classes'
+      for (const symbol of ['\u2605', '\u2665\uFE0F', '\u{20000}', '\u845B\u{E0100}', '\u{1F389}\u{1F389}']) {
+        const text = `\u4E2D\u6587${symbol}\u4E2D\u6587`
+        expect(segments(text)).toEqual([text])
+      }
+      expect(segments('\u4E2D\u6587\u00A1\u6F22\u5B57')).toEqual(['\u4E2D\u6587', '\u00A1\u6F22\u5B57'])
+      expect(segments('\u4E2D\u6587\u2768\u6F22\u5B57\u2769\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u2768\u6F22\u5B57\u2769', '\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u0E44\u0E17\u0E22\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u0E44\u0E17\u0E22', '\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u{11700}\u{11701}\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u{11700}\u{11701}', '\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u0E44\u0E17\u0E22\u3041\u4E2D\u6587')).toEqual(['\u4E2D\u6587', '\u0E44\u0E17\u0E22\u3041\u4E2D\u6587'])
+      expect(segments('\u4E2D\u6587\u300D\u3035\u4E2D\u6587')).toEqual(['\u4E2D\u6587\u300D\u3035', '\u4E2D\u6587'])
+      profile.keepAllPairModel = 'webkit-spaces'
+      for (const text of ['\u4E2D\u6587\u2605\u4E2D\u6587', '\u4E2D\u6587\u00A1\u6F22\u5B57', '\u4E2D\u6587\u0E44\u0E17\u0E22\u4E2D\u6587']) {
+        expect(segments(text)).toEqual([text])
+      }
+    } finally {
+      Object.assign(profile, previous)
+    }
+  })
+
+  test('keep-all pair models follow the layout engine the user agent names', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    try {
+      for (const [userAgent, model, quotes] of [
+        ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36', 'blink-general-category', true],
+        ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0', 'icu4x-classes', false],
+        ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15', 'webkit-spaces', true],
+        // An app web view names no browser.
+        ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148', 'webkit-spaces', true],
+      ] as const) {
+        Object.defineProperty(globalThis, 'navigator', { value: { userAgent, vendor: '' }, configurable: true })
+        const measurement = await import(`./measurement.ts?user-agent=${encodeURIComponent(userAgent)}`) as MeasurementModule
+        const profile = measurement.getEngineProfile()
+        expect({ userAgent, model: profile.keepAllPairModel, quotes: profile.breakAroundEastAsianQuotes }).toEqual({ userAgent, model, quotes })
+      }
+    } finally {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(globalThis, 'navigator')
+      } else {
+        Object.defineProperty(globalThis, 'navigator', descriptor)
+      }
+    }
+  })
+
+  test('the generated line-break classes follow LineBreak.txt', async () => {
+    const { getLineBreakClass, LineBreakClass } = await import('./generated/line-break-data.ts')
+    // One code point per projected class family, from the ASCII block, the BMP,
+    // the supplementary planes and the plane-14 tail checks.
+    for (const [codePoint, lineBreakClass] of [
+      [0x21, LineBreakClass.EX], [0x20, LineBreakClass.SP], [0x0A, LineBreakClass.BK], [0x09FA, LineBreakClass.AL],
+      [0x05D0, LineBreakClass.HL], [0x0E44, LineBreakClass.SA], [0x2605, LineBreakClass.AL], [0x3005, LineBreakClass.NS],
+      [0x30FC, LineBreakClass.CJ], [0xAC00, LineBreakClass.ID], [0x1100, LineBreakClass.ID], [0x200D, LineBreakClass.CM],
+      [0x1F60A, LineBreakClass.ID], [0x1F44D, LineBreakClass.EB], [0x1F4AF, LineBreakClass.AL], [0x1F1EF, LineBreakClass.RI],
+      [0x20000, LineBreakClass.ID], [0xE0001, LineBreakClass.CM], [0xE0100, LineBreakClass.CM], [0xE01F0, LineBreakClass.AL],
+      [0xF0000, LineBreakClass.AL], [0x10FFFF, LineBreakClass.AL],
+    ] as const) {
+      expect({ codePoint, lineBreakClass: getLineBreakClass(codePoint) }).toEqual({ codePoint, lineBreakClass })
     }
   })
 
@@ -1600,7 +1790,9 @@ describe('prepare invariants', () => {
     }
 
     expect(prepareWithSegments('日本語foo-bar', FONT, { wordBreak: 'keep-all' }).segments).toEqual(['日本語foo-', 'bar'])
-    expect(prepareWithSegments('日本語foo—bar', FONT, { wordBreak: 'keep-all' }).segments).toEqual(['日本語foo—', 'bar'])
+    // UAX #14 breaks before an em dash (B2) after a letter (LB31), and Chrome
+    // breaks there too once the text is narrow enough.
+    expect(prepareWithSegments('\u65E5\u672C\u8A9Efoo\u2014bar', FONT, { wordBreak: 'keep-all' }).segments).toEqual(['\u65E5\u672C\u8A9Efoo', '\u2014', 'bar'])
     expect(prepareWithSegments('foo-bar日本語', FONT, { wordBreak: 'keep-all' }).segments).toEqual(['foo-', 'bar日本語'])
     expect(prepareWithSegments('foo—bar日本語', FONT, { wordBreak: 'keep-all' }).segments).toEqual(['foo', '—', 'bar日本語'])
     expect(prepareWithSegments('foo?bar日本語', FONT, { wordBreak: 'keep-all' }).segments).toEqual(['foo?', 'bar日本語'])
