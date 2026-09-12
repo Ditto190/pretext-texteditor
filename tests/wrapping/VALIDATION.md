@@ -74,9 +74,17 @@ reproduce Firefox's widths, so the Firefox legs only show which rows change.
 
 `bun test` and `bun run check` pass. Gecko's East Asian newline rules, the
 widths of a CR or FF that survives, and context across rich-inline items are not
-modeled. The installed three-browser gate will rerun from this branch on this
-base. The pin still names `2f15d72`. After review it advances to this runtime
-commit, and the ordinary and benchmark snapshots are regenerated against it.
+modeled. The installed gate ran from this branch against pinned `2f15d72`: Chrome through
+the Playwright transport, Safari and Firefox natively, both directions. Through
+this change's harness, Chrome and Firefox fix 20 metrics per direction (12 api and
+8 source), Safari changes nothing, and no leg loses a metric or has a new
+required, API or rich failure; nine numeric profiles have no new failures. The
+same run from the previous harness with this change as a candidate reads the
+identical 12 rows and metrics per Chrome and Firefox direction as 20 lost
+successes and 12 new API failures, because that harness normalizes the removed
+newline to a space. The baseline advances to runtime commit `e5e66be`, and the
+ordinary snapshots were regenerated against it with unchanged results; only
+provenance and environment records change.
 
 ## WebKit engine routing
 
