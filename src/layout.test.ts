@@ -2640,9 +2640,11 @@ test('the Safari profile keeps the kerning between a word and a following space'
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
       vendor: 'Apple Computer, Inc.',
     } })
+    const measured = []
     class Context {
       font = ''
       measureText(text) {
+        measured.push(text)
         let width = 0
         for (const ch of text) width += ch === ' ' ? 4 : /[\\u00AD\\u200B\\u2060]/.test(ch) ? 0 : ch === 'A' ? 10 : 8
         return { width: width - (text.match(/A[\\u00AD\\u200B\\u2060]* /g) ?? []).length }
@@ -2659,6 +2661,9 @@ test('the Safari profile keeps the kerning between a word and a following space'
       const lines = layoutWithLines(prepareWithSegments(text, '16px Test', { letterSpacing }), 19.5, 20).lines
       kerning.push({ lines: lines.map(line => [line.text, line.width]), lineCount: layout(prepare(text, '16px Test', { letterSpacing }), 19.5, 20).lineCount })
     }
+    measured.length = 0
+    const spaced = layoutWithLines(prepareWithSegments('QA XA q', '16px Spaced'), 25.5, 20).lines.map(line => [line.text, line.width])
+    const wordMeasurements = measured.filter(text => text.length > 1 && text !== ' ' && text !== '-')
     const remainder = prepareWithSegments('A\\u2060 B', '16px Test')
     const signed = []
     walkPreparedLinesRaw(remainder, 8.5, (width, ...cursors) => signed.push([width, ...cursors]))
@@ -2670,7 +2675,7 @@ test('the Safari profile keeps the kerning between a word and a following space'
     }
     const rich = []
     walkRichInlineLineRanges(prepareRichInline([{ text: 'A\\u2060 B', font: '16px Test' }]), 8.5, line => rich.push(line.width))
-    console.log(JSON.stringify({ kerning, remainder: {
+    console.log(JSON.stringify({ kerning, spaced, wordMeasurements, remainder: {
       lines: layoutWithLines(remainder, 8.5, 20).lines.map(line => [line.text, line.width, line.start.segmentIndex, line.start.graphemeIndex, line.end.segmentIndex, line.end.graphemeIndex]),
       signed,
       streamed,
@@ -2680,7 +2685,7 @@ test('the Safari profile keeps the kerning between a word and a following space'
   `
   const child = Bun.spawnSync([process.execPath, '-e', script])
   if (child.exitCode !== 0) throw new Error(child.stderr.toString())
-  const { kerning, remainder } = JSON.parse(child.stdout.toString())
+  const { kerning, spaced, wordMeasurements, remainder } = JSON.parse(child.stdout.toString())
   expect(kerning).toEqual([
     // The kerned word fits and the space hangs.
     { lines: [['AA ', 19], ['B', 8]], lineCount: 2 },
@@ -2695,6 +2700,10 @@ test('the Safari profile keeps the kerning between a word and a following space'
     // With letter spacing the measurement also moves gaps; not modeled.
     { lines: [['A', 11], ['A ', 11], ['B', 9]], lineCount: 3 },
   ])
+  // A word before a space is measured together with that space instead of
+  // alone, and keeps the -1px kerning.
+  expect(spaced).toEqual([['QA ', 17], ['XA ', 17], ['q', 8]])
+  expect(wordMeasurements).toEqual(['QA ', 'XA '])
   // An emergency break inside A and the word joiner leaves the joiner alone
   // with the -1px kerning. Breaking keeps that signed advance, so the cursors
   // match the internal walker's, but every reported width is clamped at zero.
