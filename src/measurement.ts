@@ -11,6 +11,9 @@ const entryContextProperties = ['font', 'direction', 'fontKerning', 'fontStretch
 export type SegmentMetrics = {
   width: number
   emojiCount?: number
+  // Width measured together with one following U+0020, minus this width and
+  // the width of a space alone.
+  followingSpaceKerning?: number
   breakableFitMode?: BreakableFitMode
   breakableFitAdvances?: number[] | null
   entryGeometry?: {
@@ -50,6 +53,12 @@ export type EngineProfile = {
   // breaks the collapsed text, where it is a space.
   breakHyphenAfterCollapsedTab: boolean
   preferPrefixWidthsForBreakableRuns: boolean
+  // WebKit measures a text item together with a directly following U+0020 and
+  // subtracts one unshaped space, so the item keeps its kerning with that space
+  // wherever the line ends. Blink also kerns there, but in its default state its
+  // Canvas splits words at spaces and shows none of it; Gecko shapes words
+  // without their spaces.
+  measureTextWithFollowingSpace: boolean
 }
 
 export type BreakableFitMode = 'sum-graphemes' | 'segment-prefixes' | 'pair-context'
@@ -179,6 +188,7 @@ export function getEngineProfile(): EngineProfile {
       wordInitialHyphenLetters: 'alphabetic-and-hebrew',
       breakHyphenAfterCollapsedTab: false,
       preferPrefixWidthsForBreakableRuns: false,
+      measureTextWithFollowingSpace: false,
     }
     return cachedEngineProfile
   }
@@ -220,6 +230,7 @@ export function getEngineProfile(): EngineProfile {
     wordInitialHyphenLetters: isGecko ? 'none' : 'alphabetic-and-hebrew',
     breakHyphenAfterCollapsedTab: isWebKitLayout,
     preferPrefixWidthsForBreakableRuns: isSafari,
+    measureTextWithFollowingSpace: isSafari,
   }
   return cachedEngineProfile
 }

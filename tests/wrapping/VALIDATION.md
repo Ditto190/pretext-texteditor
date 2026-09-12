@@ -17,6 +17,80 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Kerning with a following space
+
+This runtime change starts from the CJK closing-bracket branch head `bf93e2e`.
+WebKit measures a text item together with a directly following U+0020 and
+subtracts one unshaped space, so the item keeps its kerning with that space
+whether the space continues the line or hangs. The Safari profile now measures
+each word before a space the same way at letter spacing 0 and caches the
+kerning with the word's metrics; zero-width breaks before the space belong to
+the word. Format characters between the word and the space resolve with the
+space, so the kerning crosses them only when the text has no explicit bidi
+controls and the neutral characters after the space lead to a character of the
+word's direction, with no paired bracket among them. The generated bidi data
+now lists the paired brackets from `BidiBrackets-17.0.0.txt`. A soft hyphen
+before the space takes no kerning. The Chrome and Firefox profiles are
+unchanged.
+
+The full native comparison ran this change with the #234 harness in installed
+Chrome 153.0.8010.36, Safari 26.5.2 and Firefox 155.0.1, both directions, at
+DPR 2: 656,407 browser/input observations, with pinned `8db5483` as the
+reference. Every leg has zero lost successes, failed required checks, execution
+errors and new API/rich failures, and 45 numeric source/profile runs have no
+new failures. The Safari numeric profile makes 861 Canvas calls instead of 850;
+the other profiles are unchanged. The change fixes 493 Safari LTR metrics on
+433 inputs and 454 RTL metrics on 402 inputs, and none in Chrome or Firefox:
+line count, height and source on 28 LTR and 24 RTL inputs, and widths on 409
+and 382. LTR gains 336 metrics in `following-space-scope`, 71 in
+`following-space-context`, 41 in `space-context`, 27 widths in `spacing-tail`
+and 18 in `negative-space`; RTL gains 336, 71 and 47 in the first three. Every
+gain is in 16px Arial or 16px or 18px Times New Roman at letter spacing 0. For
+example, `A\u2060 B` in 18px Times New Roman at width 12 now takes Safari's
+two lines instead of three, `\u05D0\u05D1 A \u0628` in 16px Arial at width 48
+one line instead of two, and pre-wrap ` A B` in 16px Arial at width 10 three
+lines instead of four. Twelve LTR and 13 RTL width failures change only in
+detail: two keep-all `A \u4E2D\u6587\u6D4B\u8BD5` inputs in 18px serif go from
+0.777px wider than native to 0.207px narrower, and the rest move by less than
+0.00001px.
+
+Reported line widths are clamped at 0, while line breaking keeps the signed
+advance. For example, `A\u2060 B` in 18px Times New Roman at width 11.5 puts `A`
+alone on the first line, and the second line, the word joiner and the space,
+has an advance of -0.993: the kerned word minus the isolated `A`. WebKit leaves
+that remainder unclamped; in the suite's Safari rows at widths 1 and 8 the
+prediction has the same line, and native Safari draws it 0.993px outside the
+line's start edge. Strongly negative letter spacing clamps the same way.
+
+The `rich-boundary-space` contract compared a collapsed gap with the width of a
+line holding one space; it now compares both clamped at 0, and a unit test
+checks the signed gap against the measured space. A headless replay in WebKit
+26.4 and Chromium 147 against the gate's natives, with the unclamped change as
+the base, covers every row whose text has a word followed by a space and every
+row with a negative predicted width: 37,801 Safari LTR, 21,232 Safari RTL,
+37,899 Chrome LTR and 21,210 Chrome RTL rows. Only the negative widths change,
+on 2,983, 373, 3,008 and 285 rows; no line count, height, widths or other
+metric changes. Under the gate's harness the only rich contract that changes is
+`rich-boundary-space` at letter spacing -6 and -10, which the updated contract
+accepts, and the nine numeric profiles give identical results.
+
+Headless Chromium 147 and WebKit 26.4 probes outside the suite show what
+remains. Without the paragraph direction, the Safari profile drops the kerning
+across a soft hyphen, and across format characters before right-to-left text or
+a bracket pair, where Safari on an LTR page keeps it. With letter spacing,
+WebKit's measurement also moves the space's gap onto the word and clamps the
+word at zero, which the per-grapheme gap model does not represent, so
+letter-spaced text keeps the unkerned widths. A trailing collapsible space, a
+rich-inline item that ends in a space, and CR or CRLF after a word miss the
+kerning. Chromium kerns across spaces, ZWSP, SHY and same-font spans, which its
+default Canvas does not report, and after an emergency break Gecko keeps a share
+of a pair adjustment that Canvas sums cannot attribute.
+
+The pin still names `8db5483`. After review it advances to this runtime commit,
+and the ordinary and benchmark snapshots are regenerated against it. Suite hash
+`7681f371b59384fb346e2b15c5d469da2a30ce9673f5c05ef2cf9a64a3894d3d`; rows are in
+`/private/tmp/pretext-eng-20260912/gate-g1b`.
+
 ## CJK closing brackets and nonstarters
 
 This runtime change starts from the pair-table branch head `f030304`. Fullwidth

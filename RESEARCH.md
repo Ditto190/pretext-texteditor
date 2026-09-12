@@ -341,6 +341,58 @@ differently in the one-line API. Exact history-sensitive flow would need an
 explicit contract. Useful improvements within the existing contract remain
 possible; they still have to preserve main's results.
 
+## Kerning At Line Edges
+
+Segments are measured alone, so kerning with whatever sits beyond a segment is
+missing. The engines keep different parts of it, and Canvas can show only some.
+
+WebKit measures a text item together with a directly following U+0020 and
+subtracts one unshaped space, so the item keeps its kerning with that space
+whether the space continues the line or hangs. A ZWSP or SHY before the space
+ends the same item. Safari's Canvas shapes the whole measured string, so
+preparation reproduces this by measuring the segment with its space. In 18px
+Times New Roman, `A`, ZWSP, space, `B` puts `A` on a 12px line at 12.006px,
+although the isolated letter is 12.999px. After an emergency break inside an
+item, WebKit gives the rest of the item the item's width minus the prefix,
+without clamping. With WJ instead of ZWSP at widths 1 and 8, the rest is WJ and
+the space at -0.993px on their own line, and Safari draws them 0.993px outside
+the line's start edge. Pretext keeps that signed advance for line breaking but
+reports the line's width as 0. Items are split where bidi levels change before
+they are measured, and format characters between a word and the space resolve
+with that space. On an RTL page, emoji, space, `A`, WJ, space, Hebrew therefore
+paints the unkerned letter, while an LTR page kerns it.
+Without the paragraph direction, preparation keeps the kerning across format
+characters only when the neutral characters around the space lie between the
+word and a strong character of the word's direction, with no paired bracket
+among them. A closed bracket pair takes the paragraph direction when it
+contains text of that direction, so on an RTL page `A`, WJ, space, then a
+parenthesized Latin letter and Hebrew letter paints the unkerned letter too. On
+an RTL page headless WebKit also needs about a hyphen's width more to fit a word
+that ends in SHY before a space, so preparation takes no kerning across SHY.
+With letter spacing the same measurement also moves the space's gap onto the
+item and clamps the item at zero. The per-grapheme gap model does not represent
+that; applying only the kerning lost native successes where the fit at a
+hanging preserved space ignores the word's trailing gap.
+
+Chromium's layout shapes whole items and kerns across spaces, ZWSP, SHY and
+same-font spans. In its default state Chromium's Canvas splits measured strings
+at spaces, tabs and ZWSP and reports none of that kerning for Arial or Times New
+Roman. With `textRendering = 'optimizeLegibility'`, or with
+`fontKerning = 'normal'` for Arial, headless Chromium shapes the whole string
+when the font's lookups involve the space glyph and reports the kerning sums
+for both fonts, but those settings turn on features for every measurement.
+Chromium also reshapes the start of a wrapped line. Legacy `kern` tables, which
+HarfBuzz splits between both glyphs (Times New Roman, Helvetica Neue and
+Verdana on macOS), change that adjustment, while OpenType pair kerning keeps
+the adjustment on the first glyph (Arial). Canvas widths add both halves and
+cannot tell the attributions apart.
+
+Gecko shapes words without their spaces and splits them at ZWSP, WJ and other
+invisible controls, so ordinary kerning never reaches a space. Its line breaker
+adds the original advances of the shaped word. After an emergency break inside
+`AV` in 18px Times New Roman, Firefox paints `V` at 11.833px: the letter keeps
+half of the adjustment with `A`. That share depends on the same attribution.
+
 ## Reading Browser Output
 
 DOM geometry is evidence to interpret, not an exact source-to-line map. Safari
