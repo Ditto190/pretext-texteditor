@@ -59,6 +59,14 @@ hyphen.
 `81c0c6a`, and the ordinary snapshots were regenerated against it with unchanged
 results; only provenance and environment records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Against the segment-break removal
+branch, Chrome reads `prepare()` at 8.90 ms (9.00) and hot `layout()` at
+0.0887 ms (0.0877), and Safari reads 11.0 ms (11.0) and 0.105 ms (0.105). The
+long-form corpus totals move by +8.1% in Chrome and +0.0% in Safari. The benchmark
+corpora contain no soft hyphens, so these rows don't exercise the retreat itself.
+
 ## Newlines next to zero-width spaces
 
 This runtime and harness change starts from the WebKit engine routing branch
