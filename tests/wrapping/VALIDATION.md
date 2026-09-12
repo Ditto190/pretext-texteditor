@@ -93,6 +93,15 @@ change. The stacked gate's suite hash is
 `31db9695b8a03843670809f12a13c9af6cb5b632147f05191e3441dacaece5a3`, with rows in
 `/private/tmp/pretext-eng-20260912/gate-233rev`.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Against the figure-space glue branch,
+Chrome reads `prepare()` at 8.70 ms (8.80) and hot `layout()` at 0.0893 ms
+(0.0878), inside its run spread, and Safari reads 11.0 ms and 0.100 ms, unchanged.
+The long-form corpus totals move by +1.3% in Chrome and +1.0% in Safari. The
+Arabic prose row reads 120 ms in installed Safari (118 before), so the warm split
+seen in Playwright's WebKit build doesn't appear there.
+
 ## Figure space glue
 
 This runtime change starts from the attached-generator-canvas branch head
