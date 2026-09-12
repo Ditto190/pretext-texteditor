@@ -17,6 +17,67 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Newlines next to zero-width spaces
+
+This runtime and harness change starts from the WebKit engine routing branch
+head `04293b9`. In `white-space: normal`, Blink and Gecko remove a collapsible
+whitespace run containing an LF when a ZWSP immediately precedes or follows the
+run; WebKit turns the run into one space. The engine profile's
+`segmentBreakRemovalRun` keys on the layout engine: `'blink'` for Blink,
+`'gecko'` for Gecko, and `'none'` for WebKit or when no engine is named. Each
+engine checks adjacency on its own run. Blink's holds SPACE, TAB, LF and CR.
+Gecko's holds SPACE, TAB and LF, continues through SHY and bidi controls without
+ending on one, and leaves out a last SPACE before a combining mark. FF is in
+neither. `prepare()` removes such a run before the ordinary collapse, and the
+rich-inline helper applies the rule within each item's own text.
+
+The harness normalization contract changes in the same commit.
+`normalizeSource()` now takes the observed browser and removes the same runs for
+Chrome and Firefox, coded independently of the library, so the API
+`source-normalization` contract, source placement, the line-extraction text and
+normalized native paragraphs follow the observed engine. The previous documented
+form turned every such newline into a space, which is WebKit's transformation.
+It copied the library's old rule, so in Chrome and Firefox a wrong prediction
+and a wrong oracle agreed. Either half alone loses the rows below.
+
+The installed evidence ran this change on the CJK closing-bracket stack
+`d1e12b8`, natively in Chrome 153, Safari 26.5.2 and Firefox 155, both
+directions. Through its own harness, the full gate against pinned `59bd256`
+fixed 20 metrics in each Chrome and Firefox direction, 12 api and 8 source, and
+lost none. All of them are `hanging-ZWSP` rows of `a\u200B\nword` in 16px Arial
+and 24px Amiri at widths 8, 24 and 40, now normalized as `a\u200Bword` instead
+of `a\u200B word`, with unchanged line counts. Safari changed nothing, no leg had
+required failures, execution errors or new API or rich failures, and nine
+numeric profiles had no new failures. The same candidate judged by that stack's
+own harness read 20 lost successes and 12 new `source-normalization` failures in
+each Chrome and Firefox direction, and nothing in Safari. Both runs name the
+identical rows and metrics. Pinned main passed them only because the old
+documented form copied its newline rule, so those losses are a defect in the old
+contract, not a regression. In both runs the four width-8 rows per direction
+still fail source, now on line placement instead of normalization.
+
+Headless replays in Chromium 147 and WebKit 26.4 with the recorded user agents
+and locales ran every row of the WebKit engine routing gate, whose natives were
+recorded against `2f15d72`: 656,407 rows over six legs, with the Firefox legs
+through a Gecko user agent in Chromium. Pinned `2f15d72` and this change each
+ran through this change's harness and through the previous one, and changed rows
+were judged against the recorded natives. Only the same 12 `hanging-ZWSP` rows
+per Chrome and Firefox direction change. Through this change's harness they fix
+12 api and 8 source metrics per direction, with no lost metric or new API
+failure; through the previous harness they read as 20 lost successes and 12 new
+`source-normalization` failures. Safari changes no prediction, no row errors,
+and in every context the two profiles differ only in `segmentBreakRemovalRun`:
+`'blink'` in the Chrome legs, `'gecko'` in the Firefox legs and `'none'` in
+Safari. Through the previous harness, headless `2f15d72` reproduces all 218,993
+recorded Safari predictions and every changed Chrome row. Chromium does not
+reproduce Firefox's widths, so the Firefox legs only show which rows change.
+
+`bun test` and `bun run check` pass. Gecko's East Asian newline rules, the
+widths of a CR or FF that survives, and context across rich-inline items are not
+modeled. The installed three-browser gate will rerun from this branch on this
+base. The pin still names `2f15d72`. After review it advances to this runtime
+commit, and the ordinary and benchmark snapshots are regenerated against it.
+
 ## WebKit engine routing
 
 This runtime change starts from the line-edge kerning branch head `9535bc6`.
