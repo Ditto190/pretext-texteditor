@@ -74,6 +74,11 @@ profiles have no new failures. Suite hash
 `48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
 `/private/tmp/pretext-eng-20260912/stage1b-full`.
 
+The ordinary snapshots were regenerated from this commit: all six legs pass with
+zero new regressions, required failures or execution errors, and nine numeric
+profiles have no new failures. Snapshot results are unchanged; only provenance
+and environment records change.
+
 ## Page-language measurement context
 
 This runtime change starts from published main `efa958a`. Chrome's OffscreenCanvas
