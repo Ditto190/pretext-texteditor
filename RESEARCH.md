@@ -483,6 +483,39 @@ item and clamps the item at zero. The per-grapheme gap model does not represent
 that; applying only the kerning lost native successes where the fit at a
 hanging preserved space ignores the word's trailing gap.
 
+Preparation measures a segment followed by such a space together with the space
+instead of alone, and takes the segment's width as that measurement minus a
+space alone. Measuring each distinct word again with its space took one more
+Canvas call per distinct word: in headless WebKit 26.4 with a Safari user agent,
+8,825 more calls on the Arabic benchmark corpus, 8,439 on en-gatsby and 1,593 on
+the Hindi corpus. Safari's prefix fit widths still measure a word alone where it
+begins a longer word, and occurrences before other text measure it alone too, so
+those corpora take 1,347, 2,669 and 278 more calls than without the kerning,
+which removes 84.7%, 68.4% and 82.5% of the extra calls. A zero-width break
+before the space ends the item, which is then measured alone as well, and so is
+a numeric run or a run above 96 graphemes, whose fit widths come from pairs.
+
+Measuring only the end of a word with the space would be cheaper, but it is not
+exact. A headless WebKit census covered 8.0 million (font, word) pairs from the
+corpora, the Safari suite inputs and a targeted word list, in 194 installed and
+fixture families. The final grapheme cluster, with any format characters after
+it, gave a different kerning in 389 pairs. In 20px Waseem, `.` after Arabic
+letters, and `...`, take nothing before a space, while `.` alone takes 2.470px.
+In Noto Nastaliq Urdu, gaf or keheh after alef madda takes 0.183em, while either
+letter alone takes nothing. In STIX Two Math, capitals such as `V`, `Y` and Greek
+Upsilon kern with the space alone, but not after Cyrillic a, and Upsilon not
+after Latin a; after Greek alpha or Hebrew alef they keep the kerning. The final
+two clusters matched in every pair, but nothing bounds how far a font's
+contextual lookups reach. Kerning with the space is also common: PT Sans, Didot,
+Gill Sans, Avenir Next and 18px system-ui each kern more than 2,000 distinct
+en-gatsby words, Chalkboard 1,394 and Waseem 827, and 20px system-ui kerns
+Arabic, Devanagari and Hebrew words that end in `.` or `,`. Native element
+geometry agreed with the whole-word Canvas kerning on 2,440 of 2,551 sampled
+pairs. In the fixed-pitch fonts Fira Code and Monaspace Neon, WebKit's layout
+takes none of the kerning that Canvas reports, which preparation does not model,
+and in STIX Two Math a Latin capital after Cyrillic a keeps its own kerning
+natively.
+
 Chromium's layout shapes whole items and kerns across spaces, ZWSP, SHY and
 same-font spans. In its default state Chromium's Canvas splits measured strings
 at spaces, tabs and ZWSP and reports none of that kerning for Arial or Times New
@@ -651,3 +684,18 @@ Cold-cache scaling probes distinguish those costs from reuse. Lower retained
 memory alone does not establish faster preparation, and numeric Canvas doubles
 measure algorithmic work rather than browser throughput. Shared font/segment
 caches accumulating until `clearCache()` are a separate lifetime concern.
+
+Repeating `clearCache()` and `prepare()` on one text is not a stable timing in
+Playwright's WebKit build. Its per-font width cache samples one Canvas call in 21
+after a run of misses, counts only strings of up to 64 UTF-16 units, and returns
+to dense sampling only after a hit. A prepare submits each string once, so hits
+need the sampled positions to line up again: after 21 / gcd(n, 21) prepares for
+n counted strings. The Arabic corpus submitted 21,336, a multiple of 21, and its
+prepare fell from about 120ms to 35ms within five repeats. Breaking after U+061B
+removed four prefix measurements, and the same prepare stayed at 120ms until the
+21st repeat. The first prepares cost the same, replaying the submitted strings
+without library code showed the same split, and four extra Canvas calls per
+prepare restored the drop. Fresh text never reaches those hits. Compare submitted
+Canvas text and first cold prepares, and treat a warm-only change there as a
+cache phase until installed Safari shows it; its benchmark snapshot read the
+Arabic row at the cold level before the change.
