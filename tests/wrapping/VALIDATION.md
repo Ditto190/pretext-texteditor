@@ -57,8 +57,12 @@ breaks between a listed letter and a following opening bracket
 only from the text before it and keeps them together. U+30FC keeps the
 whole-piece rule, because Chromium breaks before it and WebKit does not.
 
-The pin still names `14d92ca`. After review it advances to this runtime commit,
-and the ordinary and benchmark snapshots are regenerated against it. Suite hash
+The baseline advances to runtime commit `8db5483`, and the ordinary snapshots
+were regenerated against it: all six legs pass with zero new regressions,
+required failures or execution errors, and nine numeric profiles have no new
+failures. Accuracy results are unchanged. Chrome's step-10 corpus sweep now
+matches 28 more widths: `zh-zhufu` 43 to 61, `zh-guxiang` 54 to 61,
+`ja-rashomon` 55 to 57 and `ja-kumo-no-ito` 56 to 57. Suite hash
 `48fb18fba603a2ae669a5a18af334503009a3c0555c4a07201f05ee84cfae9d1`; rows are in
 `/private/tmp/pretext-eng-20260912/stage1b-full`.
 
