@@ -43,6 +43,11 @@ zero new regressions, required failures or execution errors, and nine numeric
 profiles have no new failures. Snapshot results are unchanged; only provenance
 and environment records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this checkout: three
+foreground runs each, with matching environments at DPR 2 on the 2560×1440 screen,
+visible and focused. Hot `layout()` reads 0.0875 ms in Chrome (0.0878 before) and
+0.105 ms in Safari (0.1025); preparation and rich rows stay within noise.
+
 ## English fixture pages
 
 This test-only change starts from published main `a4f17ed`. Fixture pages had no
