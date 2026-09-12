@@ -436,8 +436,11 @@ function endsKeepAllRunAtPair(text: string, boundary: number, profile: AnalysisP
     if (((1 << before) & icu4xKeepAllClasses) !== 0 && ((1 << after) & icu4xKeepAllClasses) !== 0) return false
     // ICU4X's Unicode 15.0 rules keep any character after a Hebrew letter and HY
     // or BA, past marks on either side (LB21a). ICU 78 replaced BA there with HH.
-    // HY and HH never end a run, and runs never end next to U+3000, the one East
-    // Asian BA, so only BA needs this check.
+    // The pair rules below never break after HY or HH, and runs never end next to
+    // U+3000, the one East Asian BA, so only BA needs this check. The dash and
+    // line-start punctuation ends in getKeepAllRunEnd still end a run after a
+    // Hebrew letter and `-`, U+2010, U+2013, U+0964, U+0965, U+104A or U+104B,
+    // where both engines keep the next character.
     if (before === LineBreakClass.BA) {
       const letter = lineBreakBaseBefore(text, base)
       if (letter >= 0 && getLineBreakClass(text.codePointAt(letter)!) === LineBreakClass.HL) return false
@@ -2108,8 +2111,6 @@ function mergeKeepAllTextUnits(
   return merged
 }
 
-// Ordinary CJK boundaries and emergency overflow permission are separate facts.
-// Keep these decisions in preprocessing; measurement only observes their units.
 // Text of plain keep-all letters is one keep-all run, and each of its code units
 // is a grapheme, so it needs no grapheme segmentation.
 function isPlainKeepAllLetterText(text: string): boolean {
@@ -2119,6 +2120,8 @@ function isPlainKeepAllLetterText(text: string): boolean {
   return true
 }
 
+// Ordinary CJK boundaries and emergency overflow permission are separate facts.
+// Keep these decisions in preprocessing; measurement only observes their units.
 export function getCjkTextUnits(text: string, profile: AnalysisProfile, wordBreak: WordBreakMode): TextBreakUnit[] {
   if (wordBreak === 'keep-all' && isPlainKeepAllLetterText(text)) return [{ text, start: 0, overflow: 'word-like' }]
   const units = buildBaseCjkUnits(text, profile, wordBreak)

@@ -197,11 +197,15 @@ between a letter or number and an East Asian opener, which LB30 does not keep
 (`a|「`). It does not end before a closing bracket, after an opening bracket, after
 BB such as `´`, or between AL symbols such as `©` and `→`. Older rules keep more.
 ICU4X's Unicode 15.0 rules keep any character after a Hebrew letter and HY or BA
-(LB21a), so the Firefox profile keeps `א|文` in one run. ICU 78 keeps that
-character only after HY or HH, so the Chromium profile ends the run after `א|`.
+(LB21a), so the Firefox profile keeps `א|文` in one run. ICU 78 keeps a
+following character other than CB or a Hebrew letter only after HY or HH, so the
+Chromium profile ends the run after `א|`.
 ICU4X still breaks between an ideograph and a Hebrew letter under keep-all, since
 it keeps only pairs of AI, AL, ID, NU, HY, Hangul and CJ classes. So `文א|文` ends
-a run before `א` in Firefox and after `|` in Chrome. Chromium and WebKit decide
+a run before `א` in Firefox and after `|` in Chrome. Pretext still ends a run after
+`-`, U+2010 and U+2013, and after U+0964, U+0965, U+104A and U+104B, even after a
+Hebrew letter, where both engines keep the next character (LB21a); main does the
+same. Chromium and WebKit decide
 pairs of code units up to U+00FF from their own tables, and Gecko decides ASCII
 pairs from its own model, so Pretext's punctuation rules keep deciding those.
 U+3000 is BA, but engines hang or trim it at a line edge, so a run does not end next
@@ -235,7 +239,8 @@ Headless Chromium 147, which most headless keep-all evidence comes from, runs IC
 data, which the generated table follows. The headless build cannot check three
 families. HH: ICU 77.1 counts only U+2010, and Unicode 17 moves ten more dashes, such
 as U+2013 and U+05BE, from BA to HH. LB21a: ICU 77.1 keeps the character after a
-Hebrew letter and any BA but U+3000, and ICU 78.2 only after HY or HH, so headless
+Hebrew letter and HY or any BA but U+3000, and ICU 78.2 only after HY or HH;
+neither keeps a following CB or Hebrew letter. So headless
 Chromium keeps `א|文` together where the Chromium profile ends a run. LB20a: ICU 78.2
 adds Hebrew letters, as described above. The ICU4C 77.1 and 78.3 libraries show the
 same differences. Unicode 17 also moves eight pictographs such as U+1F777 from ID to
