@@ -86,8 +86,11 @@ kerning. Chromium kerns across spaces, ZWSP, SHY and same-font spans, which its
 default Canvas does not report, and after an emergency break Gecko keeps a share
 of a pair adjustment that Canvas sums cannot attribute.
 
-The pin still names `8db5483`. After review it advances to this runtime commit,
-and the ordinary and benchmark snapshots are regenerated against it. Suite hash
+The baseline advances to runtime commit `8b1f538`, and the ordinary snapshots
+were regenerated against it: all six legs pass with zero new regressions,
+required failures or execution errors, and nine numeric profiles have no new
+failures. Snapshot results are unchanged; only provenance and environment
+records change. Suite hash
 `7681f371b59384fb346e2b15c5d469da2a30ce9673f5c05ef2cf9a64a3894d3d`; rows are in
 `/private/tmp/pretext-eng-20260912/gate-g1b`.
 
