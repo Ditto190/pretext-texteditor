@@ -283,6 +283,71 @@ not model those Gecko rules: the ja/zh corpora contain such newlines, and their
 native paragraphs are observed from space-normalized text, so modeling them
 needs a Firefox-faithful corpus observation first.
 
+NEL (U+0085) is UAX #14 class NL: a break follows it, and no ordinary break
+precedes it (LB5, LB6). Chrome and Safari break that way, and so do Firefox's
+ICU4X rules, but only the Safari profile models it. Each NEL is its own segment. When one overflows
+right after text or glue, the line ends before that content instead, so the
+content moves to the next line with the NEL; when the content started the line,
+overflow still breaks right before the NEL, as browsers do. Joining NEL to the
+content before it instead split overlong words at Canvas grapheme widths where
+browsers break before the NEL. A ZWSP or soft hyphen right before NEL still
+offers its break in Pretext, and so does any spurious boundary before the NEL,
+such as the ordinary break before U+3000 that LB21 forbids: main hid those by
+breaking before the NEL itself. Safari's keep-all offers no break on either side
+of NEL: it keeps a space-delimited word whole and fills it by graphemes only when
+it overflows. Pretext keeps NEL inside CJK keep-all runs, as it kept NEL text,
+and elsewhere keeps NEL as its own segment with its break after it, the way it
+still breaks after a hyphen in Latin keep-all text. Merging NEL with the text on
+both sides lost emergency breaks in emoji runs, which the overflow rule above
+withholds from control-bearing fragments, and Canvas prefix widths across NEL
+gave a following combining mark a 12px advance in 16px Arial, so the mark took
+its own line. Starting a new keep-all run at NEL after glue also put a break
+before the NEL. In normal white space, `漢<NBSP><NEL>字 漢字` at -1px loses a few
+headless widths where Safari fills the overlong unit by graphemes: Pretext breaks
+between the ideograph and the NBSP, which LB12a forbids, and main matched only
+because its spaced NEL fit.
+
+Safari's simple text path replaces a control character's advance after applying
+letter spacing, so NEL takes none, at either sign. In Safari 26.5.2 `a<NEL><NEL>b`
+grows by 2px per pixel of spacing from -1px to 1px, a line holding only NEL
+keeps its width, and `<NEL><NEL>` fits 24px at 1px and 2px. Per-character Range
+rects split those 24px as 13 and 11 at 1px and as 14 and 10 at 2px, so only the
+total is an advance.
+Pretext still places the gap of the grapheme before a NEL and adds none after
+it. Safari's complex path spaces NEL like other characters. A combining mark
+directly after NEL puts NEL on that path on either page direction. Text before
+NEL shares its item only when its direction matches the page's: Arabic on a
+right-to-left page, Devanagari, Thai or a marked letter on a left-to-right one.
+Preparation cannot see the page direction, so a NEL next to text in WebKit's
+complex ranges keeps its spacing. Safari's unspaced NEL after Arabic on a
+left-to-right page, or after Devanagari on a right-to-left page, is not modeled.
+Inside a CJK keep-all run, NEL keeps per-grapheme spacing, as NEL text did.
+
+Safari moves a `pre-wrap` tab to the following stop when less than half a space
+would remain before the next one. Stops are eight spaces apart, and Pretext used
+to move to the next stop unless the pen stood exactly on one. The spaced NEL hid
+that: in `ab<NEL>\tcd ef` at 2px in 16px Arial, the pen stands 1.77px before the
+first stop with NEL unspaced, and Safari's tab reaches the second stop. Headless
+WebKit 26.4 jumps 1.77px before a stop but not 2.28px before one. Replaying
+Safari 26.5.2's suite rows with this threshold fixes 70 left-to-right and 8
+right-to-left tab rows. WebKit trunk's threshold, half the advance of `0`, loses
+10 and 6 more rows. The one remaining lost row in each direction ends a line with
+two tabs: Safari hangs both, while Pretext ends the line after the first tab that
+overflows. Headless probes lose a few widths the same way to one overflowing tab
+at negative spacing, such as `ab cd\tef gh\tij` at -1px in 16px Arial: Safari
+moves the tab to the second stop and hangs it, and Pretext breaks before it. Main
+matched there only because its tab stayed at the nearer stop. Only the Safari
+profile models the threshold.
+
+Chrome and Firefox keep NEL as ordinary text. In Chrome the same rule lost rows
+that main matched only because two errors cancelled: Chrome joins Arabic across
+a soft hyphen that Pretext measures as separate segments, hangs preserved spaces
+at emergency widths, and gives a word joiner no letter spacing, while Pretext
+spaces it. That last gap also costs Safari `aa<NEL>\u2060bb` at 1px, where main
+kept the joiner on the NEL's line. Release Firefox also breaks after NEL, but
+draws control characters with no advance while its Canvas measures NEL as a
+space.
+
 The shared complex walker fixed batch/streaming disagreement after a soft hyphen
 ([#222](https://github.com/chenglou/pretext/pull/222)). A later usable break could
 win in one path while another rewound to the hyphen. This needed one decision
@@ -299,6 +364,57 @@ invisible, and consuming it must not discard the preceding letter spacing. When
 a discretionary hyphen is actually selected, later source cannot be packed onto
 that line. Skipping invisible controls at line start must also continue past
 every consecutive consumed-only chunk; a real empty hard-break line is different.
+
+A selected discretionary hyphen must fit. Chromium retries a text item whose
+hyphen does not fit against the available width minus the hyphen, WebKit reverts
+to the last wrap opportunity where the hyphen fits, and Gecko records a
+soft-hyphen break only when its text plus the hyphen fits. Installed Chrome 153,
+Safari 26.5.2 and Firefox 155 all end `ab cd\u00adefgh` (Arial 16) at the space
+from 39.25px to 44.25px. In Blink the walker returns to the latest earlier
+opportunity whose line leaves room for the hyphen. The target is updated whenever
+a later opportunity replaces the pending one, so an earlier soft hyphen can win:
+installed Chrome ends `a b\u00adc\u200bi\u00adjki` (Arial 16) at the first soft
+hyphen from 34px to 35.5px, where the zero-width space leaves no room for the
+hyphen. Blink's retry stays inside one text item and rewinds earlier items at the
+full width. The prepared handle has no Blink item boundaries, so the reduced width
+applies to every earlier opportunity, which can miss a return to an earlier item.
+Chromium also paints the hyphen without letter spacing; WebKit and Gecko space it.
+
+Returning needs an overflow that isolated widths can show, and a target that is
+really the latest opportunity. Blink shapes the text on both sides of a soft
+hyphen together, so Arabic letters joined across it, a mark after it and a kerning
+pair around it measure narrower in context. When Canvas measures the neighbors of
+any soft hyphen on the line narrower joined than apart, the overflowing hyphen
+stays; contextual widths during preparation would replace that check. Segment
+kinds do not mark every opportunity: text joined to text, such as after `-` in
+`ab-cd` or between ideographs, and a dash inside one segment, such as `10–20`, can
+hold one. The walker never returns past either. Returning past them lost 142
+installed Chrome rows on compounds such as `x ab-cd\u00adefgh` and
+`a well-known\u00adness`.
+
+The return is enabled in Blink only. On the same installed research rows it lost
+340 Safari rows and 80 Firefox rows that isolated widths cannot show: letter
+spacing on U+2060, which those engines do not apply, and combining marks after a
+soft hyphen, where Safari breaks between the soft hyphen and the mark and Firefox
+paints the hyphen. WebKit and Gecko keep the overflowing hyphen until those are
+modeled. Chrome's remaining losses have the same partners. Chrome gives U+2060 no
+letter spacing, so `a\u2060b cd\u00adefgh` at letter spacing 1 and 2 still fits
+its hyphen line (20 rows), and it kerns across the space in
+`LTA To AV\u00adWAVA` (4 rows). Chromium breaks after a combining mark that
+follows a soft hyphen and paints no hyphen, and a soft hyphen between word joiners
+is no opportunity (55 rows). In those 55 rows the walker without the return
+matched the line count only by charging and overflowing a hyphen that Chrome does
+not paint.
+
+Without a fitting opportunity Safari overflows with the hyphen, while Chrome and
+Firefox break inside the word. Chromium re-breaks the line at grapheme boundaries
+and again retries an unfit hyphen against the reduced width. Gecko keeps cluster
+breaks that fit, never between a letter and its soft hyphen (installed Firefox
+ends `abc\u00addef\u00adghi` at 26px as `ab` / `c-` / `de` / `f-ghi`), and
+otherwise its first candidate. Prototypes of both rules lost hundreds of existing
+successes in a headless replay: marks and joiners next to soft hyphens,
+letter-spaced invisibles, Arabic contextual widths, and hyphen fits within
+Chromium's 1/64px rounding. The overflowing line remains.
 
 A source-coordinate prototype showed that internal storage can change without
 changing public output, but only if measurement-local grapheme boundaries survive.
@@ -580,6 +696,77 @@ a break opportunity. `measureText('A A') - measureText('AA')` includes the chang
 in A–A kerning, so it is not a clean space measurement. Measure the space itself.
 After forced overflow, preserve the negative remaining width; clamping it to zero
 gives a following negative gap room it did not have.
+
+An item boundary is not a break opportunity by itself. Chrome runs one line-break
+iterator over the text of the whole inline formatting context, and Gecko keeps
+collecting a word across text frames until whitespace. `prepareRichInline()`
+analyzes the text that items join between collapsible spaces, as `prepare()`
+would, and an ordinary break falls only where a joined break unit starts. In the
+Chromium profile every break fact near a boundary comes from that joined
+analysis, not only the boundary itself. Splitting a word changes each item's own
+segmentation: Thai `ความสวยง` splits into `ความ/สวย/ง` alone but `ความ/สวยงาม`
+joined. Joined break positions therefore map into item cursors, down to a grapheme
+inside an item segment when needed. Where an item's segments hide a joined break,
+or offer one inside a joined word, the walker ends at the joined break or fills
+graphemes back to a preferred break, as the flat walker splits a word.
+
+WebKit breaks differently, and `inlineItemBreaks` records that. Its inline items
+builder runs a break iterator over each inline box's own text, and a boundary
+between boxes is breakable when the next box's text can break at its start with
+the previous box's last two characters as prior context. Installed Safari 26.5.2
+and headless WebKit spans wrapped Thai, Lao, Khmer and Myanmar words split across
+items differently from one text node, and joined run extents lost the Thai and
+Lao rows where they differ while Chrome gained on the same rows. In the WebKit
+profile an item's last run comes from its own segments, and the boundary from
+analyzing the previous item's last two characters followed by the next item's
+text. The next item's first run and any break inside its first segment come from
+that same analysis, which is only a proxy for WebKit's iterator over the next box
+alone. It matters where Pretext's analysis of the item alone differs from that
+iterator. `Intl.Segmenter` keeps the Myanmar vowel sign at the start of `ာသည်`
+apart, but the forward-sticky pass joins it to the word after it, and the
+resulting carry moved `သ` to the next line where Safari's spans do not. Taking the
+first run from the item's own segments instead changed only such Myanmar rows and
+failed all 70 of them. Keeping a leading mark apart in the analysis itself would
+change `prepare()` for any text that starts with a mark, in every engine. Taking
+the previous item's last run from the same context analysis lost more fuzz rows
+than it fixed. The analysis still differs from WebKit's scan inside some boxes:
+WebKit breaks `-"rt` after the hyphen and `-1o(r)` before the parenthesis, and
+neither the item's segments nor the joined text do.
+
+Gecko segments words with ICU4X, and its segmentation of the joined Myanmar text
+(`မြန်|မာ|ဘာသာ|သည်|လှပသောဘာ|သာ|ဖြစ်သည်`) differs from Chromium's. With the joined
+rule, installed Firefox spans in Myanmar Sangam MN wrapped like one text node and
+like the flat prediction, where the rich prediction added a line. Headless Chromium
+with a Firefox user agent reproduces neither Gecko's segmentation nor its widths
+for this font, so that difference is not modeled. The Gecko profile, like engines
+Pretext doesn't recognize, therefore keeps breaking at every item boundary. Firefox
+gives up the joined rule's gains: a `)` or `,` that starts an item, a word split
+across items, kinsoku across items and Thai words split across items.
+
+When following items continue an item's last run, the run moves to the next line
+if the line already has an earlier break. The continuation's width is measured to
+its cheapest break, so a soft hyphen directly before a ZWSP or SPACE adds no
+hyphen, and it fits within the line walker's fit epsilon. Native Chrome and Safari
+spans reserved a hyphen width for a soft hyphen before a space at some widths;
+the flat walker does not, and neither does rich-inline.
+
+A run that began the line still takes overflow breaks at item boundaries, as before.
+Restricting those to units that `prepare()` would split lost the `a`/ZWSP/`hello`
+witness at width 1: Chrome and Firefox break before that ZWSP even in a single text
+node, while the flat walker keeps it with `a`; Safari agreed on the line count only.
+Item admission compares raw widths, so an item that fits only within the fit
+epsilon still wraps before it. Atomic `break: 'never'` items allow a break on both
+sides. css-text requires this for atomic inlines, and headless Chromium and WebKit
+inline-blocks agreed.
+
+Items are measured separately. Chromium shapes neighboring same-font spans
+together, so Arial `community` + `,` natively fits about a pixel earlier than the
+sum of the two measurements; Gecko frames kern there too, while WebKit spans do
+not. That is a measurement topic, not a break fact. Where the flat walker and one
+native text node disagree, rich-inline in the Chromium and WebKit profiles now
+follows the flat walker: Japanese dialogue in Hiragino Sans after `」`, numeric
+signs that WebKit keeps with the digit, and fit thresholds. Breaking at every item
+boundary matched some of those rows only by accident.
 
 ## Fonts And Other Measurement Engines
 

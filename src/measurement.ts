@@ -11,6 +11,9 @@ const entryContextProperties = ['font', 'direction', 'fontKerning', 'fontStretch
 export type SegmentMetrics = {
   width: number
   emojiCount?: number
+  // Per following piece across a soft hyphen: true when the joined text measures
+  // narrower than the two pieces apart.
+  shapesAcrossSoftHyphen?: Map<string, boolean>
   breakableFitMode?: BreakableFitMode
   breakableFitAdvances?: number[] | null
   entryGeometry?: {
@@ -66,6 +69,41 @@ export type EngineProfile = {
   // Blink and Gecko remove a collapsible newline run next to a ZWSP, each
   // through its own run. WebKit turns it into a space.
   segmentBreakRemovalRun: SegmentBreakRemovalRun
+  // WebKit and Gecko letter-space the visible discretionary hyphen itself.
+  // Blink shapes it separately, without spacing.
+  letterSpaceDiscretionaryHyphen: boolean
+  // When a selected discretionary hyphen does not fit, Blink retries the text
+  // item against the width minus the hyphen, so the line ends at the latest
+  // earlier opportunity that leaves room for it. Pretext has no Blink item
+  // boundaries and applies the reduced width to every earlier opportunity.
+  // WebKit and Gecko also return to an earlier opportunity, at the full width,
+  // but that is not modeled: their installed losses come from letter spacing
+  // on invisibles and from marks after a soft hyphen, which isolated widths do
+  // not show. They keep the overflowing hyphen.
+  unfitHyphenRetreat: 'reduced-width' | 'none'
+  // NEL (U+0085, UAX #14 NL) offers a break after itself and no ordinary break
+  // before it (LB5, LB6). Blink and Gecko break there too, but keep NEL as
+  // ordinary text for now: Blink joins Arabic across a soft hyphen that Pretext
+  // measures as separate segments, which the break before NEL was hiding, and
+  // release Gecko draws NEL with no advance while its Canvas measures a space.
+  breakOnlyAfterNextLine: boolean
+  // WebKit's simple text path replaces a control character's advance after
+  // applying letter spacing, so NEL takes none there, at either sign. Its
+  // complex path spaces NEL like other characters. Blink spaces NEL outside
+  // cursive runs.
+  letterSpaceNextLine: boolean
+  // WebKit moves a tab to the following stop when less than half a space would
+  // remain before the next one (FontCascade::tabWidth).
+  skipNarrowTabStops: boolean
+  // Where rich-inline items break near a boundary. Blink runs one line-break
+  // iterator over the text of the whole inline formatting context, so every
+  // break fact near a boundary comes from the joined text. WebKit finds breaks
+  // inside each inline box from that box's own text, and decides a boundary
+  // between boxes from the previous box's last two characters. Gecko collects a
+  // word across text frames until a space, but it segments joined Myanmar text
+  // differently from Blink and that is not modeled, so Gecko and unknown engines
+  // keep breaking at every item boundary.
+  inlineItemBreaks: 'joined-text' | 'item-text' | 'item-boundary'
 }
 
 export type BreakableFitMode = 'sum-graphemes' | 'segment-prefixes' | 'pair-context'
@@ -244,6 +282,12 @@ export function getEngineProfile(): EngineProfile {
     preferPrefixWidthsForBreakableRuns: engine === 'webkit',
     measureTextWithFollowingSpace: engine === 'webkit',
     segmentBreakRemovalRun: engine === 'blink' ? 'blink' : engine === 'gecko' ? 'gecko' : 'none',
+    letterSpaceDiscretionaryHyphen: engine !== 'blink',
+    unfitHyphenRetreat: engine === 'blink' ? 'reduced-width' : 'none',
+    breakOnlyAfterNextLine: engine === 'webkit',
+    letterSpaceNextLine: engine !== 'webkit',
+    skipNarrowTabStops: engine === 'webkit',
+    inlineItemBreaks: engine === 'blink' ? 'joined-text' : engine === 'webkit' ? 'item-text' : 'item-boundary',
   }
   return cachedEngineProfile
 }

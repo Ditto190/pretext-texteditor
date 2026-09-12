@@ -19,6 +19,7 @@ export type PreparedLineBreakData = {
   letterSpacing: number
   spacingGraphemeCounts: number[]
   discretionaryHyphenWidth: number
+  discretionaryHyphenContexts?: boolean[] | null
   tabStopAdvance: number
   chunks: {
     startSegmentIndex: number
@@ -54,7 +55,7 @@ function consumesAtLineStart(kind: SegmentBreakKind, atChunkStart: boolean): boo
   return kind === 'space' || kind === 'soft-hyphen' || (kind === 'zero-width-break' && !atChunkStart)
 }
 
-function breaksAfter(kind: SegmentBreakKind): boolean {
+export function breaksAfter(kind: SegmentBreakKind): boolean {
   return (
     kind === 'space' ||
     kind === 'preserved-space' ||
@@ -78,26 +79,13 @@ function normalizeLineStartSegmentIndex(
   return segmentIndex
 }
 
-function getTabAdvance(lineWidth: number, tabStopAdvance: number): number {
+function getTabAdvance(lineWidth: number, tabStopAdvance: number, minimumAdvance: number): number {
   if (tabStopAdvance <= 0) return 0
 
   const remainder = lineWidth % tabStopAdvance
   if (Math.abs(remainder) <= 1e-6) return tabStopAdvance
-  return tabStopAdvance - remainder
-}
-
-function getLeadingLetterSpacing(
-  prepared: PreparedLineBreakData,
-  hasContent: boolean,
-  segmentIndex: number,
-): number {
-  return (
-    prepared.letterSpacing !== 0 &&
-    hasContent &&
-    prepared.spacingGraphemeCounts[segmentIndex]! > 0
-  )
-    ? prepared.letterSpacing
-    : 0
+  const advance = tabStopAdvance - remainder
+  return advance < minimumAdvance ? advance + tabStopAdvance : advance
 }
 
 function getLineEndContribution(leadingSpacing: number, segmentContribution: number): number {
@@ -530,8 +518,34 @@ function stepPreparedChunkLineGeometry(
   cursor: LineBreakCursor,
   chunkIndex: number,
   maxWidth: number,
+  endSegmentIndex: number,
+  endGraphemeIndex: number,
 ): number | null {
-  return walkPreparedComplexLines(prepared, cursor, chunkIndex, maxWidth, undefined, 1).lastLineWidth
+  return walkPreparedComplexLines(prepared, cursor, chunkIndex, maxWidth, undefined, 1, endSegmentIndex, endGraphemeIndex).lastLineWidth
+}
+
+// A return from an unfit discretionary hyphen needs an overflow that isolated
+// widths can show and a target that really is the latest opportunity. No soft
+// hyphen on the line may measure narrower joined than apart, and nothing after
+// the target may be text after text or a dash inside a segment, which can hold an
+// opportunity that segment kinds don't mark, such as after `-` or between
+// ideographs. Checked only on a line that would end at an unfit hyphen.
+function canReturnFromUnfitHyphen(
+  prepared: PreparedLineBreakData,
+  discretionaryHyphenContexts: boolean[],
+  lineStartSegmentIndex: number,
+  targetSegmentIndex: number,
+  softHyphenIndex: number,
+): boolean {
+  for (let i = lineStartSegmentIndex; i <= softHyphenIndex; i++) {
+    if (discretionaryHyphenContexts[i]) return false
+  }
+  const { kinds, breakablePreferredBreaks } = prepared
+  for (let i = targetSegmentIndex; i < softHyphenIndex; i++) {
+    if (breaksAfter(kinds[i]!)) continue
+    if (!breaksAfter(kinds[i - 1]!) || breakablePreferredBreaks[i] !== null) return false
+  }
+  return true
 }
 
 function walkPreparedComplexLines(
@@ -541,6 +555,10 @@ function walkPreparedComplexLines(
   maxWidth: number,
   onLine?: InternalLineVisitor,
   lineLimit = Number.POSITIVE_INFINITY,
+  // A single-line caller can end stepping at an ordinary break before this
+  // cursor, as if the text continued past it.
+  endSegmentLimit = Number.POSITIVE_INFINITY,
+  endGraphemeLimit = 0,
 ): { lineCount: number; lastLineWidth: number | null } {
   const {
     widths,
@@ -548,10 +566,17 @@ function walkPreparedComplexLines(
     breakableFitAdvances,
     breakablePreferredBreaks,
     discretionaryHyphenWidth,
+    letterSpacing,
+    spacingGraphemeCounts,
   } = prepared
   const engineProfile = getEngineProfile()
   const lineFitEpsilon = engineProfile.lineFitEpsilon
   const fitLimit = maxWidth + lineFitEpsilon
+  // Preparation records soft-hyphen contexts only where the engine retreats
+  // and the text has a soft hyphen; hand-built handles may omit them.
+  const discretionaryHyphenContexts = prepared.discretionaryHyphenContexts ?? null
+  const retreatsFromUnfitHyphen =
+    discretionaryHyphenContexts !== null && engineProfile.unfitHyphenRetreat === 'reduced-width'
 
   let lineStartSegmentIndex: number
   let lineStartGraphemeIndex: number
@@ -563,6 +588,14 @@ function walkPreparedComplexLines(
   let pendingBreakFitWidth: number
   let pendingBreakPaintWidth: number
   let pendingBreakKind: SegmentBreakKind | null
+  // The latest opportunity whose line leaves room for the hyphen, which Blink's
+  // retry against the width minus the hyphen returns to when a selected
+  // discretionary hyphen does not fit, with that line's painted width.
+  let fitBreakSegmentIndex: number
+  let fitBreakPaintWidth: number
+  // The last whole segment appended after other line content, and its advance.
+  let appendedSegmentIndex: number
+  let appendedSegmentAdvance = 0
 
   function getCurrentLinePaintWidth(): number {
     return (
@@ -590,6 +623,29 @@ function walkPreparedComplexLines(
       endSegmentIndex,
       endGraphemeIndex,
     )
+  }
+
+  // A line that would end at a selected discretionary hyphen that does not fit
+  // returns to the recorded earlier opportunity. Null without one, where the
+  // hyphen overflows.
+  function finishLineBeforeUnfitHyphen(): number | null {
+    if (
+      fitBreakSegmentIndex < 0 ||
+      pendingBreakKind !== 'soft-hyphen' ||
+      pendingBreakSegmentIndex !== lineEndSegmentIndex ||
+      lineEndGraphemeIndex !== 0 ||
+      pendingBreakFitWidth <= fitLimit ||
+      !canReturnFromUnfitHyphen(
+        prepared,
+        discretionaryHyphenContexts!,
+        lineStartSegmentIndex,
+        fitBreakSegmentIndex,
+        lineEndSegmentIndex - 1,
+      )
+    ) {
+      return null
+    }
+    return finishLine(fitBreakSegmentIndex, 0, fitBreakPaintWidth)
   }
 
   function startLineAtSegment(segmentIndex: number, width: number): void {
@@ -633,7 +689,11 @@ function walkPreparedComplexLines(
     pendingBreakKind = kind
   }
 
-  function appendBreakableSegmentFrom(segmentIndex: number, startGraphemeIndex: number): number | null {
+  function appendBreakableSegmentFrom(
+    segmentIndex: number,
+    startGraphemeIndex: number,
+    endGraphemeIndex = breakableFitAdvances[segmentIndex]!.length,
+  ): number | null {
     const fitAdvances = breakableFitAdvances[segmentIndex]!
     const preferredBreaks = breakablePreferredBreaks[segmentIndex] ?? null
     let preferredBreakIndex = preferredBreaks === null
@@ -643,7 +703,10 @@ function walkPreparedComplexLines(
     let lastPreferredBreakWidth = 0
 
     const entry = prepared.entryGeometry?.[segmentIndex]
-    const freshWhole = getSegmentEntryWidth(entry, startGraphemeIndex, fitAdvances.length)
+    // Entry geometry describes whole segment tails, not a caller's grapheme limit.
+    const freshWhole = endGraphemeIndex === fitAdvances.length
+      ? getSegmentEntryWidth(entry, startGraphemeIndex, fitAdvances.length)
+      : null
     if (freshWhole !== null) {
       const terminal = prepared.letterSpacing
       if (entry!.entries[startGraphemeIndex]!.admissionFit <= fitLimit) {
@@ -671,7 +734,7 @@ function walkPreparedComplexLines(
       return finishLine(segmentIndex + 1, 0)
     }
 
-    for (let g = startGraphemeIndex; g < fitAdvances.length; g++) {
+    for (let g = startGraphemeIndex; g < endGraphemeIndex; g++) {
       const baseGw = fitAdvances[g]!
 
       if (!hasContent) {
@@ -719,24 +782,40 @@ function walkPreparedComplexLines(
     pendingBreakFitWidth = 0
     pendingBreakPaintWidth = 0
     pendingBreakKind = null
+    fitBreakSegmentIndex = -1
+    fitBreakPaintWidth = 0
+    appendedSegmentIndex = -1
     // Retained line-start ZWSP establishes the line without owning a spacing gap.
     let zeroWidthPrefix = true
+    let afterUnspacedControl = false
 
     const chunk = prepared.chunks[chunkIndex]!
+    const endSegmentIndex = Math.min(chunk.endSegmentIndex, endSegmentLimit)
+    const consumedEndSegmentIndex = endSegmentIndex < chunk.endSegmentIndex
+      ? endSegmentIndex
+      : chunk.consumedEndSegmentIndex
     let lineWidth: number | null = null
     if (chunk.startSegmentIndex === chunk.endSegmentIndex) {
       cursor.segmentIndex = chunk.consumedEndSegmentIndex
       cursor.graphemeIndex = 0
       lineWidth = 0
     } else {
-      lineLoop: for (let i = cursor.segmentIndex; i < chunk.endSegmentIndex; i++) {
+      lineLoop: for (let i = cursor.segmentIndex; i < endSegmentIndex; i++) {
         const kind = kinds[i]!
         const breakAfter = breaksAfter(kind)
         const startGraphemeIndex = i === cursor.segmentIndex ? cursor.graphemeIndex : 0
-        const leadingSpacing = getLeadingLetterSpacing(prepared, hasContent && !zeroWidthPrefix, i)
+        // The gap before a segment belongs to the grapheme before it. A control
+        // that takes no letter spacing still follows that gap but adds none
+        // after itself; zero-width breaks and soft hyphens leave it as it was.
+        let leadingSpacing = 0
+        if (letterSpacing !== 0 && (spacingGraphemeCounts[i]! > 0 || kind === 'control')) {
+          if (hasContent && !zeroWidthPrefix && !afterUnspacedControl) leadingSpacing = letterSpacing
+          afterUnspacedControl = spacingGraphemeCounts[i] === 0
+        }
         if (kind !== 'zero-width-break') zeroWidthPrefix = false
+        // Tab stops are eight spaces apart, so half a space is a sixteenth of one.
         const w = kind === 'tab'
-          ? getTabAdvance(lineW + leadingSpacing, prepared.tabStopAdvance)
+          ? getTabAdvance(lineW + leadingSpacing, prepared.tabStopAdvance, engineProfile.skipNarrowTabStops ? prepared.tabStopAdvance / 16 : 0)
           : widths[i]!
         const advance = leadingSpacing + w
         const fitAdvance = getWholeSegmentFitContribution(prepared, kind, i, leadingSpacing, w)
@@ -750,6 +829,11 @@ function walkPreparedComplexLines(
               pendingBreakFitWidth = lineW + discretionaryHyphenWidth
               pendingBreakPaintWidth = lineW + discretionaryHyphenWidth
               pendingBreakKind = kind
+              // A soft hyphen's fit already includes its own hyphen.
+              if (retreatsFromUnfitHyphen && pendingBreakFitWidth <= fitLimit) {
+                fitBreakSegmentIndex = pendingBreakSegmentIndex
+                fitBreakPaintWidth = pendingBreakPaintWidth
+              }
             }
           }
           continue
@@ -772,11 +856,23 @@ function walkPreparedComplexLines(
             startLineAtSegment(i, w)
           }
           updatePendingBreakForWholeSegment(kind, breakAfter, i, w, leadingSpacing, advance)
+          if (retreatsFromUnfitHyphen && breakAfter && pendingBreakFitWidth + discretionaryHyphenWidth <= fitLimit) {
+            fitBreakSegmentIndex = pendingBreakSegmentIndex
+            fitBreakPaintWidth = pendingBreakPaintWidth
+          }
           continue
         }
 
         const newFitW = lineW + fitAdvance
         if (newFitW > fitLimit) {
+          // UAX #14 LB6: no ordinary break before NEL. The line ends before the
+          // text or glue that NEL follows instead. When that content started
+          // the line, overflow still breaks right before the NEL.
+          if (kind === 'control' && appendedSegmentIndex === i - 1 && (kinds[i - 1] === 'text' || kinds[i - 1] === 'glue')) {
+            lineW -= appendedSegmentAdvance
+            lineEndSegmentIndex = i - 1
+            lineEndGraphemeIndex = 0
+          }
           const currentBreakFitWidth =
             lineW + getBreakOpportunityFitContribution(prepared, kind, i, leadingSpacing)
           const currentBreakPaintWidth =
@@ -800,18 +896,56 @@ function walkPreparedComplexLines(
             break lineLoop
           }
 
-          lineWidth = finishLine()
+          lineWidth = finishLineBeforeUnfitHyphen() ?? finishLine()
           break lineLoop
         }
 
         appendWholeSegment(i, advance)
         updatePendingBreakForWholeSegment(kind, breakAfter, i, w, leadingSpacing, advance)
+        if (retreatsFromUnfitHyphen && breakAfter && pendingBreakFitWidth + discretionaryHyphenWidth <= fitLimit) {
+          fitBreakSegmentIndex = pendingBreakSegmentIndex
+          fitBreakPaintWidth = pendingBreakPaintWidth
+        }
+        appendedSegmentIndex = i
+        appendedSegmentAdvance = advance
       }
 
+      // A limit inside a breakable text segment walks its leading graphemes as
+      // the last unit of the line.
+      if (lineWidth === null && endGraphemeLimit > 0 && endSegmentLimit < chunk.endSegmentIndex) {
+        if (!hasContent) {
+          const startGraphemeIndex = endSegmentLimit === cursor.segmentIndex ? cursor.graphemeIndex : 0
+          lineWidth = appendBreakableSegmentFrom(endSegmentLimit, startGraphemeIndex, endGraphemeLimit) ??
+            finishLine(endSegmentLimit, endGraphemeLimit, lineW)
+        } else {
+          const fitAdvances = breakableFitAdvances[endSegmentLimit]!
+          let advance = letterSpacing !== 0 && spacingGraphemeCounts[endSegmentLimit]! > 0 && !zeroWidthPrefix && !afterUnspacedControl
+            ? letterSpacing
+            : 0
+          for (let g = 0; g < endGraphemeLimit; g++) {
+            advance += getBreakableGraphemeAdvance(prepared, g > 0, fitAdvances[g]!)
+          }
+          if (getBreakableCandidateFitWidth(prepared, lineW + advance) <= fitLimit) {
+            lineW += advance
+            lineWidth = finishLine(endSegmentLimit, endGraphemeLimit, lineW)
+          } else if (
+            pendingBreakSegmentIndex >= 0 &&
+            pendingBreakFitWidth <= fitLimit &&
+            lineEndSegmentIndex === pendingBreakSegmentIndex &&
+            lineEndGraphemeIndex === 0
+          ) {
+            lineWidth = finishLine(pendingBreakSegmentIndex, 0, pendingBreakPaintWidth)
+          } else {
+            lineWidth = finishLineBeforeUnfitHyphen() ?? finishLine()
+          }
+        }
+      }
+      // A limit before the chunk end is an ordinary break before later text, so
+      // a line that ends there at an unfit selected hyphen returns as well.
       if (lineWidth === null) {
-        lineWidth = pendingBreakSegmentIndex === chunk.consumedEndSegmentIndex && lineEndGraphemeIndex === 0
-          ? finishLine(chunk.consumedEndSegmentIndex, 0, pendingBreakPaintWidth)
-          : finishLine(chunk.consumedEndSegmentIndex, 0, lineW)
+        lineWidth = pendingBreakSegmentIndex === consumedEndSegmentIndex && lineEndGraphemeIndex === 0
+          ? finishLineBeforeUnfitHyphen() ?? finishLine(consumedEndSegmentIndex, 0, pendingBreakPaintWidth)
+          : finishLine(consumedEndSegmentIndex, 0, lineW)
       }
     }
     if (lineWidth === null) break
@@ -949,27 +1083,34 @@ function stepPreparedSimpleLineGeometry(
   return lineW
 }
 
+// An end cursor stops stepping at an ordinary break there, as if the text were
+// cut at it, and returns the paint width of a line that ends there. A cursor
+// inside a segment needs that segment's breakable fit advances.
 export function stepPreparedLineGeometryFromChunk(
   prepared: PreparedLineBreakData,
   cursor: LineBreakCursor,
   chunkIndex: number,
   maxWidth: number,
+  endSegmentIndex = prepared.widths.length,
+  endGraphemeIndex = 0,
 ): number | null {
-  if (prepared.simpleLineWalkFastPath) {
+  if (prepared.simpleLineWalkFastPath && endSegmentIndex === prepared.widths.length) {
     return stepPreparedSimpleLineGeometry(prepared, cursor, maxWidth)
   }
 
-  return stepPreparedChunkLineGeometry(prepared, cursor, chunkIndex, maxWidth)
+  return stepPreparedChunkLineGeometry(prepared, cursor, chunkIndex, maxWidth, endSegmentIndex, endGraphemeIndex)
 }
 
 export function stepPreparedLineGeometry(
   prepared: PreparedLineBreakData,
   cursor: LineBreakCursor,
   maxWidth: number,
+  endSegmentIndex = prepared.widths.length,
+  endGraphemeIndex = 0,
 ): number | null {
   const chunkIndex = normalizePreparedLineStart(prepared, cursor)
   if (chunkIndex < 0) return null
-  return stepPreparedLineGeometryFromChunk(prepared, cursor, chunkIndex, maxWidth)
+  return stepPreparedLineGeometryFromChunk(prepared, cursor, chunkIndex, maxWidth, endSegmentIndex, endGraphemeIndex)
 }
 
 export function measurePreparedLineGeometry(

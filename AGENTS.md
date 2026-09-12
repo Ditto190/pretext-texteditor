@@ -48,7 +48,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing ones. 
 - `walkLineRanges()` is the rich-path batch range API: no string materialization, but still browser-like line widths/cursors/discretionary-hyphen state. Prefer it over private line walkers for shrinkwrap or aggregate layout work.
 - Keep prepare-time diagnostics internal to benchmark tooling. Do not grow a second public prepare surface just to expose timing splits.
 - `prepare()` is internally split into a text-analysis phase and a measurement phase; keep that seam clear, but keep the public API simple unless requirements force a change.
-- The internal segment model now distinguishes at least eight break kinds: normal text, collapsible spaces, preserved spaces, tabs, non-breaking glue (`NBSP` / `NNBSP` / `WJ`-like runs), zero-width break opportunities, soft hyphens, and hard breaks. Do not collapse those back into one boolean unless the model gets richer in a better way.
+- The internal segment model now distinguishes at least nine break kinds: normal text, collapsible spaces, preserved spaces, tabs, non-breaking glue (`NBSP` / `NNBSP` / `WJ`-like runs), zero-width break opportunities, soft hyphens, hard breaks, and controls with a break after them but no ordinary break before them (`NEL` in the WebKit profile). Do not collapse those back into one boolean unless the model gets richer in a better way.
 - `layout()` is the resize hot path: no DOM reads, no canvas calls, no string work, and avoid gratuitous allocations.
 - Don't add DOM access, computed-style reads, or anything that forces style or layout to `prepare()` or `layout()`. The emoji-correction span and the `<html lang>` attribute read are the existing exceptions.
 - Segment metrics cache is `Map<font, Map<segment, metrics>>`; shared across texts and resettable via `clearCache()`. Width is only one cached fact now; grapheme widths and other segment-derived facts can be populated lazily.
@@ -58,6 +58,7 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing ones. 
 - Keep script-specific break-policy fixes in preprocessing, not `layout()`. See `RESEARCH.md` for the rules and rejected approaches.
 - `NBSP`-style glue should survive `prepare()` as visible content and prevent ordinary word-boundary wrapping; `ZWSP` should survive as a zero-width break opportunity.
 - Soft hyphens should stay invisible when unbroken. When one is selected, stop at that boundary and expose a visible trailing `-` in the rich line APIs' `line.text`.
+- In Blink, a selected soft hyphen that does not fit returns to the latest earlier opportunity that leaves room for the hyphen. Never return past text joined to text or a dash inside a segment, and keep WebKit and Gecko on the overflowing hyphen until letter-spaced invisibles and marks after a soft hyphen are modeled.
 - Keep `layoutNextLine()`'s line stepping separate from text materialization and aligned with `layoutWithLines()`. Keep its grapheme-cache bookkeeping out of the hot `layout()` path.
 - Astral CJK ideographs, compatibility ideographs, and the later extension blocks must still hit the CJK path; do not rely on BMP-only `charCodeAt()` checks there.
 - CJK grapheme splitting plus kinsoku merging keeps prohibited punctuation attached to adjacent graphemes.

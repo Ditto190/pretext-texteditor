@@ -46,7 +46,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Chrome 153 changed native results for four RTL full-width bracket rows, which main now fails. Find the mechanism, or record it as browser drift.
 - Model Chrome's `text-spacing-trim` on full-width punctuation, which fits on one line text that Pretext puts on two. This waits on kinsoku emergency breaks and the U+3000 hang.
 - Before rerunning the CJK line-start and trim candidate, read three review findings nobody swept: untrusted Firefox rows counted as passes, trimmed paint ignoring terminal letter spacing, and one allocation per stepper call.
-- When a soft hyphen's hyphen doesn't fit, retreat to an earlier fitting break, as browsers do. Installed Chrome still loses research rows to letter spacing on word joiners, soft hyphens followed by marks, and kerning across spaces, so enable it per engine only after those land.
+- When a soft hyphen's hyphen doesn't fit, retreat to an earlier fitting break, as browsers do. This is on in Blink. WebKit and Gecko keep the overflowing hyphen until letter spacing on invisible characters and marks after a soft hyphen land; enabled there, the rule lost 340 Safari and 80 Firefox research rows.
 - A combining mark after a soft hyphen moves the break and suppresses the hyphen, and a word joiner removes the break. Land this with generated attachment tables and without splitting CJK units.
 - Chrome breaks before a soft hyphen that follows an overflowing letter, and never consumes a soft hyphen at a line start. Build one line-start rule shared by soft hyphens and ZWSP.
 - For a chosen soft hyphen, Chromium paints U+2010 where Pretext measures `-`, and Firefox's hyphen line is one letter-spacing gap narrower. Measure across the fixture fonts before changing widths.
@@ -56,12 +56,13 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - A ZWSP right after a forced break inside a word gets its own line in all three browsers. Copying that loses hundreds of rows until joined Arabic widths, the U+3000 hang and letter spacing on invisibles land.
 - If demand for Persian appears, observe how browsers render soft hyphens typed in place of ZWNJ before weighing any Arabic-script soft-hyphen policy.
 - Firefox and Safari add a line for CRLF, or for a lone CR, at very narrow widths. Trace their line builders before modeling it.
-- Enable the NEL rule (no break before, break after) for Safari only, and model that WebKit gives NEL no letter spacing.
 - In pre-wrap, Chrome hangs preserved spaces and tabs after an overflowing letter, including a space after a tab. WebKit also hangs whole white-space runs.
 - For tab stops with letter spacing, WebKit hangs whole tab runs, and Firefox grows a tab by nine times the letter spacing.
+- In pre-wrap, Safari hangs a whole trailing tab run at a line end, while Pretext ends the line after the first tab that overflows. #240 loses one suite row per direction to this.
+- Under keep-all, Safari offers no break on either side of NEL and fills an overflowing space-delimited word by graphemes. Outside CJK runs Pretext still breaks after NEL, as it still breaks after `-` in Latin keep-all text.
 - Model lone CR, FF and VT in pre-wrap per engine instead of as hard breaks. This needs the harness contract and `line.text` decisions.
 - Firefox removes a newline next to East Asian punctuation on ja and zh pages, and between wide characters. This needs the content-language decision and a re-observed Firefox corpus.
-- Rich-inline items should break only where the joined text breaks (#177). WebKit breaks inside each item on its own, Chromium and Gecko follow the joined text, and Firefox shows a Myanmar alignment defect at item boundaries.
+- Rich-inline items should break only where the joined text breaks (#177). Chrome and Safari now do. Firefox still breaks at every item boundary: the joined rule lost 40 installed Myanmar split-word rows to Gecko's segmentation, so enabling it waits on a model of that segmentation and an installed re-gate.
 - In Chrome, line-break context crosses rich-inline items after a word-initial hyphen, as in items `foo` and U+2010 `bar baz`.
 
 ## Widths, shaping and emergency breaks
@@ -116,7 +117,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Observe hyphen placement beyond the tiny discretionary protocol, so a wrong hyphen with the right line count fails.
 - Correct INVENTORY: three rows it lists as API failures now pass, although their native misses remain.
 - Before refreshing benchmark snapshots, add benchmark cases for U+3000 indentation, VS16 emoji paragraphs, long invisible tails and letter-spaced CJK, and numeric recipes for soft-hyphen, mark and control shapes.
-- Settle shared representations once before combining engine rules: the unspaced Chromium hyphen, one per-grapheme letter-spacing unit, and lazily allocated per-segment arrays.
+- Settle shared representations once before combining engine rules: one per-grapheme letter-spacing unit and lazily allocated per-segment arrays.
 - The Blink and WebKit rules that hide each other's errors (soft hyphens, U+3000, Arabic widths, controls, kinsoku, letter spacing, line fit) can only gate together. Build them in layers, with a replay after each layer.
 - Name the origin set behind VALIDATION's 3,635 LTR recipe rows, which include 51 issue #212 and #214 rows.
 - Add `(#230)` to its CHANGELOG line.

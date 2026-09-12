@@ -17,6 +17,124 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Rich-inline boundaries in Chrome and Safari
+
+This runtime change starts from the Safari next-line branch pin `1771ab8`.
+`prepareRichInline()` treated every item boundary as a break opportunity, while
+browsers find breaks in the text their items join. Blink runs one line-break
+iterator over the whole inline formatting context. WebKit decides a boundary
+from the previous box's last two characters followed by the next box's text, and
+finds breaks inside a box from that box's own text. The engine profile's
+`inlineItemBreaks` is `'joined-text'` for Blink, `'item-text'` for WebKit and
+`'item-boundary'` for Gecko or when no engine is named, which keeps main's
+behavior. The line walker can stop at an end cursor as if the text were cut
+there, so a carried run measures up to its first joined break. The joined
+analysis never puts a break before a NEL control segment (LB6). Ten
+`maintained/rich-boundaries` witnesses join the suite. The two exact-fit
+witnesses are required in Chrome and Safari and observed in Firefox, where main
+fails them.
+
+The installed gate ran this change on `daf13ac` against pinned `e5e66be`, and
+again from this branch against pinned `5ba3247`: Chrome 153 through the
+Playwright transport, Safari 26.5.2 and Firefox 155 natively, both directions.
+Both runs agree. Chrome fixes 7 LTR metrics and Safari 6, all witness rich
+heights. RTL and Firefox change nothing. No leg loses a metric or has a new
+required, API or rich failure, and nine numeric profiles have no new failures.
+
+Headless replays of installed rich-inline research observations (13,038 LTR rows
+per browser) gain 757 Chrome rows and 905 Safari rows. They lose 74 and 31, all
+accidents. Chrome shapes a word and its comma across spans (38 rows). On
+Hiragino kinsoku rows (32) and at thresholds (4), the flat prediction already
+differs from native. In Safari, main's boundary break and emergency split
+coincided with WebKit's on numeric signs (27) and quote splits (4). Installed
+Firefox measured the joined rule at +768 and -93 rows, including 40 Myanmar
+split-word rows lost to Gecko's segmentation, so Firefox keeps main's behavior.
+
+`bun test` and `bun run check` pass. The baseline advances to runtime commit
+`06c850f`, and the ordinary snapshots were regenerated against it with unchanged
+results; only provenance and environment records change.
+
+## Safari next-line and tab stops
+
+This runtime change starts from the segment-break removal branch head `daf13ac`.
+NEL (U+0085) is UAX #14 class NL: a break follows it and no ordinary break
+precedes it. In the WebKit profile, analysis gives each NEL its own control
+segment, the walker offers a break after it, and a NEL that overflows right after
+text or glue ends the line before that content. WebKit's simple text path gives
+NEL no letter spacing, so NEL takes spacing only next to complex text or before a
+combining mark. Safari also moves a `pre-wrap` tab to the following stop when
+less than half a space would remain before the next one. The profile fields
+`breakOnlyAfterNextLine`, `letterSpaceNextLine` and `skipNarrowTabStops` key on
+the layout engine; Chrome and Firefox keep NEL as ordinary text and the previous
+tab rule.
+
+The installed gate ran this change on `daf13ac` against pinned `e5e66be`: Chrome
+153 through the Playwright transport, Safari 26.5.2 and Firefox 155 natively,
+both directions. Safari fixes 627 metrics in 235 LTR rows and 442 in 170 RTL
+rows, in the hidden-control spacing, NEL, discretionary and tab families. Chrome
+and Firefox change nothing. Each Safari direction loses one row, 3 metrics:
+`a\u05D0\u05D1aabb((\u0628\u0628\u0628\u0628\t\tword` in 16px Arial, pre-wrap,
+at width 64. Safari moves the first tab to the next stop and hangs both tabs.
+Pretext now reaches the same stop but hangs only the first overflowing tab, and
+main matched only because its tab stayed at the nearer stop. Three rows per
+direction that fail either way change widths only. No leg has required failures,
+execution errors or new API or rich failures, and nine numeric profiles have no
+new failures. Every leg still exits with an error, because the numeric companion
+fails when an unverified profile's tab sizing changes: the iOS Chrome, Edge and
+Firefox profiles and iPad desktop mode follow the same WebKit threshold, which
+installed Safari verifies.
+
+Headless replays in WebKit 26.4 with the Safari 26.5.2 user agent reproduce the
+suite result. On installed research NEL observations they gain 310 LTR and 116
+RTL rows and lose 8 LTR rows of `aa\u0085\u2060bb` at 1px, where Safari gives the
+word joiner no letter spacing.
+
+`bun test` and `bun run check` pass. The baseline advances to runtime commit
+`5ba3247`, and the ordinary snapshots were regenerated against it with unchanged
+results; only provenance and environment records change.
+
+## Soft-hyphen retreat in Blink
+
+This runtime change starts from the segment-break removal branch head `daf13ac`.
+When a selected discretionary hyphen does not fit, Blink retries the text item
+against the available width minus the hyphen, so the line ends at the latest
+earlier opportunity that leaves room for it. The engine profile's
+`unfitHyphenRetreat` is `'reduced-width'` for Blink and `'none'` for WebKit,
+Gecko or when no engine is named. `letterSpaceDiscretionaryHyphen` is false only
+for Blink, which paints the visible hyphen without letter spacing. For Blink,
+`prepare()` records per soft hyphen whether Canvas measures its neighbors
+narrower joined than apart, and the walker keeps the overflowing hyphen on a line
+with such a soft hyphen. The walker records the latest opportunity that leaves
+room for the hyphen when that opportunity is created, and never returns past
+text joined to text or a dash inside a segment.
+
+The installed gate ran from this branch against pinned `e5e66be`: Chrome 153
+through the Playwright transport, Safari 26.5.2 and Firefox 155 natively, both
+directions. Chrome fixes 35 metrics per direction, in 16 rows (10 lineCount, 10
+height and 15 source), and loses none: `​a­b` in pre-wrap in four
+fonts, `  a­b` and `  ­a­b` in Courier New and Noto Nastaliq
+Urdu, and Arabic soft-hyphen rows in Courier New. Safari and Firefox change
+nothing. No leg has required failures, execution errors or new API or rich
+failures, and nine numeric profiles have no new failures. Predictions also
+change on 38 Chrome LTR rows and 3 RTL rows that fail either way. 36 LTR rows
+and 1 RTL row move further from native, all with soft hyphens followed by marks
+or word joiners: Chrome gives word joiners no letter spacing, and breaks after a
+mark that follows a soft hyphen without painting a hyphen.
+
+Headless replays in Chromium 147 and WebKit 26.4 of installed soft-hyphen
+research observations gain 802 Chrome LTR rows and 136 RTL rows and lose 79 LTR
+rows. 24 are true losses owned by other gaps: letter spacing on U+2060, which
+Chrome does not apply (20), and Blink kerning across a space (4). 55 are
+accidents, where the base matched the line count by charging a hyphen that Chrome
+does not paint: a combining mark after a soft hyphen (43) and a soft hyphen
+between word joiners (12). Enabled in WebKit and Gecko, the same rule lost 340
+Safari and 80 Firefox research rows, so those engines keep the overflowing
+hyphen.
+
+`bun test` and `bun run check` pass. The baseline advances to runtime commit
+`81c0c6a`, and the ordinary snapshots were regenerated against it with unchanged
+results; only provenance and environment records change.
+
 ## Newlines next to zero-width spaces
 
 This runtime and harness change starts from the WebKit engine routing branch

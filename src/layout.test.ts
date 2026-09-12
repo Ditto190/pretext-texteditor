@@ -558,7 +558,7 @@ describe('boundary-policy regressions', () => {
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: false,
       wordInitialHyphenLetters: 'none' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const,
+      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     for (const text of ['####((aabb', '""""[[aabb', '−+x«value»!']) {
       expect(analyzeText(text, profile).texts).toEqual([text])
@@ -577,7 +577,7 @@ describe('boundary-policy regressions', () => {
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const,
+      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     // The ASCII pair tables keep '!' with a following ASCII letter, and break
     // '?' before '-' and '|'. UAX #14 otherwise separates EX from any
@@ -615,7 +615,7 @@ describe('boundary-policy regressions', () => {
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const,
+      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     // UAX #14 LB8a and LB20a. A ZWJ after a space belongs to that space's
     // grapheme cluster and keeps its existing boundaries. The pair tables still
@@ -692,7 +692,7 @@ describe('boundary-policy regressions', () => {
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const,
+      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     const Segmenter = Intl.Segmenter
     let segmentedUnits = 0
@@ -728,7 +728,7 @@ describe('boundary-policy regressions', () => {
       keepZeroWidthSpaceMarkAtScanStart: true,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
       wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: true,
-      segmentBreakRemovalRun: 'none' as const,
+      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: true,
     }
     expect(analyzeText('\u200B\u0301ab', profile).texts).toEqual(['\u200B\u0301ab'])
     expect(analyzeText('x\n\u200B\u0301ab', profile, 'pre-wrap').texts).toEqual(['x', '\n', '\u200B\u0301ab'])
@@ -807,6 +807,104 @@ describe('boundary-policy regressions', () => {
       }
     } finally {
       profile.segmentBreakRemovalRun = previous
+    }
+  })
+
+  test('the WebKit profile keeps NEL with the content before it, breaks after it and gives it no letter spacing', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = [profile.breakOnlyAfterNextLine, profile.letterSpaceNextLine, profile.keepAllPairModel] as const
+    // Blink and Gecko keep NEL as ordinary text.
+    expect(prepareWithSegments('zz ab\u0085cd', FONT).kinds).not.toContain('control')
+    profile.breakOnlyAfterNextLine = true
+    profile.letterSpaceNextLine = false
+    profile.keepAllPairModel = 'webkit-spaces'
+    try {
+      const lines = (text: string, width: number, options?: { whiteSpace?: 'pre-wrap', letterSpacing?: number }) => {
+        const prepared = prepareWithSegments(text, FONT, options)
+        const result = layoutWithLines(prepared, width, LINE_HEIGHT)
+        expect(collectStreamedLines(prepared, width)).toEqual(result.lines)
+        expect(layout(prepare(text, FONT, options), width, LINE_HEIGHT).lineCount).toBe(result.lineCount)
+        return result.lines
+      }
+      const text = 'zz ab\u00A0\u0085\u0085cd \u0085ef'
+      const prepared = prepareWithSegments(text, FONT)
+      expect(prepared.segments).toEqual(['zz', ' ', 'ab\u00A0', '\u0085', '\u0085', 'cd', ' ', '\u0085', 'ef'])
+      expect(prepared.kinds).toEqual(['text', 'space', 'text', 'control', 'control', 'text', 'space', 'control', 'text'])
+      // Glued content moves to the next line with its NEL, while a space still breaks before one.
+      expect(lines(text, measureWidth('zz ab\u00A0', FONT) + 0.5).map(line => line.text)).toEqual(['zz ', 'ab\u00A0\u0085\u0085', 'cd \u0085ef'])
+      // Content that starts a line can still overflow right before the NEL.
+      expect(lines(text, measureWidth('ab\u00A0', FONT) + 0.5).map(line => line.text)).toEqual(['zz ', 'ab\u00A0', '\u0085\u0085', 'cd ', '\u0085ef'])
+      // Keep-all runs continue across NEL, glue included: a CJK run merges across
+      // it, while other runs keep NEL as a control segment.
+      const { analyzeText } = await import('./analysis.ts')
+      const keepAll = analyzeText('zz ab\u00A0\u0085cd \u6F22\u00A0\u0085\u5B57', profile, 'normal', 'keep-all')
+      expect(keepAll.texts).toEqual(['zz', ' ', 'ab\u00A0', '\u0085', 'cd', ' ', '\u6F22\u00A0\u0085\u5B57'])
+      expect(keepAll.kinds).toEqual(['text', 'space', 'text', 'control', 'text', 'space', 'text'])
+      // A rich item that ends in NEL breaks before the next item.
+      const rich = prepareRichInline([{ text: 'ab\u0085', font: FONT }, { text: 'cd', font: FONT }])
+      expect(measureRichInlineStats(rich, measureWidth('ab\u0085', FONT) + 0.5).lineCount).toBe(2)
+      // A rich item that starts with NEL keeps the word before it, as the joined text does.
+      const previousItemBreaks = profile.inlineItemBreaks
+      profile.inlineItemBreaks = 'item-text'
+      try {
+        const parts = ['ab foo', '\u0085b'] as const
+        const width = measureWidth('ab foo', FONT) + 0.5
+        const leading = prepareRichInline(parts.map(part => ({ text: part, font: FONT })))
+        const richLines: string[] = []
+        walkRichInlineLineRanges(leading, width, range => {
+          richLines.push(materializeRichInlineLineRange(leading, range).fragments.map(fragment => fragment.text).join('').trimEnd())
+        })
+        const flatLines = lines(parts.join(''), width).map(line => line.text.trimEnd())
+        expect(flatLines).toEqual(['ab', 'foo\u0085b'])
+        expect(richLines).toEqual(flatLines)
+      } finally {
+        profile.inlineItemBreaks = previousItemBreaks
+      }
+
+      // NEL takes no letter spacing at either sign, but the gap after the
+      // grapheme before it stays.
+      const a = measureWidth('a', FONT)
+      const nel = measureWidth('\u0085', FONT)
+      for (const letterSpacing of [-1, 2]) {
+        const natural = lines('a\u0085\u0085b', 1000, { letterSpacing })
+        expect(natural.map(line => line.text)).toEqual(['a\u0085\u0085b'])
+        expect(natural[0]!.width).toBeCloseTo(2 * a + 2 * nel + 2 * letterSpacing)
+        const split = lines('a\u0085\u0085b', a + nel + letterSpacing + 0.5, { letterSpacing })
+        expect(split.map(line => line.text)).toEqual(['a\u0085', '\u0085b'])
+        for (const line of split) expect(line.width).toBeCloseTo(a + nel + letterSpacing)
+        // Text on WebKit's simple path, such as CJK, leaves the NEL after it
+        // unspaced, while text on its complex path, such as Arabic, spaces it.
+        expect(lines('\u6F22\u0085', 1000, { letterSpacing })[0]!.width).toBeCloseTo(measureWidth('\u6F22', FONT) + nel + letterSpacing)
+        expect(lines('\u0628\u0085', 1000, { letterSpacing })[0]!.width).toBeCloseTo(measureWidth('\u0628', FONT) + nel + 2 * letterSpacing)
+      }
+      // A preserved space does not hang after a NEL that already overflows.
+      expect(lines('a\u0085 b', nel - 0.5, { whiteSpace: 'pre-wrap', letterSpacing: 1 }).map(line => line.text)).toEqual(['a', '\u0085', ' ', 'b'])
+    } finally {
+      [profile.breakOnlyAfterNextLine, profile.letterSpaceNextLine, profile.keepAllPairModel] = previous
+    }
+  })
+
+  test('the WebKit profile moves a tab to the following stop when less than half a space remains', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = profile.skipNarrowTabStops
+    const space = measureWidth(' ', FONT)
+    const a = measureWidth('a', FONT)
+    const tabLineWidth = (letterSpacing: number) =>
+      layoutWithLines(prepareWithSegments('a\tb', FONT, { whiteSpace: 'pre-wrap', letterSpacing }), 1000, LINE_HEIGHT).lines[0]!.width
+    try {
+      // Letter spacing places the tab a quarter or three quarters of a space
+      // before the first stop, eight spaces from the line start.
+      for (const [remaining, skipped] of [[space / 4, true], [space * 3 / 4, false]] as const) {
+        const letterSpacing = 8 * space - remaining - a
+        profile.skipNarrowTabStops = false
+        const nearest = tabLineWidth(letterSpacing)
+        profile.skipNarrowTabStops = true
+        expect(tabLineWidth(letterSpacing) - nearest).toBeCloseTo(skipped ? 8 * space : 0)
+      }
+    } finally {
+      profile.skipNarrowTabStops = previous
     }
   })
 
@@ -956,6 +1054,129 @@ describe('prepare invariants', () => {
 
     const alphaWidth = prepared.widths[0]!
     expect(layout(prepared, alphaWidth + 0.1, LINE_HEIGHT).lineCount).toBe(2)
+  })
+
+  test('only the Blink profile returns from an unfit hyphen and paints the hyphen unspaced', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    try {
+      for (const [index, userAgent, unfitHyphenRetreat, letterSpaceDiscretionaryHyphen] of [
+        [0, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36', 'reduced-width', false],
+        [1, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15', 'none', true],
+        [2, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0', 'none', true],
+      ] as const) {
+        Object.defineProperty(globalThis, 'navigator', { value: { userAgent }, configurable: true, writable: true })
+        const specifier = `./measurement.ts?unfit-hyphen-${index}`
+        const fresh = await import(specifier) as MeasurementModule
+        expect(fresh.getEngineProfile()).toMatchObject({ unfitHyphenRetreat, letterSpaceDiscretionaryHyphen })
+      }
+    } finally {
+      if (descriptor === undefined) Reflect.deleteProperty(globalThis, 'navigator')
+      else Object.defineProperty(globalThis, 'navigator', descriptor)
+    }
+
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = profile.letterSpaceDiscretionaryHyphen
+    try {
+      profile.letterSpaceDiscretionaryHyphen = true
+      const spaced = prepareWithSegments('trans\u00ADatlantic', FONT, { letterSpacing: 2 }).discretionaryHyphenWidth
+      profile.letterSpaceDiscretionaryHyphen = false
+      const unspaced = prepareWithSegments('trans\u00ADatlantic', FONT, { letterSpacing: 2 }).discretionaryHyphenWidth
+      // Both keep the gap before the hyphen; only the first spaces the hyphen.
+      expect(spaced - unspaced).toBe(2)
+    } finally {
+      profile.letterSpaceDiscretionaryHyphen = previous
+    }
+  })
+
+  test('Blink returns an unfit soft hyphen to the latest earlier break that leaves room for the hyphen', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = profile.unfitHyphenRetreat
+    try {
+      // "foo trans" fits and "foo trans-" does not.
+      const text = 'foo trans\u00ADatlantic'
+      const width = measureWidth('foo trans', FONT) + 0.1
+      for (const [unfitHyphenRetreat, expected] of [
+        ['none', ['foo trans-', 'atlantic']],
+        ['reduced-width', ['foo ', 'trans-', 'atlantic']],
+      ] as const) {
+        profile.unfitHyphenRetreat = unfitHyphenRetreat
+        const prepared = prepareWithSegments(text, FONT)
+        expect(layoutWithLines(prepared, width, LINE_HEIGHT).lines.map(line => line.text)).toEqual([...expected])
+        expect(collectStreamedLines(prepared, width).map(line => line.text)).toEqual([...expected])
+        expect(measureLineStats(prepared, width).lineCount).toBe(expected.length)
+        expect(layout(prepare(text, FONT), width, LINE_HEIGHT).lineCount).toBe(expected.length)
+      }
+
+      // The zero-width space leaves no room for the hyphen, so the line returns
+      // to the soft hyphen that the zero-width space replaced as pending.
+      const replaced = prepareWithSegments('a b\u00ADc\u200B\u00ADjki', FONT)
+      expect(layoutWithLines(replaced, 36, LINE_HEIGHT).lines.map(line => line.text)).toEqual(['a b-', 'c\u200B-', 'jki'])
+
+      // Text after text, or a dash inside a segment, can hold a later real
+      // opportunity, so the line never returns past it to the space.
+      expect(layoutWithLines(prepareWithSegments('x ab-cd\u00ADefgh', FONT), 62, LINE_HEIGHT).lines.map(line => line.text))
+        .toEqual(['x ab-cd-', 'efgh'])
+      expect(layoutWithLines(prepareWithSegments('x 10\u201320\u00ADabcd', FONT), 58, LINE_HEIGHT).lines.map(line => line.text))
+        .toEqual(['x 10\u201320-', 'abcd'])
+
+      // A hand-built handle without soft-hyphen contexts keeps the overflowing hyphen.
+      const handBuilt = { ...prepareWithSegments(text, FONT) } as Record<string, unknown>
+      Reflect.deleteProperty(handBuilt, 'discretionaryHyphenContexts')
+      expect(walkPreparedLinesRaw(handBuilt as unknown as Parameters<typeof walkPreparedLinesRaw>[0], width)).toBe(2)
+    } finally {
+      profile.unfitHyphenRetreat = previous
+    }
+  })
+
+  test('Blink keeps an unfit hyphen where the text around the soft hyphen measures narrower joined', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = profile.unfitHyphenRetreat
+    const measureText = Object.getOwnPropertyDescriptor(TestCanvasRenderingContext2D.prototype, 'measureText')!
+    // A and V kern by -2px, so A and VAV measure 2px wider apart than AVAV.
+    Object.defineProperty(TestCanvasRenderingContext2D.prototype, 'measureText', {
+      ...measureText,
+      value(this: TestCanvasRenderingContext2D, text: string) {
+        return { width: measureWidth(text, this.font) - 2 * (text.match(/AV/g) ?? []).length }
+      },
+    })
+    profile.unfitHyphenRetreat = 'reduced-width'
+    try {
+      const font = '16px Kerning Test Sans'
+      expect(layoutWithLines(prepareWithSegments('ab B\u00ADVAV', font), 36, LINE_HEIGHT).lines.map(line => line.text))
+        .toEqual(['ab ', 'B-', 'VAV'])
+      expect(layoutWithLines(prepareWithSegments('ab A\u00ADVAV', font), 36, LINE_HEIGHT).lines.map(line => line.text))
+        .toEqual(['ab A-', 'VAV'])
+    } finally {
+      Object.defineProperty(TestCanvasRenderingContext2D.prototype, 'measureText', measureText)
+      profile.unfitHyphenRetreat = previous
+    }
+  })
+
+  test('an end-limited step returns from an unfit soft hyphen as the continuing text does', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = profile.unfitHyphenRetreat
+    profile.unfitHyphenRetreat = 'reduced-width'
+    try {
+      // "foo trans" fits and "foo trans-" does not.
+      const prepared = prepareWithSegments('foo trans\u00ADatlantic', FONT)
+      const width = measureWidth('foo trans', FONT) + 0.1
+      const continuing = { segmentIndex: 0, graphemeIndex: 0 }
+      const continuingWidth = stepPreparedLineGeometry(prepared, continuing, width)
+      expect(continuing).toEqual({ segmentIndex: 2, graphemeIndex: 0 })
+      // A limit right after the soft hyphen, or inside the word after it, is an
+      // ordinary break before later text, so the line returns to the space too.
+      for (const [segmentIndex, graphemeIndex] of [[4, 0], [4, 2]] as const) {
+        const cursor = { segmentIndex: 0, graphemeIndex: 0 }
+        expect(stepPreparedLineGeometry(prepared, cursor, width, segmentIndex, graphemeIndex)).toBe(continuingWidth)
+        expect(cursor).toEqual(continuing)
+      }
+    } finally {
+      profile.unfitHyphenRetreat = previous
+    }
   })
 
   test('treats soft hyphens as discretionary break points', () => {
@@ -1906,6 +2127,42 @@ describe('rich-inline invariants', () => {
     })
   })
 
+  test('the Chromium profile breaks rich items only where their joined text breaks', async () => {
+    // Same-font runs from a product page: native text keeps "community," whole,
+    // so the comma that starts the third run moves with the word before it.
+    // Run extents also come from the joined text: split words, dictionary
+    // words, a kinsoku unit and a soft hyphen before a space. At width 30 the
+    // item's own segmentation breaks inside a joined Lao word.
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = profile.inlineItemBreaks
+    profile.inlineItemBreaks = 'joined-text'
+    try {
+      for (const [parts, width] of [
+        [['Midjourney operates non-traditionally. Our features are suggested and prioritized by our ', 'community', ', projects are led by engineers and the founder, and the team is strikingly small compared to the size of our community and ambitions.'], 258],
+        [['Hello wor', 'ld again'], 85],
+        [['\u0E04\u0E27\u0E32\u0E21\u0E2A\u0E27\u0E22\u0E07', '\u0E32\u0E21\u0E02\u0E2D\u0E07\u0E18\u0E23\u0E23\u0E21\u0E0A\u0E32\u0E15\u0E34'], 50],
+        [['\u0E9E\u0EB2\u0EAA\u0EB2\u0EA5', '\u0EB2\u0EA7\u0EC0\u0E9B\u0EB1\u0E99\u0E9E\u0EB2\u0EAA\u0EB2'], 60],
+        [['\u0E9E\u0EB2\u0EAA\u0EB2\u0EA5', '\u0EB2\u0EA7\u0EC0\u0E9B\u0EB1\u0E99\u0E9E\u0EB2\u0EAA\u0EB2'], 30],
+        [['\u1019\u103C\u1014\u103A\u1019\u102C\u1018\u102C\u101E', '\u102C\u101E\u100A\u103A\u101C\u103E\u1015\u101E\u1031\u102C'], 100],
+        [['\u4E2D\u6587\u4E2D\u6587', '\u3002\u65E5\u672C\u8A9E'], 40],
+        [['foo ba', 'r\u00AD baz'], 64],
+      ] as const) {
+        const prepared = prepareRichInline(parts.map(text => ({ text, font: FONT })))
+        const richLines: string[] = []
+        walkRichInlineLineRanges(prepared, width, range => {
+          const line = materializeRichInlineLineRange(prepared, range)
+          richLines.push(line.fragments.map(fragment => (fragment.gapBefore === 0 ? '' : ' ') + fragment.text).join('').trimEnd())
+        })
+        const flat = layoutWithLines(prepareWithSegments(parts.join(''), FONT), width, LINE_HEIGHT)
+        expect(richLines).toEqual(flat.lines.map(line => line.text.trimEnd()))
+        expect(measureRichInlineStats(prepared, width).lineCount).toBe(flat.lineCount)
+      }
+    } finally {
+      profile.inlineItemBreaks = previous
+    }
+  })
+
   test('split CJK rich inline items stay inside the line width', () => {
     const maxWidth = measureWidth('中', FONT) + 1
     const prepared = prepareRichInline([
@@ -2627,6 +2884,91 @@ test('unchosen terminal soft hyphens consume source without painting a hyphen', 
   }
 })
 
+
+test('the Safari profile breaks inside rich items from each item alone', () => {
+  // The engine profile is computed once per process, so Safari runs in a child
+  // process. Letters are 8px and marks and spaces 4px. WebKit breaks inside an
+  // inline box from that box's text, and reads only the previous box's last
+  // two characters at a boundary. The Thai item's own last run moves with the
+  // continuation, where the joined text would split the word differently. The
+  // Myanmar continuation is only the vowel sign: analysis of the second item
+  // alone would join that sign to the word after it.
+  const richInlineUrl = new URL('./rich-inline.ts', import.meta.url).href
+  const script = `
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
+      vendor: 'Apple Computer, Inc.',
+    } })
+    class Context {
+      font = ''
+      measureText(text) {
+        let width = 0
+        for (const ch of text) width += ch === ' ' || /\\p{M}/u.test(ch) ? 4 : 8
+        return { width }
+      }
+    }
+    globalThis.OffscreenCanvas = class { getContext() { return new Context() } }
+    const { prepareRichInline, walkRichInlineLineRanges, materializeRichInlineLineRange } = await import(${JSON.stringify(richInlineUrl)})
+    const rows = []
+    for (const [parts, width] of [
+      [['\\u0E04\\u0E27\\u0E32\\u0E21\\u0E2A\\u0E27\\u0E22\\u0E07', '\\u0E32\\u0E21\\u0E02\\u0E2D\\u0E07'], 40],
+      [['\\u1019\\u102C\\u1018\\u102C\\u101E', '\\u102C\\u101E\\u100A\\u103A\\u101C\\u103E\\u1015'], 28],
+    ]) {
+      const prepared = prepareRichInline(parts.map(text => ({ text, font: '16px Test' })))
+      const lines = []
+      walkRichInlineLineRanges(prepared, width, range => {
+        lines.push(materializeRichInlineLineRange(prepared, range).fragments.map(fragment => fragment.text))
+      })
+      rows.push(lines)
+    }
+    console.log(JSON.stringify(rows))
+  `
+  const child = Bun.spawnSync([process.execPath, '-e', script])
+  if (child.exitCode !== 0) throw new Error(child.stderr.toString())
+  expect(JSON.parse(child.stdout.toString())).toEqual([
+    [['\u0E04\u0E27\u0E32\u0E21'], ['\u0E2A\u0E27\u0E22'], ['\u0E07', '\u0E32\u0E21'], ['\u0E02\u0E2D\u0E07']],
+    [['\u1019\u102C\u1018\u102C'], ['\u101E', '\u102C'], ['\u101E\u100A\u103A'], ['\u101C\u103E\u1015']],
+  ])
+})
+
+test('the Firefox profile keeps breaking rich items at every item boundary', () => {
+  // The engine profile is computed once per process, so Firefox runs in a child
+  // process. Letters and parentheses are 8px and spaces 4px. Gecko keeps a word
+  // together across text frames too, but its segmentation of joined text is not
+  // modeled, so the parenthesis that starts the third item can still start a
+  // line. The joined text would keep "(docs)" whole.
+  const measurementUrl = new URL('./measurement.ts', import.meta.url).href
+  const richInlineUrl = new URL('./rich-inline.ts', import.meta.url).href
+  const script = `
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0',
+      vendor: '',
+    } })
+    class Context {
+      font = ''
+      measureText(text) {
+        let width = 0
+        for (const ch of text) width += ch === ' ' ? 4 : 8
+        return { width }
+      }
+    }
+    globalThis.OffscreenCanvas = class { getContext() { return new Context() } }
+    const { getEngineProfile } = await import(${JSON.stringify(measurementUrl)})
+    const { prepareRichInline, walkRichInlineLineRanges, materializeRichInlineLineRange } = await import(${JSON.stringify(richInlineUrl)})
+    const prepared = prepareRichInline(['see (', 'docs', ') now please'].map(text => ({ text, font: '16px Test' })))
+    const lines = []
+    walkRichInlineLineRanges(prepared, 70, range => {
+      lines.push(materializeRichInlineLineRange(prepared, range).fragments.map(fragment => fragment.text))
+    })
+    console.log(JSON.stringify({ inlineItemBreaks: getEngineProfile().inlineItemBreaks, lines }))
+  `
+  const child = Bun.spawnSync([process.execPath, '-e', script])
+  if (child.exitCode !== 0) throw new Error(child.stderr.toString())
+  expect(JSON.parse(child.stdout.toString())).toEqual({
+    inlineItemBreaks: 'item-boundary',
+    lines: [['see (', 'docs'], [') now '], ['please']],
+  })
+})
 
 test('the Safari profile keeps the kerning between a word and a following space', () => {
   // The engine profile is computed once per process, so Safari runs in a child
