@@ -879,8 +879,8 @@ resumed substring is outside the intended bounded preparation model too.
 ## Corpus Lessons
 
 Short examples catch regressions; long text reveals accumulated differences.
-Current counts belong in [corpora/dashboard.json](corpora/dashboard.json), not
-here. Compare fonts after a specific text pattern exposes a problem, rather than
+Current counts belong in the `corpora/*-step10.json` snapshots, not here.
+Compare fonts after a specific text pattern exposes a problem, rather than
 running every corpus under every installed font.
 
 - **Application text:** books miss URLs, numeric expressions, emoji sequences,

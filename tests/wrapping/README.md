@@ -88,7 +88,7 @@ remain separate. `unobserved` and
 and discard partial passes. API agreement does not establish native correctness. Line comparisons include all
 serialized returned fields, so agreeing text and source positions cannot hide
 lost break metadata. Widths retain their existing numeric tolerance.
-The numeric companion covers nine environment profiles, prohibits Canvas calls
+The numeric companion covers five environment profiles, prohibits Canvas calls
 after preparation, and retains the unverified-profile TAB compatibility checks.
 Its synthetic Canvas supports letter spacing so control-bearing recipes exercise
 entry observations as well as their disabled fallback. It also checks that
@@ -208,8 +208,8 @@ Reports go under `.artifacts/wrapping/`, or `--output=/new/directory`:
 - `numeric-*.json` and `numeric-summary.json` record synthetic API checks and TAB
   compatibility. These are test results, not library performance measurements.
 
-`test:wrapping:snapshot` derives the accuracy/corpus snapshots and dashboards from
-the same run. Checked-in snapshots keep totals, provenance and mismatches; raw
+`test:wrapping:snapshot` derives the accuracy/corpus snapshots from the same run.
+Checked-in snapshots keep totals, provenance and mismatches; raw
 successful rows are available in the run artifact. `/accuracy` displays those
 snapshots. Publication requires a passing run with the numeric checks enabled;
 failed run artifacts remain available for diagnosis. Individual corpus/probe/font tools remain detailed investigations,

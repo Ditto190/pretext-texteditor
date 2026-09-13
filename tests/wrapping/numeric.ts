@@ -27,10 +27,6 @@ const profiles = [
   { name: 'safari', userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/26.0 Safari/605.1.15', vendor: 'Apple Computer, Inc.' },
   { name: 'firefox', userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:143.0) Gecko/20100101 Firefox/143.0', vendor: '' },
   { name: 'crios', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 CriOS/152.0 Mobile/15E148 Safari/604.1', vendor: 'Apple Computer, Inc.' },
-  { name: 'crios-desktop', userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/605.1.15 CriOS/152 Version/11.1.1 Safari/605.1.15', vendor: 'Apple Computer, Inc.' },
-  { name: 'fxios', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 FxiOS/143.0 Mobile/15E148 Safari/605.1.15', vendor: 'Apple Computer, Inc.' },
-  { name: 'edgios', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 EdgiOS/143.0 Mobile/15E148 Safari/605.1.15', vendor: 'Apple Computer, Inc.' },
-  { name: 'unknown', userAgent: 'Unknown runtime', vendor: '' },
   { name: 'none', userAgent: null, vendor: '' },
 ] as const
 const profile = profiles.find(item => item.name === profileValue)

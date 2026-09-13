@@ -39,7 +39,7 @@ widths with their existing numeric tolerance.
 ### Browser Accuracy And Benchmarking
 
 - `bun run test:wrapping --browser=all` — maintained accuracy, mode, spacing, discretionary and corpus checks, plus wrapping regressions
-- `bun run test:wrapping:snapshot` — refresh accuracy/corpus snapshots and both dashboards from that same run
+- `bun run test:wrapping:snapshot` — refresh accuracy/corpus snapshots from that same run
 - `bun run test:wrapping --family=pre-wrap --browser=safari` — select one family for diagnosis
 - `bun run benchmark-check --output=benchmarks/chrome.json` — refresh the Chrome benchmark snapshot; default is the median of 3 full page runs, use `--runs=1` for a quick local check
 - `bun run benchmark-check --browser=safari --output=benchmarks/safari.json` — refresh the Safari benchmark snapshot
@@ -114,15 +114,10 @@ the same observer; changing an observer is not a library accuracy improvement.
 - `bun run corpus-font-matrix` — same corpus under alternate fonts
 - `bun run corpus-font-matrix --browser=safari`
 - `bun run corpus-taxonomy` — group corpus mismatches by likely cause
-- `bun run corpus-status` — rebuild `corpora/dashboard.json`
 
 The corpus, probe, font-matrix and taxonomy tools remain detailed investigation
 tools, including source slices and alternate extractors. They do not run as a
 second maintained acceptance suite.
-
-### Status Dashboards
-
-- `bun run status-dashboard` — rebuild `status/dashboard.json`
 
 ## Useful Pages
 
@@ -132,15 +127,13 @@ second maintained acceptance suite.
 - `/corpus` — long-form corpus diagnostics
 - `/font-probe` — whole-run, isolated-grapheme, in-context and language-bound font measurements; see [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md)
 
-## Current Dashboards And Snapshots
+## Current Snapshots
 
 Use these for the current checked-in results:
 
-- [status/dashboard.json](status/dashboard.json) — machine-readable main dashboard
 - [accuracy/chrome.json](accuracy/chrome.json), [accuracy/safari.json](accuracy/safari.json), [accuracy/firefox.json](accuracy/firefox.json) — accuracy totals, environment/source fingerprints and mismatching cases; complete rows are in the run artifacts
 - [accuracy/letter-spacing.json](accuracy/letter-spacing.json) — results from the small Chrome + Safari `{ letterSpacing }` check
 - [benchmarks/chrome.json](benchmarks/chrome.json), [benchmarks/safari.json](benchmarks/safari.json) — raw benchmark snapshots
-- [corpora/dashboard.json](corpora/dashboard.json) — machine-readable corpus dashboard
 - [corpora/chrome-step10.json](corpora/chrome-step10.json), [corpora/safari-step10.json](corpora/safari-step10.json), [corpora/firefox-step10.json](corpora/firefox-step10.json) — checked-in browser `step=10` corpus sweep snapshots
 
 [PLATFORM_BUGS.md](PLATFORM_BUGS.md) lists current browser and OS issues and their workarounds. [RESEARCH.md](RESEARCH.md) keeps durable findings and rejected approaches; it is not a source for current counts or issue status.
