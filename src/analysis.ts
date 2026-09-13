@@ -37,7 +37,6 @@ export type AnalysisProfile = {
   keepAllPairModel: KeepAllPairModel
   keepZeroWidthSpaceMarkAtScanStart: boolean
   breakBeforeConditionalJapaneseStarter: boolean
-  conditionalJapaneseStarterModel: ConditionalJapaneseStarterModel
   breakAroundEastAsianQuotes: boolean
   wordInitialHyphenLetters: 'none' | 'alphabetic' | 'alphabetic-and-hebrew'
   breakHyphenAfterCollapsedTab: boolean
@@ -53,11 +52,6 @@ export type KeepAllPairModel = 'blink-general-category' | 'icu4x-classes' | 'web
 // The collapsible run that a ZWSP removes under the CSS segment break
 // transformation, per engine. WebKit never removes one.
 export type SegmentBreakRemovalRun = 'none' | 'blink' | 'gecko'
-
-// Where small kana and U+30FC (UAX #14 CJ) follow breakBeforeConditionalJapaneseStarter.
-// 'resolved': everywhere. 'keep-prolonged-sound-mark': only after EX and in
-// keep-all pairs; elsewhere small kana may start a line and U+30FC may not.
-export type ConditionalJapaneseStarterModel = 'resolved' | 'keep-prolonged-sound-mark'
 
 // Page languages whose line-break rules differ in some engine. Every other
 // language, an empty or missing one, and no document read as root.
@@ -531,10 +525,8 @@ const cjkLineStartProhibited = new Set([
 ])
 
 // Small kana and U+30FC are UAX #14 CJ, which the profile resolves: ID may start
-// a line and NS may not. Profiles on the older model keep only U+30FC, and only
-// as a whole grapheme or piece.
+// a line and NS may not.
 function keepsConditionalJapaneseStarter(text: string, profile: AnalysisProfile): boolean {
-  if (profile.conditionalJapaneseStarterModel === 'keep-prolonged-sound-mark') return text === '\u30FC'
   return !profile.breakBeforeConditionalJapaneseStarter && getLineBreakClass(text.codePointAt(0)!) === LineBreakClass.CJ
 }
 
@@ -616,11 +608,22 @@ function isLeftStickyPunctuationSegment(segment: string): boolean {
   return sawPunctuation
 }
 
+// Whether a segmenter piece cannot start a line after CJK text: its first code
+// point cannot, or it holds only such characters and left-sticky punctuation.
+// Intl.Segmenter can join a nonstarter such as U+309B or U+30FD, or small kana,
+// with the kana after it, so the first code point decides. Each code point is
+// classified once.
 function isCJKLineStartProhibitedSegment(segment: string, profile: AnalysisProfile): boolean {
+  let first = true
   for (const ch of segment) {
-    if (!prohibitsCJKLineStart(ch, profile) && !leftStickyPunctuation.has(ch)) return false
+    if (prohibitsCJKLineStart(ch, profile)) {
+      if (first) return true
+    } else if (!leftStickyPunctuation.has(ch)) {
+      return false
+    }
+    first = false
   }
-  return segment.length > 0
+  return !first
 }
 
 function isForwardStickyClusterSegment(segment: string): boolean {
@@ -1714,10 +1717,7 @@ function buildMergedSegmentation(
         hasTail &&
         tailKind === 'text' &&
         tailContainsCJK &&
-        // Intl.Segmenter can join a nonstarter such as U+309B or U+30FD, or small
-        // kana, with the kana after it, so the first code point decides.
-        (isCJKLineStartProhibitedSegment(piece.text, profile) || cjkLineStartProhibited.has(piece.text[0]!) ||
-          keepsConditionalJapaneseStarter(piece.text, profile))
+        isCJKLineStartProhibitedSegment(piece.text, profile)
       ) {
         appendToTail = true
       } else if (

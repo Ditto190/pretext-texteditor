@@ -17,6 +17,42 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Small kana and ー in Chrome and Firefox
+
+This runtime change starts from main after #249. Chrome and Firefox now resolve
+small kana and `ー` through the class-table predicate that Safari already uses.
+Chromium's ICU data classifies these conditional Japanese starters as ideographic
+for every page language. So in Chrome they may start a line after CJK text,
+including after `？` and `！`. Gecko's `line-break: auto` is strict, so in Firefox,
+and in engines Pretext doesn't recognize, small kana stay with the CJK text before
+them. The `conditionalJapaneseStarterModel` profile field lost its last use and is
+removed.
+
+The installed gate ran against #249's pin `8a54d4c`: Chrome 153 through the
+Playwright transport, Safari 26.5.2 and Firefox 155 natively, both directions.
+Chrome fixes 25 LTR and 0 RTL metrics (25 in `maintained/content-language`). Firefox
+fixes 98 and 0 (80 in `maintained/content-language`, 18 in `maintained/corpus`). Safari changes nothing. No leg
+loses a metric or has required failures, execution errors, or new API or rich
+failures.
+
+After a digit or a Latin letter, Firefox keeps small kana and `ー` attached, but
+Pretext still lets them start a line there. Firefox's emergency split of `本ーー`
+is still unmodeled.
+
+`bun test` and `bun run check` pass. The baseline advances to `b4d9fd7`, and the
+ordinary snapshots were regenerated against it. Firefox's step-10 corpus sweep now
+matches `ja-kumo-no-ito` at all 61 widths, up from 52; no other snapshot payload
+changes.
+
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 9.15 ms
+(8.80 on the parent branch) and hot `layout()` at 0.0885 ms (0.0900); Safari reads
+11.0 ms (11.0) and 0.105 ms (0.105). Long-form corpus totals read 115.0 ms in
+Chrome (119.7) and 359 ms in Safari (351). Under a counting fake canvas in Bun, Canvas
+calls per cold `prepare()` are unchanged for the Chrome profile. The Firefox profile
+adds 22 calls on `ja-kumo-no-ito` (336 to 358) for its new two-grapheme units.
+
 ## Safari small kana and ー by page language
 
 This runtime change starts from main after #248. Preparation reads `<html lang>`

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T05:19:43.754Z",
+  "generatedAt": "2026-09-13T06:12:54.796Z",
   "sources": {
     "accuracy": {
       "chrome": "accuracy/chrome.json",
@@ -170,7 +170,7 @@
         "widthCount": 61
       },
       "firefoxStep10": {
-        "exactCount": 52,
+        "exactCount": 61,
         "widthCount": 61
       },
       "notes": "second Japanese canary; same broad one-line positive edge-fit field as `羅生門`, but smaller"

@@ -557,7 +557,6 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, keepAllPairModel: 'icu4x-classes' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: false,
-      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'none' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -577,7 +576,6 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -616,7 +614,6 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: true, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: true, breakAroundEastAsianQuotes: true,
-      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'blink' as const, breakOnlyAfterNextLine: false,
     }
@@ -636,7 +633,6 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -714,7 +710,6 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -751,7 +746,6 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'webkit-spaces' as const,
       keepZeroWidthSpaceMarkAtScanStart: true,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      conditionalJapaneseStarterModel: 'resolved' as const,
       wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: true,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: true,
     }
@@ -1562,6 +1556,30 @@ describe('prepare invariants', () => {
     expect(prepareWithSegments('\u6587\u30FD\u30A2', FONT).segments).toEqual(['\u6587\u30FD', '\u30A2'])
   })
 
+  test('small kana and U+30FC start a line only where the profile resolves them to ID', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = { ...profile }
+    const segments = (text: string, wordBreak: 'normal' | 'keep-all' = 'normal') =>
+      prepareWithSegments(text, FONT, { wordBreak }).segments.join('|')
+    const texts = ['\u65E5\u672C\u30A1\u30A2', '\u65E5\u672C\u30FC\u30FC', '\u307F\u305D\u30E9\u30FC\u30E1\u30F3', '\u65E5\u672C\uFF01\u30FC\u30FC']
+    try {
+      // ICU's normal rules resolve CJ to ID, as Chromium does on every page, so both
+      // may start a line after ideographs, kana and EX.
+      profile.breakBeforeConditionalJapaneseStarter = true
+      expect(texts.map(text => segments(text))).toEqual(['\u65E5|\u672C|\u30A1|\u30A2', '\u65E5|\u672C|\u30FC|\u30FC', '\u307F|\u305D|\u30E9|\u30FC|\u30E1|\u30F3', '\u65E5|\u672C\uFF01|\u30FC|\u30FC'])
+      // A closing bracket (CL) keeps NS after it but not ID (LB16).
+      expect(segments('\u65E5\u672C\u300D\u30A1\u30A2', 'keep-all')).toBe('\u65E5\u672C\u300D|\u30A1\u30A2')
+      // Strict rules resolve CJ to NS, as Gecko does on every page, so neither may.
+      profile.breakBeforeConditionalJapaneseStarter = false
+      expect(texts.map(text => segments(text))).toEqual(['\u65E5|\u672C\u30A1|\u30A2', '\u65E5|\u672C\u30FC\u30FC', '\u307F|\u305D|\u30E9\u30FC|\u30E1|\u30F3', '\u65E5|\u672C\uFF01\u30FC\u30FC'])
+      profile.keepAllPairModel = 'icu4x-classes'
+      expect(segments('\u65E5\u672C\u300D\u30A1\u30A2', 'keep-all')).toBe('\u65E5\u672C\u300D\u30A1\u30A2')
+    } finally {
+      Object.assign(profile, previous)
+    }
+  })
+
   test('keep-all runs continue after letters that cannot start a line', async () => {
     const keepAll = { wordBreak: 'keep-all' } as const
     // Blink keeps any pair of letters, including U+3005, U+303C, U+3035, U+309D,
@@ -1774,17 +1792,20 @@ describe('prepare invariants', () => {
   test('only the Safari profile follows the page language, for Japanese and Korean pages', async () => {
     const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
     try {
-      for (const [index, userAgent, model, languages] of [
-        [0, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36', 'keep-prolonged-sound-mark', []],
-        [1, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0', 'keep-prolonged-sound-mark', []],
-        [2, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15', 'resolved', ['ja', 'ko']],
+      // ICU's normal rules resolve CJ to ID, and Chromium opens them on every page.
+      // Gecko's auto and Apple ICU's other rules are strict, where CJ is NS.
+      for (const [index, userAgent, normalRules, languages] of [
+        [0, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36', true, []],
+        [1, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0', false, []],
+        [2, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15', false, ['ja', 'ko']],
       ] as const) {
         Object.defineProperty(globalThis, 'navigator', { value: { userAgent }, configurable: true, writable: true })
         const specifier = `./measurement.ts?page-language-${index}`
         const fresh = await import(specifier) as MeasurementModule
         const root = fresh.getEngineProfile()
         const differing = (['ja', 'ko', 'zh'] as const).filter(language => fresh.getEngineProfile(language) !== root)
-        expect({ userAgent, model: root.conditionalJapaneseStarterModel, differing }).toEqual({ userAgent, model, differing: [...languages] })
+        expect({ userAgent, normalRules: root.breakBeforeConditionalJapaneseStarter, differing })
+          .toEqual({ userAgent, normalRules, differing: [...languages] })
         // Apple ICU opens its normal line rules for ja and ko, where CJ is ID.
         for (const language of languages) {
           expect(fresh.getEngineProfile(language)).toEqual({ ...root, breakBeforeConditionalJapaneseStarter: true })

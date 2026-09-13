@@ -78,10 +78,8 @@ or symbol, so an iteration mark such as `々` (NS) stays after `！`, while nume
 affixes and opening punctuation break; other punctuation keeps its existing
 attachment. Small kana and `ー` (CJ) break after EX only under ICU's normal
 rules, which Chrome uses for `line-break: auto` and Safari on `ja` and `ko`
-pages. Safari's other rules and Firefox's are strict and keep them. Elsewhere
-the Chrome profile still keeps `ー` from starting a line, so Chrome's break
-between the marks in `日？ーー` is not modeled; see Content Language. Safari's
-keep-all still breaks only at spaces. U+061B
+pages. Safari's other rules and Firefox's are strict and keep them; see Content
+Language. Safari's keep-all still breaks only at spaces. U+061B
 ARABIC SEMICOLON is EX too, while `:`, `.` and U+060C are IS and keep a
 following Arabic word (LB29). Firefox also breaks after BA such as `|` before a
 letter, which symbol chains do not model.
@@ -803,7 +801,6 @@ Some differences from Pretext don't depend on the language:
 - No browser treats curly single quotes around Latin text as brackets
   (`中` / `文‘abc’中` / `文`), where Pretext does.
 - Firefox doesn't treat double quotes as brackets either, where Pretext does.
-- Pretext's Firefox profile lets small kana start a line.
 
 The harness still turns newlines into spaces before comparing, so the newline
 rows show Firefox's removal only in native rectangles.
@@ -812,21 +809,28 @@ Preparation reads `<html lang>` once, for both break rules and measurement, and
 resolves the primary subtag, ASCII case-insensitively, to `ja`, `ko`, `zh` or
 root. An empty or missing language, or no document, is root. Each engine keeps
 one profile per language, created once, and a language whose rules match root
-shares that object. Only the WebKit profile varies so far: small kana and `ー`
-(CJ in the generated class table) resolve to ID on `ja` and `ko` pages, so they
-may start a line, and to NS elsewhere, so they stay with CJK text before them. It
-applies that resolution in CJK units, to a segmenter piece that starts with CJ
-after CJK text, and after EX. After a digit or Latin letter, as in `約3ヶ月` or
-`日本abcァア`, the profile still lets them start a line on every page. ICU's
-strict rules never break before NS (LB21), so Safari likely keeps them on other
-pages, but the family's digit and Latin shapes have no installed observation
-yet. The Blink and Gecko profiles still resolve CJ only after
-EX and in keep-all pairs; elsewhere small kana start a line and `ー` does not. A
-prepared handle keeps the rules it was prepared under, like its widths. Nothing
-derived from break rules is cached across preparations. The attribute read costs
-about 3-16ns in headless WebKit and Chromium, with no style or layout work. On
-other pages Safari still splits `本ーー` in an emergency, where Pretext keeps a
-kinsoku unit whole.
+shares that object. Every profile resolves small kana and `ー` (CJ in the
+generated class table) with one field: to ID, so they may start a line, or to NS,
+so they stay with CJK text before them. Profiles apply it in CJK units, to a
+segmenter piece that starts with CJ after CJK text, after EX, and in keep-all
+pairs. Only the WebKit profile varies so far: ID on `ja` and `ko` pages and NS
+elsewhere. The Blink profile resolves ID on every page. Chromium's ICU data maps
+`line` to `line_normal.brk` for root and `ja` and to `line_normal_cj.brk` for
+`zh` and `zh_Hant`, and both put CJ in ID. So `ー` starts a line after `？` and
+`！` exactly as small kana do, and between the marks in `日？ーー`, as installed
+Chrome shows. The Gecko profile resolves NS, since Gecko's auto is strict, and so
+do engines Pretext doesn't recognize, following ICU's root rules. The family's
+three digit and Latin shapes, observed later with the same browsers, split the
+same way: after a digit or Latin letter, Chrome lets small kana and `ー` start a
+line on every page (`約3` / `ヶ` / `月`, `日本abc` / `ァア`), Safari only on `ja`
+and `ko` pages, and Firefox never (`約` / `3ヶ` / `月`, `日本` / `abcァア`,
+`日本` / `abcーー`), as ICU's strict rules never break before NS (LB21). The NS
+profiles still let them start a line there, because only CJK text takes a
+following piece that starts with CJ. A prepared handle keeps the rules it was
+prepared under, like its widths. Nothing derived from break rules is cached
+across preparations. The attribute read costs about 3-16ns in headless WebKit
+and Chromium, with no style or layout work. Firefox, and Safari on other pages,
+still split `本ーー` in an emergency, where Pretext keeps a kinsoku unit whole.
 
 ## Fonts And Other Measurement Engines
 

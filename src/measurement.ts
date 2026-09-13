@@ -1,7 +1,6 @@
 import {
   getSharedGraphemeSegmenter,
   type BreakLanguage,
-  type ConditionalJapaneseStarterModel,
   type KeepAllPairModel,
   type SegmentBreakRemovalRun,
 } from './analysis.js'
@@ -45,16 +44,13 @@ export type EngineProfile = {
   // follows a mandatory break. Gecko keeps ZWSP with any following cluster
   // extender in every position; that granularity is not modeled.
   keepZeroWidthSpaceMarkAtScanStart: boolean
-  // Small kana and U+30FC are UAX #14 CJ. ICU's normal rules resolve CJ to ID and
-  // its strict rules to NS. Chromium's root rules are the normal rules. Apple ICU
-  // opens the normal rules for Japanese and Korean pages and strict rules for
-  // others, and Gecko's auto is strict.
+  // Small kana and U+30FC are UAX #14 CJ. ICU's normal rules resolve CJ to ID, so
+  // both may start a line, and its strict rules to NS, so neither may. Chromium's
+  // ICU data opens normal rules for every language, `line_normal_cj` for Chinese.
+  // Apple ICU opens the normal rules for Japanese and Korean pages and strict
+  // rules for others. Gecko's auto is strict, as are ICU's root rules, which
+  // engines Pretext doesn't recognize follow.
   breakBeforeConditionalJapaneseStarter: boolean
-  // The WebKit profile follows that resolution everywhere. The Blink and Gecko
-  // profiles still let small kana start a line and keep U+30FC from starting one
-  // outside EX and keep-all pairs, which matches neither engine, until installed
-  // runs gate the resolved model for them.
-  conditionalJapaneseStarterModel: ConditionalJapaneseStarterModel
   // ICU's line rules break before an opening quotation mark such as U+201C and
   // after a closing one such as U+201D between East Asian characters (UAX #14
   // LB19a), identically in ICU 77 and 78. Gecko's ICU4X rules follow Unicode
@@ -298,7 +294,6 @@ export function getEngineProfile(language: BreakLanguage = 'root'): EngineProfil
     keepAllPairModel: engine === 'gecko' ? 'icu4x-classes' : engine === 'webkit' ? 'webkit-spaces' : 'blink-general-category',
     keepZeroWidthSpaceMarkAtScanStart: engine === 'webkit',
     breakBeforeConditionalJapaneseStarter: engine === 'blink',
-    conditionalJapaneseStarterModel: engine === 'webkit' ? 'resolved' : 'keep-prolonged-sound-mark',
     breakAroundEastAsianQuotes: engine !== 'gecko',
     wordInitialHyphenLetters: engine === 'gecko' ? 'none' : 'alphabetic-and-hebrew',
     breakHyphenAfterCollapsedTab: engine === 'webkit',
