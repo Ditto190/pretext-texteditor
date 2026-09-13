@@ -556,7 +556,8 @@ describe('boundary-policy regressions', () => {
     const profile = {
       geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, keepAllPairModel: 'icu4x-classes' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: false,      wordInitialHyphenLetters: 'none' as const, breakHyphenAfterCollapsedTab: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: false,
+      wordInitialHyphenLetters: 'none' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     for (const text of ['####((aabb', '""""[[aabb', '−+x«value»!']) {
@@ -574,7 +575,8 @@ describe('boundary-policy regressions', () => {
     const profile = {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
+      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     // The ASCII pair tables keep '!' with a following ASCII letter, and break
@@ -611,7 +613,8 @@ describe('boundary-policy regressions', () => {
     const profile = {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: true, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: true, breakAroundEastAsianQuotes: true,      wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: false,
+      breakBeforeConditionalJapaneseStarter: true, breakAroundEastAsianQuotes: true,
+      wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'blink' as const, breakOnlyAfterNextLine: false,
     }
     for (const [text, expected] of [
@@ -629,7 +632,8 @@ describe('boundary-policy regressions', () => {
     const profile = {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
+      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     // UAX #14 LB8a and LB20a. A ZWJ after a space belongs to that space's
@@ -705,7 +709,8 @@ describe('boundary-policy regressions', () => {
     const profile = {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
+      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
+      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
     const Segmenter = Intl.Segmenter
@@ -1549,6 +1554,30 @@ describe('prepare invariants', () => {
     }
     // The word segmenter can join a nonstarter with the kana after it.
     expect(prepareWithSegments('\u6587\u30FD\u30A2', FONT).segments).toEqual(['\u6587\u30FD', '\u30A2'])
+  })
+
+  test('small kana and U+30FC start a line only where the profile resolves them to ID', async () => {
+    const { getEngineProfile } = await import('./measurement.ts')
+    const profile = getEngineProfile()
+    const previous = { ...profile }
+    const segments = (text: string, wordBreak: 'normal' | 'keep-all' = 'normal') =>
+      prepareWithSegments(text, FONT, { wordBreak }).segments.join('|')
+    const texts = ['\u65E5\u672C\u30A1\u30A2', '\u65E5\u672C\u30FC\u30FC', '\u307F\u305D\u30E9\u30FC\u30E1\u30F3', '\u65E5\u672C\uFF01\u30FC\u30FC']
+    try {
+      // ICU's normal rules resolve CJ to ID, as Chromium does on every page, so both
+      // may start a line after ideographs, kana and EX.
+      profile.breakBeforeConditionalJapaneseStarter = true
+      expect(texts.map(text => segments(text))).toEqual(['\u65E5|\u672C|\u30A1|\u30A2', '\u65E5|\u672C|\u30FC|\u30FC', '\u307F|\u305D|\u30E9|\u30FC|\u30E1|\u30F3', '\u65E5|\u672C\uFF01|\u30FC|\u30FC'])
+      // A closing bracket (CL) keeps NS after it but not ID (LB16).
+      expect(segments('\u65E5\u672C\u300D\u30A1\u30A2', 'keep-all')).toBe('\u65E5\u672C\u300D|\u30A1\u30A2')
+      // Strict rules resolve CJ to NS, as Gecko does on every page, so neither may.
+      profile.breakBeforeConditionalJapaneseStarter = false
+      expect(texts.map(text => segments(text))).toEqual(['\u65E5|\u672C\u30A1|\u30A2', '\u65E5|\u672C\u30FC\u30FC', '\u307F|\u305D|\u30E9\u30FC|\u30E1|\u30F3', '\u65E5|\u672C\uFF01\u30FC\u30FC'])
+      profile.keepAllPairModel = 'icu4x-classes'
+      expect(segments('\u65E5\u672C\u300D\u30A1\u30A2', 'keep-all')).toBe('\u65E5\u672C\u300D\u30A1\u30A2')
+    } finally {
+      Object.assign(profile, previous)
+    }
   })
 
   test('keep-all runs continue after letters that cannot start a line', async () => {
@@ -3157,89 +3186,6 @@ test('the Safari profile lets small kana and U+30FC start a line only on Japanes
   const root = { segments: ['日|本ァ|ア', '日|本ーー', 'わ|かっ|て'], readsPerPrepare: 1, rich: ['日', '本ァ', 'ア'] }
   const normalRules = { segments: ['日|本|ァ|ア', '日|本|ー|ー', 'わ|か|っ|て'], readsPerPrepare: 1, rich: ['日本', 'ァア'] }
   expect(JSON.parse(child.stdout.toString())).toEqual({ '': root, en: root, 'zh-Hant': root, ja: normalRules, 'ko-KR': normalRules })
-})
-
-test('the Chrome and Firefox profiles resolve small kana and U+30FC the same on every page', () => {
-  // Each engine runs in a child process, since the engine profile is computed
-  // once per process. Every character is 16px, and each width fits the text
-  // before the tested boundary plus 0.1px, as in the content-language family.
-  const layoutUrl = new URL('./layout.ts', import.meta.url).href
-  const richInlineUrl = new URL('./rich-inline.ts', import.meta.url).href
-  const run = (userAgent: string): unknown => {
-    const script = `
-      Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent: ${JSON.stringify(userAgent)} } })
-      class Context {
-        font = ''
-        measureText(text) {
-          return { width: [...text].length * 16 }
-        }
-      }
-      globalThis.OffscreenCanvas = class { getContext() { return new Context() } }
-      let lang = ''
-      globalThis.document = { documentElement: { get lang() { return lang } } }
-      const { prepare, prepareWithSegments, layout, layoutWithLines } = await import(${JSON.stringify(layoutUrl)})
-      const { prepareRichInline, walkRichInlineLineRanges, materializeRichInlineLineRange } = await import(${JSON.stringify(richInlineUrl)})
-      const font = '16px Test'
-      const rows = {}
-      for (const language of ['en', 'ja']) {
-        lang = language
-        const row = {}
-        for (const [text, prefix] of [['日本ァア', 2], ['日本ーー', 2], ['わかって', 2], ['みそラーメン', 3], ['日本！ァア', 3], ['日本！ーー', 3]]) {
-          const width = prefix * 16 + 0.1
-          const prepared = prepareWithSegments(text, font)
-          const lines = layoutWithLines(prepared, width, 20).lines.map(line => line.text).join('/')
-          const preWrap = layoutWithLines(prepareWithSegments(text, font, { whiteSpace: 'pre-wrap' }), width, 20).lines.map(line => line.text).join('/')
-          const rich = prepareRichInline([{ text, font }])
-          const richLines = []
-          walkRichInlineLineRanges(rich, width, range => {
-            richLines.push(materializeRichInlineLineRange(rich, range).fragments.map(fragment => fragment.text).join(''))
-          })
-          row[text] = [prepared.segments.join('|'), lines, preWrap, richLines.join('/'), layout(prepare(text, font), width, 20).lineCount]
-        }
-        for (const text of ['日本」ァア', '日本」ーー']) {
-          row['keep-all ' + text] = prepareWithSegments(text, font, { wordBreak: 'keep-all' }).segments.join('|')
-        }
-        rows[language] = row
-      }
-      console.log(JSON.stringify(rows))
-    `
-    const child = Bun.spawnSync([process.execPath, '-e', script])
-    if (child.exitCode !== 0) throw new Error(child.stderr.toString())
-    return JSON.parse(child.stdout.toString())
-  }
-  // Pre-wrap, rich-inline and the opaque handle give the same lines.
-  const row = (segments: string, lines: string) => [segments, lines, lines, lines, lines.split('/').length]
-  // Chromium opens ICU's normal rules on every page, where CJ is ID, so small kana
-  // and U+30FC may start a line after ideographs, kana and EX alike. Installed
-  // Chrome 153 gives these lines on en, ja, ko, zh and zh-Hant pages.
-  const blink = {
-    '日本ァア': row('日|本|ァ|ア', '日本/ァア'),
-    '日本ーー': row('日|本|ー|ー', '日本/ーー'),
-    'わかって': row('わ|か|っ|て', 'わか/って'),
-    'みそラーメン': row('み|そ|ラ|ー|メ|ン', 'みそラ/ーメン'),
-    '日本！ァア': row('日|本！|ァ|ア', '日本！/ァア'),
-    '日本！ーー': row('日|本！|ー|ー', '日本！/ーー'),
-    // A closing bracket (CL) keeps NS after it but not ID (LB16).
-    'keep-all 日本」ァア': '日本」|ァア',
-    'keep-all 日本」ーー': '日本」|ーー',
-  }
-  // Gecko's auto is strict, where CJ is NS, so neither may start a line. Installed
-  // Firefox 155 gives these lines on every page, except that it also splits
-  // 本ーー and 本！ーー in an emergency, where Pretext keeps a kinsoku unit whole.
-  const gecko = {
-    '日本ァア': row('日|本ァ|ア', '日/本ァ/ア'),
-    '日本ーー': row('日|本ーー', '日/本ーー'),
-    'わかって': row('わ|かっ|て', 'わ/かっ/て'),
-    'みそラーメン': row('み|そ|ラー|メ|ン', 'みそ/ラーメ/ン'),
-    '日本！ァア': row('日|本！ァ|ア', '日/本！ァ/ア'),
-    '日本！ーー': row('日|本！ーー', '日/本！ーー'),
-    'keep-all 日本」ァア': '日本」ァア',
-    'keep-all 日本」ーー': '日本」ーー',
-  }
-  expect(run('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'))
-    .toEqual({ en: blink, ja: blink })
-  expect(run('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0'))
-    .toEqual({ en: gecko, ja: gecko })
 })
 
 describe('bidi paragraph boundaries', () => {

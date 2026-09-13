@@ -819,15 +819,18 @@ elsewhere. The Blink profile resolves ID on every page. Chromium's ICU data maps
 `zh` and `zh_Hant`, and both put CJ in ID. So `ー` starts a line after `？` and
 `！` exactly as small kana do, and between the marks in `日？ーー`, as installed
 Chrome shows. The Gecko profile resolves NS, since Gecko's auto is strict, and so
-do engines Pretext doesn't recognize, following ICU's root rules. After a digit
-or Latin letter, as in `約3ヶ月` or `日本abcァア`, the NS profiles still let them
-start a line. ICU's strict rules never break before NS (LB21), so Safari on other
-pages and Firefox likely keep them, but the family's digit and Latin shapes have
-no installed observation yet. A prepared handle keeps the rules it was prepared
-under, like its widths. Nothing derived from break rules is cached across
-preparations. The attribute read costs about 3-16ns in headless WebKit and
-Chromium, with no style or layout work. Firefox, and Safari on other pages, still
-split `本ーー` in an emergency, where Pretext keeps a kinsoku unit whole.
+do engines Pretext doesn't recognize, following ICU's root rules. The family's
+three digit and Latin shapes, observed later with the same browsers, split the
+same way: after a digit or Latin letter, Chrome lets small kana and `ー` start a
+line on every page (`約3` / `ヶ` / `月`, `日本abc` / `ァア`), Safari only on `ja`
+and `ko` pages, and Firefox never (`約` / `3ヶ` / `月`, `日本` / `abcァア`,
+`日本` / `abcーー`), as ICU's strict rules never break before NS (LB21). The NS
+profiles still let them start a line there, because only CJK text takes a
+following piece that starts with CJ. A prepared handle keeps the rules it was
+prepared under, like its widths. Nothing derived from break rules is cached
+across preparations. The attribute read costs about 3-16ns in headless WebKit
+and Chromium, with no style or layout work. Firefox, and Safari on other pages,
+still split `本ーー` in an emergency, where Pretext keeps a kinsoku unit whole.
 
 ## Fonts And Other Measurement Engines
 
