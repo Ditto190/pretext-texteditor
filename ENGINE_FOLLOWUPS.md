@@ -24,13 +24,15 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - After a space, browsers break between the space and a following extender cluster, such as a skin-tone modifier plus ZWJ. Pretext folds the extender into the space.
 - Split numeric runs after en and em dashes (`10–20`, `1990—2000`), as it already does for `-`, so lines can break after the dash.
 - Safari and Firefox keep `n2-1o(r)` together where Pretext breaks after the hyphen. Trace their rules for a hyphen between a digit and a letter before deciding whether real text needs a rule; realistic items such as `v2` followed by `-1 or later` already match.
-- #225: keep digits together across `:` (LB25), and attach a full-width comma to preceding digits (`00:00:00，`).
+- After Latin letters, Pretext still allows a break before closing punctuation (CL, CP, EX, IS) and NS such as `，`, `」` or `：`, which UAX #14 forbids (LB13, LB21). Numeric runs already keep it. #245 tried attaching them: it creates kinsoku units that get no emergency breaks, so it lost 42 Chrome, 52 Safari and 52 Firefox LTR rows, mostly shapes like `739x「value」! end`. Land it after emergency breaks inside kinsoku clusters.
+- A time inside brackets such as `(10:30)，b` still allows a break before the full-width comma, because the bracketed run doesn't count as a numeric run.
+- Firefox keeps a date such as `2025-08-01` whole, where Chrome and Safari break after its hyphens. Pretext splits it for every engine, so #225's first reproduction is only observed in Firefox.
 - Treat U+2000-U+200A and U+205F as break-after spaces that count their width: break after the last one in a run, never before (LB21). Narrow widths need the emergency permission below first.
 - An opening bracket after emoji or digits should attach to the text that follows it. Chrome and Safari never end an emergency line with `(`; Firefox does.
 - On a line that starts mid-word, Blink offers no dictionary break before the first ordinary opportunity, so soft-hyphen retreat must not target one there.
 - If benchmarks show a cost, add a fast path for a joiner right after a space, which the grapheme rules make unconditional.
 - Hang U+3000 at a line end as Blink and Gecko do, only where a break follows the run, and keep it on the fast path. Removing Chrome's closing-bracket carry exposes this after closing brackets.
-- Allow emergency breaks inside kinsoku clusters that don't fit, such as `漢。字` in narrow boxes, together with a forward carry that keeps combining marks with their base.
+- Allow emergency breaks inside kinsoku clusters that don't fit, such as `漢。字` in narrow boxes, together with a forward carry that keeps combining marks with their base. All three engines break inside them under `overflow-wrap: break-word`. Stacked on the closing-punctuation attachment above, it fixed 624 Chrome, 1,197 Safari and 993 Firefox LTR metrics and lost 510, 108 and 200. Chrome's losses are mostly raw-context rows with controls before openers, U+3000 hang rows and mark rows, which main passes only while those errors cancel out.
 - Attribute the extra Chrome losses when kinsoku emergency breaks are stacked on #234, after `〞 〟 ］ ｝`.
 - Opener runs create false CJK unit boundaries (`「「|tail`).
 - CJK unit construction and emergency breaks must never split a grapheme, such as a Prepend character before U+3000 or a space plus a joiner.
@@ -80,7 +82,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Safari's Canvas gives isolated and fallback-font combining marks an advance they don't have in context.
 - Chrome's Canvas gives VS16 about 4.9px that the DOM doesn't, and one Safari Myanmar corpus row diverges at a cluster boundary.
 - Skip letter spacing inside cursive scripts, per engine. Chrome versions before 149 lack the rule or apply it differently, so choose between a README limitation and a version gate.
-- Arabic letters joined across a soft hyphen are measured at isolated widths. The Chrome widths are recoverable for joining fonts. Study Firefox's joined advances without the DOM (approved), and document them as a limitation if no Canvas recipe works; several Firefox halves of planned rules wait on it.
+- Arabic letters joined across a soft hyphen are measured at isolated widths. The Chrome widths are recoverable for joining fonts. In installed Firefox, per-grapheme ZWJ forms recover the joined advances for Noto Naskh Arabic and for the system Arabic font behind Latin font stacks, with no false accepts from the pair additivity gate; Amiri and Noto Nastaliq Urdu stay out of reach (FONT_DIAGNOSTICS.md). Prototype the gated recipe for the Gecko profile together with the Firefox halves of the planned rules that wait on it.
 - Chrome and Firefox shape and kern across rich-inline item boundaries, so per-item widths miss by about 1px there; Safari doesn't. Choose between a prepare-time boundary correction for Blink and Gecko and a README limitation.
 
 ## Per-browser gaps

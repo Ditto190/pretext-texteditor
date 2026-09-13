@@ -72,6 +72,40 @@ new context measured `ב(` at 24.50px (DOM 24.52px), but 19.63px after measuring
 `(` alone first. Widths in one context can depend on what it measured earlier;
 see [RESEARCH.md](RESEARCH.md) for why the context survives `clearCache()`.
 
+## Firefox joined Arabic advances
+
+Pretext measures Arabic letters on each side of a soft hyphen or an emergency
+break at isolated widths. Gecko fits a line from the advances of the whole shaped
+word and does not reshape at a break, so a joined letter keeps the glyph the font
+chose for its neighbour. A Canvas total gives one equation per string, so no
+recipe can split a word for every font.
+
+`bun run probe:arabic-joining --browser=firefox --output=<dir>` compares DOM
+`Range` advances inside the intact word, and native soft-hyphen and emergency
+thresholds, with Canvas recipes. On September 12, 2026, installed Firefox 155 at
+DPR 2 measured 200 words from each Arabic and Urdu corpus plus witnesses, 1,808
+rows per font setup. Widths pass within 1/60px. A false accept is a partition the
+pair additivity gate admitted whose widths did not match.
+
+| Font setup | Isolated widths | Per-grapheme ZWJ forms | Prefix + ZWJ |
+| --- | --- | --- | --- |
+| `16px "Noto Naskh Arabic"` | 144 pass / 1,432 fail | 1,458 / 118, 0 false accepts | 1,098 / 50, 0 false accepts |
+| `16px Arial` (system Arabic fallback) | 300 / 1,276 | 1,462 / 114, 0 false accepts | 1,104 / 44, 0 false accepts |
+| `16px "Geeza Pro"` | 316 / 1,260 | 1,432 / 144, 42 false accepts | 1,095 / 53, 21 false accepts |
+| `16px Georgia` (fallback) | 316 / 1,260 | 1,054 / 522, 10 false accepts | 936 / 212, 10 false accepts |
+| `16px Amiri` | 82 / 1,494 | 746 / 830, 0 false accepts | 702 / 446, 20 false accepts |
+| `16px "Noto Nastaliq Urdu"` | 94 / 1,482 | 438 / 1,138, 12 false accepts | 474 / 674, 66 false accepts |
+
+The 24px setups gave the same picture. The ZWJ forms need an rtl canvas: the same
+queries in an ltr canvas failed more than half the widths. Across the corpus
+words, per-grapheme forms took 66 distinct Canvas queries, prefixes 147 and the
+gate 243, against 45 for isolated widths.
+
+Per-grapheme ZWJ forms recover the joined advances for Noto Naskh Arabic and for
+the system Arabic font behind Latin font stacks. Amiri and Noto Nastaliq Urdu are
+out of reach: most widths still fail, or the gate admits wrong partitions. A
+Firefox rule therefore needs the gate and a fallback to isolated widths per font.
+
 These probes did not retest the Retina emoji or `system-ui` bugs in
 [PLATFORM_BUGS.md](PLATFORM_BUGS.md). The September 3 Firefox capture used DPR 1;
 do not use those results to judge Retina-specific bugs.

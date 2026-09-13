@@ -72,6 +72,14 @@ test('boundary, rich and flat #210 reproductions are required', () => {
     { text: '-0.475', font: '16px Arial, sans-serif', width: 40.1, lineHeight: 20, whiteSpace: 'normal' },
     { text: '≥-100nA', font: '16px Arial, sans-serif', width: 48.1, lineHeight: 20, whiteSpace: 'normal' },
     { text: '(试验前-试验后)/试验前', font: '20px Arial', width: 32.1, lineHeight: 28, whiteSpace: 'pre-wrap' },
+    ...(['normal', 'pre-wrap'] as const).flatMap(whiteSpace => ([
+      ['2025-08-01 00:00:00，2025-08-01 00:00:00', 155],
+      ['a 00:00:00，b', 84],
+      ['2025-08-01 00:00:00', 88.1],
+      ['xxxx，b', 36],
+      ['a 00:00:00', 48.1],
+      ['00:00:00，2025', 72.1],
+    ] as const).map(([text, width]) => ({ text, font: '16px "Times New Roman", SimSun, "Songti SC"', width, lineHeight: 21, whiteSpace }))),
   ])
   for (const input of exact) {
     expect(input.context).toEqual({ kind: 'installed', lang: 'en' })
