@@ -49,7 +49,8 @@ fixed 624 Chrome, 1,197 Safari and 993 Firefox LTR metrics, but lost 510, 108 an
 hanging and controls cancel out. ENGINE_FOLLOWUPS.md keeps both.
 
 `bun test` and `bun run check` pass. The baseline advances to `9270621`, and the
-ordinary snapshots were regenerated against it.
+ordinary snapshots were regenerated against it; only provenance and environment
+records change.
 
 ## Keep-all runs from generated line-break classes
 
