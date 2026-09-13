@@ -35,6 +35,13 @@ execution errors or new API or rich failures. `bun test` and `bun run check`
 pass. The baseline advances to `96f4673`, and the ordinary snapshots were
 regenerated against it.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 8.75 ms
+(9.15 on the parent branch) and hot `layout()` at 0.0895 ms (0.0895); Safari reads
+11.0 ms (11.5) and 0.105 ms (0.105). Long-form corpus totals read 122.0 ms in
+Chrome (121.4) and 353 ms in Safari (351).
+
 ## Numeric runs with a closing full-width comma
 
 This runtime change starts from main after #243. A numeric run now keeps the
