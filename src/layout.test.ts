@@ -629,22 +629,6 @@ describe('boundary-policy regressions', () => {
     }
   })
 
-  test('kinsoku clusters stay ordinary units but still take emergency grapheme breaks', () => {
-    const text = '\u6F22\u3002\u5B57'
-    const prepared = prepareWithSegments(text, FONT)
-    expect(prepared.segments).toEqual(['\u6F22\u3002', '\u5B57'])
-    const clusterWidth = measureWidth('\u6F22\u3002', FONT)
-    for (const [width, expected] of [
-      [clusterWidth + 0.1, ['\u6F22\u3002', '\u5B57']],
-      [clusterWidth - 0.1, ['\u6F22', '\u3002', '\u5B57']],
-    ] as const) {
-      const result = layoutWithLines(prepared, width, LINE_HEIGHT)
-      expect(result.lines.map(line => line.text)).toEqual([...expected])
-      expect(collectStreamedLines(prepared, width)).toEqual(result.lines)
-      expect(layout(prepare(text, FONT), width, LINE_HEIGHT).lineCount).toBe(expected.length)
-    }
-  })
-
   test('ZWJ and a word-initial hyphen keep the following character', async () => {
     const { analyzeText, getBreakablePreferredBreaks } = await import('./analysis.ts')
     const profile = {

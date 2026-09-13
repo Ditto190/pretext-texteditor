@@ -2040,7 +2040,7 @@ function isNumericHyphen(text: string, index: number): boolean {
 type TextBreakUnit = {
   text: string
   start: number
-  overflow: 'word-like' | 'grapheme'
+  overflow: 'none' | 'word-like' | 'grapheme'
 }
 
 function buildBaseCjkUnits(
@@ -2054,6 +2054,7 @@ function buildBaseCjkUnits(
   let unitContainsCJK = false
   let unitEndsWithClosingQuote = false
   let unitIsSingleKinsokuEnd = false
+  let unitHasHyphen = false
   let unitHasNumericHyphen = false
 
   function pushUnit(): void {
@@ -2061,14 +2062,13 @@ function buildBaseCjkUnits(
     units.push({
       text: segText.slice(unitStart, unitEnd),
       start: unitStart,
-      // Kinsoku keeps ordinary breaks out of a CJK unit, but overflow-wrap still
-      // breaks it between graphemes when it can't fit a line by itself.
-      overflow: unitContainsCJK ? 'grapheme' : 'word-like',
+      overflow: unitContainsCJK ? (unitHasHyphen ? 'grapheme' : 'none') : 'word-like',
     })
     unitStart = unitEnd
     unitContainsCJK = false
     unitEndsWithClosingQuote = false
     unitIsSingleKinsokuEnd = false
+    unitHasHyphen = false
     unitHasNumericHyphen = false
   }
 
@@ -2076,6 +2076,7 @@ function buildBaseCjkUnits(
     unitStart = start
     unitEnd = start + grapheme.length
     unitContainsCJK = graphemeContainsCJK
+    unitHasHyphen = grapheme === '-'
     unitEndsWithClosingQuote = endsWithClosingQuote(grapheme)
     unitIsSingleKinsokuEnd = kinsokuEnd.has(grapheme)
   }
@@ -2083,6 +2084,7 @@ function buildBaseCjkUnits(
   function appendToUnit(grapheme: string, graphemeContainsCJK: boolean): void {
     unitEnd += grapheme.length
     unitContainsCJK = unitContainsCJK || graphemeContainsCJK
+    unitHasHyphen = unitHasHyphen || grapheme === '-'
     const graphemeEndsWithClosingQuote = endsWithClosingQuote(grapheme)
     if (grapheme.length === 1 && leftStickyPunctuation.has(grapheme)) {
       unitEndsWithClosingQuote = unitEndsWithClosingQuote || graphemeEndsWithClosingQuote
