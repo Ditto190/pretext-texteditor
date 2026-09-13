@@ -40,7 +40,9 @@ Pretext still lets them start a line there. Firefox's emergency split of `本ー
 is still unmodeled.
 
 `bun test` and `bun run check` pass. The baseline advances to `b4d9fd7`, and the
-ordinary snapshots were regenerated against it.
+ordinary snapshots were regenerated against it. Firefox's step-10 corpus sweep now
+matches `ja-kumo-no-ito` at all 61 widths, up from 52; no other snapshot payload
+changes.
 
 ## Safari small kana and ー by page language
 
