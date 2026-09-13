@@ -37,6 +37,7 @@ export type AnalysisProfile = {
   keepAllPairModel: KeepAllPairModel
   keepZeroWidthSpaceMarkAtScanStart: boolean
   breakBeforeConditionalJapaneseStarter: boolean
+  conditionalJapaneseStarterModel: ConditionalJapaneseStarterModel
   breakAroundEastAsianQuotes: boolean
   wordInitialHyphenLetters: 'none' | 'alphabetic' | 'alphabetic-and-hebrew'
   breakHyphenAfterCollapsedTab: boolean
@@ -52,6 +53,28 @@ export type KeepAllPairModel = 'blink-general-category' | 'icu4x-classes' | 'web
 // The collapsible run that a ZWSP removes under the CSS segment break
 // transformation, per engine. WebKit never removes one.
 export type SegmentBreakRemovalRun = 'none' | 'blink' | 'gecko'
+
+// Where small kana and U+30FC (UAX #14 CJ) follow breakBeforeConditionalJapaneseStarter.
+// 'resolved': everywhere. 'keep-prolonged-sound-mark': only after EX and in
+// keep-all pairs; elsewhere small kana may start a line and U+30FC may not.
+export type ConditionalJapaneseStarterModel = 'resolved' | 'keep-prolonged-sound-mark'
+
+// Page languages whose line-break rules differ in some engine. Every other
+// language, an empty or missing one, and no document read as root.
+export type BreakLanguage = 'root' | 'ja' | 'ko' | 'zh'
+
+// The primary language subtag, ASCII case-insensitively, up to `-`, `_` or the
+// end. No allocation: preparation calls this once per text.
+export function getBreakLanguage(tag: string | null): BreakLanguage {
+  if (tag === null || tag.length < 2) return 'root'
+  if (tag.length > 2 && tag.charCodeAt(2) !== 0x2D && tag.charCodeAt(2) !== 0x5F) return 'root'
+  const first = tag.charCodeAt(0) | 0x20
+  const second = tag.charCodeAt(1) | 0x20
+  if (first === 0x6A && second === 0x61) return 'ja'
+  if (first === 0x6B && second === 0x6F) return 'ko'
+  if (first === 0x7A && second === 0x68) return 'zh'
+  return 'root'
+}
 
 const collapsibleWhitespaceRunRe = /[ \t\n\r\f]+/g
 const needsWhitespaceNormalizationRe = /[\t\n\r\f]| {2,}|^ | $/
@@ -187,9 +210,9 @@ export function isCJK(s: string): boolean {
   return cjkRe.test(s)
 }
 
-function endsWithLineStartProhibitedText(text: string): boolean {
+function endsWithLineStartProhibitedText(text: string, profile: AnalysisProfile): boolean {
   const last = getLastCodePoint(text)
-  return last !== null && (kinsokuStart.has(last) || leftStickyPunctuation.has(last))
+  return last !== null && (prohibitsCJKLineStart(last, profile) || leftStickyPunctuation.has(last))
 }
 
 const keepAllGlueChars = new Set([
@@ -474,7 +497,7 @@ function getKeepAllRunEnd(text: string, boundary: number, previousText: string, 
   if (endsWithKeepAllGlueText(previousText)) return 'end'
   if (profile.keepAllPairModel === 'webkit-spaces') return null
   if (
-    endsWithLineStartProhibitedText(previousText)
+    endsWithLineStartProhibitedText(previousText, profile)
       ? !endsWithKeepAllLetter(previousText, profile)
       : endsWithKeepAllDashBreakText(previousText)
   ) {
@@ -507,9 +530,18 @@ const cjkLineStartProhibited = new Set([
   '\u3035',
 ])
 
-// U+30FC is CJ, which engines disagree on: Chromium breaks before it and
-// WebKit does not. It stays a line-start prohibition, as before.
-export const kinsokuStart = new Set([...cjkLineStartProhibited, '\u30FC'])
+// Small kana and U+30FC are UAX #14 CJ, which the profile resolves: ID may start
+// a line and NS may not. Profiles on the older model keep only U+30FC, and only
+// as a whole grapheme or piece.
+function keepsConditionalJapaneseStarter(text: string, profile: AnalysisProfile): boolean {
+  if (profile.conditionalJapaneseStarterModel === 'keep-prolonged-sound-mark') return text === '\u30FC'
+  return !profile.breakBeforeConditionalJapaneseStarter && getLineBreakClass(text.codePointAt(0)!) === LineBreakClass.CJ
+}
+
+// Whether a grapheme or a code point cannot start a line after CJK text.
+function prohibitsCJKLineStart(text: string, profile: AnalysisProfile): boolean {
+  return cjkLineStartProhibited.has(text) || keepsConditionalJapaneseStarter(text, profile)
+}
 
 export const kinsokuEnd = new Set([
   '"',
@@ -584,9 +616,9 @@ function isLeftStickyPunctuationSegment(segment: string): boolean {
   return sawPunctuation
 }
 
-function isCJKLineStartProhibitedSegment(segment: string): boolean {
+function isCJKLineStartProhibitedSegment(segment: string, profile: AnalysisProfile): boolean {
   for (const ch of segment) {
-    if (!kinsokuStart.has(ch) && !leftStickyPunctuation.has(ch)) return false
+    if (!prohibitsCJKLineStart(ch, profile) && !leftStickyPunctuation.has(ch)) return false
   }
   return segment.length > 0
 }
@@ -1142,7 +1174,8 @@ const combiningMarkAtRe = /\p{M}/uy
 // '!' breaks only before '(', '<', '[' and '{'. Above U+00FF, letters, numbers,
 // symbols and opening punctuation break unless their line-break class forbids
 // it, numeric affixes break, and other punctuation is not classified. CJ breaks
-// only under ICU's normal rules, which Chromium uses for line-break: auto.
+// only under ICU's normal rules, which Chromium uses for line-break: auto, and
+// WebKit on Japanese and Korean pages.
 // Every merge that would join across the boundary asks here.
 // The last-code-unit screen keeps ordinary word boundaries allocation-free.
 function breaksAfterExclamation(
@@ -1681,9 +1714,10 @@ function buildMergedSegmentation(
         hasTail &&
         tailKind === 'text' &&
         tailContainsCJK &&
-        // Intl.Segmenter can join a nonstarter such as U+309B or U+30FD with the
-        // kana after it, so the first code point decides.
-        (isCJKLineStartProhibitedSegment(piece.text) || cjkLineStartProhibited.has(piece.text[0]!))
+        // Intl.Segmenter can join a nonstarter such as U+309B or U+30FD, or small
+        // kana, with the kana after it, so the first code point decides.
+        (isCJKLineStartProhibitedSegment(piece.text, profile) || cjkLineStartProhibited.has(piece.text[0]!) ||
+          keepsConditionalJapaneseStarter(piece.text, profile))
       ) {
         appendToTail = true
       } else if (
@@ -2106,7 +2140,7 @@ function buildBaseCjkUnits(
 
     if (
       unitIsSingleKinsokuEnd ||
-      kinsokuStart.has(grapheme) ||
+      prohibitsCJKLineStart(grapheme, profile) ||
       leftStickyPunctuation.has(grapheme) ||
       attachHyphen ||
       (unitHasNumericHyphen && !graphemeContainsCJK) ||

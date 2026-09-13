@@ -11,6 +11,7 @@ import {
   analyzeText,
   clearAnalysisCaches,
   getBreakablePreferredBreaks,
+  getBreakLanguage,
   getCjkTextUnits,
   getSharedGraphemeSegmenter,
   isCJK,
@@ -24,10 +25,12 @@ import {
 } from './analysis.js'
 import {
   type BreakableFitMode,
+  type EngineProfile,
   clearMeasurementCaches,
   createEntryMeasurement,
   entryMeasurementProfilesMatch,
   getCorrectedSegmentWidth,
+  getDocumentLanguage,
   getEntryMeasurementProfile,
   getSegmentBreakableFitAdvances,
   getEngineProfile,
@@ -254,11 +257,13 @@ function measureAnalysis(
   includeSegments: boolean,
   wordBreak: WordBreakMode,
   letterSpacing: number,
+  engineProfile: EngineProfile,
+  documentLanguage: string | null,
 ): InternalPreparedText | PreparedTextWithSegments {
-  const engineProfile = getEngineProfile()
   const { cache, emojiCorrection } = getFontMeasurementState(
     font,
     textMayContainEmoji(analysis.normalized),
+    documentLanguage,
   )
   // The gap before the hyphen, plus the hyphen's own spacing where the engine
   // letter-spaces it.
@@ -789,8 +794,11 @@ function prepareInternal(
 ): InternalPreparedText | PreparedTextWithSegments {
   const wordBreak = options?.wordBreak ?? 'normal'
   const letterSpacing = options?.letterSpacing ?? 0
-  const analysis = analyzeText(text, getEngineProfile(), options?.whiteSpace, wordBreak)
-  return measureAnalysis(analysis, font, includeSegments, wordBreak, letterSpacing)
+  // One page-language read: break rules and measurement both follow it.
+  const documentLanguage = getDocumentLanguage()
+  const engineProfile = getEngineProfile(getBreakLanguage(documentLanguage))
+  const analysis = analyzeText(text, engineProfile, options?.whiteSpace, wordBreak)
+  return measureAnalysis(analysis, font, includeSegments, wordBreak, letterSpacing, engineProfile, documentLanguage)
 }
 
 // Prepare text for layout. Segments the text, measures each segment via canvas,

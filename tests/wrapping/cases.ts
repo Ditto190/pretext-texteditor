@@ -169,11 +169,12 @@ export function generateCases(measure: Measure, selection: CaseSelection): Wrapp
     note: `${perItem} Gecko segments this joined text differently from Chromium, so Pretext breaks at every item boundary in Firefox.`,
   })
 
-  // Native breaks that depend on the page language. Preparation receives no
-  // language, so each shape runs unchanged on every page. A width ends the first
-  // line at the tested boundary, and the text has an earlier opportunity, so a
-  // forbidden break differs from an emergency break. Nothing is required until
-  // installed observations agree with the engine sources.
+  // Native breaks that depend on the page language. Preparation reads `<html lang>`,
+  // but only Safari's small-kana and `ー` rule follows it so far; the other shapes
+  // run unchanged on every page. A width ends the first line at the tested boundary,
+  // and the text has an earlier opportunity, so a forbidden break differs from an
+  // emergency break. Nothing is required until installed observations agree with
+  // the engine sources.
   const contentLanguages = ['en', 'ja', 'ko', 'zh', 'zh-Hant'] as const
   const jaFont = '20px "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", serif'
   const zhFont = '20px "Songti SC", "PingFang SC", "Noto Serif CJK SC", serif'
@@ -183,15 +184,18 @@ export function generateCases(measure: Measure, selection: CaseSelection): Wrapp
     for (const lang of languages) {
       add({ ...defaults, family: 'maintained/content-language', origins: [`maintained/content-language/${label}`], scope: 'research',
         context: { kind: 'installed', lang }, lang, text, font, width, lineHeight: 28,
-        note: 'Observation only: native breaks depend on the page language, which preparation does not receive.' }, false)
+        note: 'Observation only: native breaks depend on the page language, which preparation follows only for small kana and ー in Safari so far.' }, false)
     }
   }
-  // Small kana and U+30FC (CJ) at a line start after EX, ideographs and kana.
+  // Small kana and U+30FC (CJ) at a line start after EX, ideographs, kana, digits
+  // and Latin letters.
   for (const [label, text, prefix] of [
     ['cj/question-small-kana', '日本？ァア', '日本？'], ['cj/question-prolonged-mark', '日本？ーー', '日本？'],
     ['cj/exclamation-small-kana', '日本！ァア', '日本！'], ['cj/exclamation-prolonged-mark', '日本！ーー', '日本！'],
     ['cj/ideograph-small-kana', '日本ァア', '日本'], ['cj/ideograph-prolonged-mark', '日本ーー', '日本'],
     ['cj/kana-small-kana', 'わかって', 'わか'], ['cj/kana-prolonged-mark', 'みそラーメン', 'みそラ'],
+    ['cj/digit-small-kana', '約3ヶ月', '約3'], ['cj/latin-small-kana', '日本abcァア', '日本abc'],
+    ['cj/latin-prolonged-mark', '日本abcーー', '日本abc'],
   ] as const) contentLanguage(label, text, prefix, jaFont)
   // Curly quotes around Latin and CJK text, before the opening quote and after the closing one.
   for (const [label, text, open, close, font] of [

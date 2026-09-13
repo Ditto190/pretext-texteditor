@@ -77,11 +77,11 @@ Above U+00FF Pretext reads the LineBreak.txt class of a following letter, number
 or symbol, so an iteration mark such as `々` (NS) stays after `！`, while numeric
 affixes and opening punctuation break; other punctuation keeps its existing
 attachment. Small kana and `ー` (CJ) break after EX only under ICU's normal
-rules, which Chrome uses for `line-break: auto`. Safari's default rules and
-Firefox's are strict and keep them; Safari with a Japanese content language
-breaks too, which Pretext does not model. Elsewhere Pretext still keeps CJ from
-starting a line in every browser, so Chrome's break between the marks in
-`日？ーー` is not modeled. Safari's keep-all still breaks only at spaces. U+061B
+rules, which Chrome uses for `line-break: auto` and Safari on `ja` and `ko`
+pages. Safari's other rules and Firefox's are strict and keep them. Elsewhere
+the Chrome profile still keeps `ー` from starting a line, so Chrome's break
+between the marks in `日？ーー` is not modeled; see Content Language. Safari's
+keep-all still breaks only at spaces. U+061B
 ARABIC SEMICOLON is EX too, while `:`, `.` and U+060C are IS and keep a
 following Arabic word (LB29). Firefox also breaks after BA such as `|` before a
 letter, which symbol chains do not model.
@@ -166,10 +166,9 @@ some nonstarters, such as `゛` or `ヽ`, with the kana after them, so a piece's
 first code point decides whether it attaches to the preceding text. U+3000 is BA,
 but Chromium and Firefox hang or trim it at a line end, so it needs its own
 line-end model rather than a kinsoku entry. Chromium's rules for Chinese pages
-also allow a break before `〜` and `゠`; Pretext does not read the page language
-for line breaking. U+30FC is CJ: Chromium breaks before it and WebKit does not.
-It stays listed but keeps the whole-piece rule, so this change leaves it as it
-was.
+also allow a break before `〜` and `゠`, which Pretext does not model yet. U+30FC
+is CJ, so the engine profile decides it rather than the set; see Content
+Language.
 
 Under `word-break: keep-all`, Blink keeps a pair only when both sides are letters
 or numbers by general category and neither is SA. It tests UTF-16 code units and
@@ -779,10 +778,10 @@ boundary matched some of those rows only by accident.
 ## Content Language
 
 Some line-break rules follow the page language. The full-schedule
-`maintained/content-language` family renders 28 shapes on `en`, `ja`, `ko`, `zh`
+`maintained/content-language` family renders 31 shapes on `en`, `ja`, `ko`, `zh`
 and `zh-Hant` pages, plus 5 `en` controls, with named CJK fonts. On September 12,
 2026, installed Chrome 153, Safari 26.5.2 and Firefox 155 gave, under
-`line-break: auto`:
+`line-break: auto`, for the 28 shapes it had then:
 
 | Shape | Chrome | Safari | Firefox |
 | --- | --- | --- | --- |
@@ -808,6 +807,26 @@ Some differences from Pretext don't depend on the language:
 
 The harness still turns newlines into spaces before comparing, so the newline
 rows show Firefox's removal only in native rectangles.
+
+Preparation reads `<html lang>` once, for both break rules and measurement, and
+resolves the primary subtag, ASCII case-insensitively, to `ja`, `ko`, `zh` or
+root. An empty or missing language, or no document, is root. Each engine keeps
+one profile per language, created once, and a language whose rules match root
+shares that object. Only the WebKit profile varies so far: small kana and `ー`
+(CJ in the generated class table) resolve to ID on `ja` and `ko` pages, so they
+may start a line, and to NS elsewhere, so they stay with CJK text before them. It
+applies that resolution in CJK units, to a segmenter piece that starts with CJ
+after CJK text, and after EX. After a digit or Latin letter, as in `約3ヶ月` or
+`日本abcァア`, the profile still lets them start a line on every page. ICU's
+strict rules never break before NS (LB21), so Safari likely keeps them on other
+pages, but the family's digit and Latin shapes have no installed observation
+yet. The Blink and Gecko profiles still resolve CJ only after
+EX and in keep-all pairs; elsewhere small kana start a line and `ー` does not. A
+prepared handle keeps the rules it was prepared under, like its widths. Nothing
+derived from break rules is cached across preparations. The attribute read costs
+about 3-16ns in headless WebKit and Chromium, with no style or layout work. On
+other pages Safari still splits `本ーー` in an emergency, where Pretext keeps a
+kinsoku unit whole.
 
 ## Fonts And Other Measurement Engines
 

@@ -557,6 +557,7 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, keepAllPairModel: 'icu4x-classes' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: false,
+      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'none' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -576,6 +577,7 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
+      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -614,6 +616,7 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: true, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: true, breakAroundEastAsianQuotes: true,
+      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'blink' as const, breakOnlyAfterNextLine: false,
     }
@@ -633,6 +636,7 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
+      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -710,6 +714,7 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
       keepZeroWidthSpaceMarkAtScanStart: false,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
+      conditionalJapaneseStarterModel: 'keep-prolonged-sound-mark' as const,
       wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
     }
@@ -746,6 +751,7 @@ describe('boundary-policy regressions', () => {
       geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'webkit-spaces' as const,
       keepZeroWidthSpaceMarkAtScanStart: true,
       breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
+      conditionalJapaneseStarterModel: 'resolved' as const,
       wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: true,
       segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: true,
     }
@@ -1765,6 +1771,31 @@ describe('prepare invariants', () => {
     }
   })
 
+  test('only the Safari profile follows the page language, for Japanese and Korean pages', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    try {
+      for (const [index, userAgent, model, languages] of [
+        [0, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36', 'keep-prolonged-sound-mark', []],
+        [1, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0', 'keep-prolonged-sound-mark', []],
+        [2, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15', 'resolved', ['ja', 'ko']],
+      ] as const) {
+        Object.defineProperty(globalThis, 'navigator', { value: { userAgent }, configurable: true, writable: true })
+        const specifier = `./measurement.ts?page-language-${index}`
+        const fresh = await import(specifier) as MeasurementModule
+        const root = fresh.getEngineProfile()
+        const differing = (['ja', 'ko', 'zh'] as const).filter(language => fresh.getEngineProfile(language) !== root)
+        expect({ userAgent, model: root.conditionalJapaneseStarterModel, differing }).toEqual({ userAgent, model, differing: [...languages] })
+        // Apple ICU opens its normal line rules for ja and ko, where CJ is ID.
+        for (const language of languages) {
+          expect(fresh.getEngineProfile(language)).toEqual({ ...root, breakBeforeConditionalJapaneseStarter: true })
+        }
+      }
+    } finally {
+      if (descriptor === undefined) Reflect.deleteProperty(globalThis, 'navigator')
+      else Object.defineProperty(globalThis, 'navigator', descriptor)
+    }
+  })
+
   test('the generated line-break classes follow LineBreak.txt', async () => {
     const { getLineBreakClass, LineBreakClass } = await import('./generated/line-break-data.ts')
     // One code point per projected class family, from the ASCII block, the BMP,
@@ -1915,6 +1946,17 @@ describe('prepare invariants', () => {
     }
     // The restored backend replaces the language-resolving context.
     expect(measureNaturalWidth(prepareWithSegments('中文 日本語', FONT))).toBeCloseTo(measureWidth('中文日本語', FONT) + measureWidth(' ', FONT), 10)
+  })
+
+  test('the page language resolves to a break language by its primary subtag', async () => {
+    const { getBreakLanguage } = await import('./analysis.ts')
+    for (const [tag, language] of [
+      ['ja', 'ja'], ['JA', 'ja'], ['ja-JP', 'ja'], ['jA_jp', 'ja'], ['ko', 'ko'], ['Ko-KR', 'ko'],
+      ['zh', 'zh'], ['zh-Hant-TW', 'zh'], ['ZH-hans', 'zh'],
+      ['en', 'root'], ['', 'root'], [null, 'root'], ['j', 'root'], ['jav', 'root'], ['kok', 'root'], ['x-ja', 'root'],
+    ] as const) {
+      expect({ tag, language: getBreakLanguage(tag) }).toEqual({ tag, language })
+    }
   })
 
   test('pure LTR text skips rich bidi metadata', () => {
@@ -3077,6 +3119,53 @@ test('the Safari profile keeps the kerning between a word and a following space'
   })
 })
 
+
+test('the Safari profile lets small kana and U+30FC start a line only on Japanese and Korean pages', () => {
+  // The engine profile is computed once per process, so Safari runs in a child
+  // process. Every character is 16px. Preparation reads <html lang> once.
+  const layoutUrl = new URL('./layout.ts', import.meta.url).href
+  const richInlineUrl = new URL('./rich-inline.ts', import.meta.url).href
+  const script = `
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15',
+      vendor: 'Apple Computer, Inc.',
+    } })
+    class Context {
+      font = ''
+      measureText(text) {
+        return { width: [...text].length * 16 }
+      }
+    }
+    globalThis.OffscreenCanvas = class { getContext() { return new Context() } }
+    let lang = ''
+    let reads = 0
+    globalThis.document = { documentElement: { get lang() { reads++; return lang } } }
+    const { prepareWithSegments } = await import(${JSON.stringify(layoutUrl)})
+    const { prepareRichInline, walkRichInlineLineRanges, materializeRichInlineLineRange } = await import(${JSON.stringify(richInlineUrl)})
+    const rows = {}
+    for (const language of ['', 'en', 'zh-Hant', 'ja', 'ko-KR']) {
+      lang = language
+      reads = 0
+      const segments = ['日本ァア', '日本ーー', 'わかって'].map(text => prepareWithSegments(text, '16px Test').segments.join('|'))
+      const readsPerPrepare = reads / 3
+      const prepared = prepareRichInline(['日本', 'ァア'].map(text => ({ text, font: '16px Test' })))
+      const rich = []
+      walkRichInlineLineRanges(prepared, 32.1, range => {
+        rich.push(materializeRichInlineLineRange(prepared, range).fragments.map(fragment => fragment.text).join(''))
+      })
+      rows[language] = { segments, readsPerPrepare, rich }
+    }
+    console.log(JSON.stringify(rows))
+  `
+  const child = Bun.spawnSync([process.execPath, '-e', script])
+  if (child.exitCode !== 0) throw new Error(child.stderr.toString())
+  // Apple ICU opens its normal line rules, where CJ is ID, for ja and ko. Under
+  // its other rules CJ is NS and stays with the character before it. The first
+  // preparation after a language change reads the language once too.
+  const root = { segments: ['日|本ァ|ア', '日|本ーー', 'わ|かっ|て'], readsPerPrepare: 1, rich: ['日', '本ァ', 'ア'] }
+  const normalRules = { segments: ['日|本|ァ|ア', '日|本|ー|ー', 'わ|か|っ|て'], readsPerPrepare: 1, rich: ['日本', 'ァア'] }
+  expect(JSON.parse(child.stdout.toString())).toEqual({ '': root, en: root, 'zh-Hant': root, ja: normalRules, 'ko-KR': normalRules })
+})
 
 describe('bidi paragraph boundaries', () => {
   test('pre-wrap metadata matches independently prepared paragraphs', () => {

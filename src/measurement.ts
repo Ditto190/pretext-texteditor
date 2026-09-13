@@ -1,4 +1,10 @@
-import { getSharedGraphemeSegmenter, type KeepAllPairModel, type SegmentBreakRemovalRun } from './analysis.js'
+import {
+  getSharedGraphemeSegmenter,
+  type BreakLanguage,
+  type ConditionalJapaneseStarterModel,
+  type KeepAllPairModel,
+  type SegmentBreakRemovalRun,
+} from './analysis.js'
 import type { SegmentEntryGeometry } from './entry-geometry.js'
 
 type EntryMeasurement = {
@@ -39,9 +45,16 @@ export type EngineProfile = {
   // follows a mandatory break. Gecko keeps ZWSP with any following cluster
   // extender in every position; that granularity is not modeled.
   keepZeroWidthSpaceMarkAtScanStart: boolean
-  // Chromium's ICU root line rules are the normal rules, where small kana and
-  // U+30FC (CJ) resolve to ID. WebKit's root rules and Gecko's auto are strict.
+  // Small kana and U+30FC are UAX #14 CJ. ICU's normal rules resolve CJ to ID and
+  // its strict rules to NS. Chromium's root rules are the normal rules. Apple ICU
+  // opens the normal rules for Japanese and Korean pages and strict rules for
+  // others, and Gecko's auto is strict.
   breakBeforeConditionalJapaneseStarter: boolean
+  // The WebKit profile follows that resolution everywhere. The Blink and Gecko
+  // profiles still let small kana start a line and keep U+30FC from starting one
+  // outside EX and keep-all pairs, which matches neither engine, until installed
+  // runs gate the resolved model for them.
+  conditionalJapaneseStarterModel: ConditionalJapaneseStarterModel
   // ICU's line rules break before an opening quotation mark such as U+201C and
   // after a closing one such as U+201D between East Asian characters (UAX #14
   // LB19a), identically in ICU 77 and 78. Gecko's ICU4X rules follow Unicode
@@ -117,7 +130,9 @@ const segmentMetricCaches = new Map<string, Map<string, SegmentMetrics>>()
 // Per font, metrics of a text item measured together with one following
 // U+0020, keyed by the item alone. The width includes that space.
 const followingSpaceMetricCaches = new Map<string, Map<string, SegmentMetrics>>()
-let cachedEngineProfile: EngineProfile | null = null
+// One profile per break language, created once. Languages whose rules match root
+// share its object, so preparation allocates none.
+let cachedEngineProfiles: Record<BreakLanguage, EngineProfile> | null = null
 
 // Safari's prefix-fit policy is useful for ordinary word-sized runs, but letting
 // it measure every growing prefix of a giant segment recreates a pathological
@@ -129,15 +144,22 @@ const emojiPresentationRe = /\p{Emoji_Presentation}/u
 const maybeEmojiRe = /[\p{Emoji_Presentation}\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u20E3]/u
 const emojiCorrectionCache = new Map<string, number>()
 
-function getDocumentLanguage(): string | null {
+// Preparation reads the page language once and shares it between break rules
+// and the measurement context.
+export function getDocumentLanguage(): string | null {
   if (typeof document === 'undefined') return null
   const root = document.documentElement as HTMLElement | null | undefined
-  return root == null || typeof root.lang !== 'string' ? null : root.lang
+  if (root == null) return null
+  const language = root.lang
+  return typeof language === 'string' ? language : null
 }
 
 export function getMeasureContext(): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D {
-  if (measureContext !== null) return measureContext
-  measureContextLanguage = getDocumentLanguage()
+  return measureContext ?? createMeasureContext(getDocumentLanguage())
+}
+
+function createMeasureContext(language: string | null): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D {
+  measureContextLanguage = language
 
   if (typeof OffscreenCanvas !== 'undefined') {
     measureContext = new OffscreenCanvas(1, 1).getContext('2d')!
@@ -260,15 +282,15 @@ export function getLayoutEngine(userAgent: string): LayoutEngine | null {
   return userAgent.includes('AppleWebKit/') ? 'webkit' : null
 }
 
-export function getEngineProfile(): EngineProfile {
-  if (cachedEngineProfile !== null) return cachedEngineProfile
+export function getEngineProfile(language: BreakLanguage = 'root'): EngineProfile {
+  if (cachedEngineProfiles !== null) return cachedEngineProfiles[language]
 
   const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
   const engine = getLayoutEngine(ua)
   // Fresh-entry observations are verified only for desktop Blink and Gecko.
   const isDesktop = /Windows NT|Macintosh|X11/.test(ua) && !/Android|Mobile|iPhone|iPad|iPod/.test(ua)
 
-  cachedEngineProfile = {
+  const profile: EngineProfile = {
     entryFitBasis: isDesktop && engine === 'blink' ? 'fresh' : isDesktop && engine === 'gecko' ? 'original' : 'disabled',
     geckoAsciiLineBreaks: engine === 'gecko',
     lineFitEpsilon: engine === 'webkit' ? 1 / 64 : 0.005,
@@ -276,6 +298,7 @@ export function getEngineProfile(): EngineProfile {
     keepAllPairModel: engine === 'gecko' ? 'icu4x-classes' : engine === 'webkit' ? 'webkit-spaces' : 'blink-general-category',
     keepZeroWidthSpaceMarkAtScanStart: engine === 'webkit',
     breakBeforeConditionalJapaneseStarter: engine === 'blink',
+    conditionalJapaneseStarterModel: engine === 'webkit' ? 'resolved' : 'keep-prolonged-sound-mark',
     breakAroundEastAsianQuotes: engine !== 'gecko',
     wordInitialHyphenLetters: engine === 'gecko' ? 'none' : 'alphabetic-and-hebrew',
     breakHyphenAfterCollapsedTab: engine === 'webkit',
@@ -289,7 +312,10 @@ export function getEngineProfile(): EngineProfile {
     skipNarrowTabStops: engine === 'webkit',
     inlineItemBreaks: engine === 'blink' ? 'joined-text' : engine === 'webkit' ? 'item-text' : 'item-boundary',
   }
-  return cachedEngineProfile
+  // Apple ICU opens its normal line rules for Japanese and Korean content.
+  const normalRules = engine === 'webkit' ? { ...profile, breakBeforeConditionalJapaneseStarter: true } : profile
+  cachedEngineProfiles = { root: profile, ja: normalRules, ko: normalRules, zh: profile }
+  return cachedEngineProfiles[language]
 }
 
 export function parseFontSize(font: string): number {
@@ -452,18 +478,18 @@ function addFollowingSpaceKerning(
   advances[last] = advances[last]! + followingSpaceMetrics.width - getSegmentMetrics(seg, cache).width - followingSpaceWidth
 }
 
-export function getFontMeasurementState(font: string, needsEmojiCorrection: boolean): {
+export function getFontMeasurementState(font: string, needsEmojiCorrection: boolean, documentLanguage: string | null): {
   cache: Map<string, SegmentMetrics>
   emojiCorrection: number
 } {
-  // Preparation starts here. After the page language changes, start again with
-  // a new context and empty caches; clearing the caches alone would re-measure
-  // with fonts resolved under the old language.
-  if (measureContext !== null && getDocumentLanguage() !== measureContextLanguage) {
+  // Preparation starts here, with the page language it read. After that language
+  // changes, start again with a new context and empty caches; clearing the caches
+  // alone would re-measure with fonts resolved under the old language.
+  if (measureContext !== null && documentLanguage !== measureContextLanguage) {
     measureContext = null
     clearMeasurementCaches()
   }
-  const ctx = getMeasureContext()
+  const ctx = measureContext ?? createMeasureContext(documentLanguage)
   ctx.font = font
   const cache = getSegmentMetricCache(font)
   const emojiCorrection = needsEmojiCorrection ? getEmojiCorrection(font) : 0
