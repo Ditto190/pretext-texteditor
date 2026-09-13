@@ -17,6 +17,40 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Numeric runs with a closing full-width comma
+
+This runtime change starts from main after #243. A numeric run now keeps the
+closing punctuation that follows it (UAX #14 LB25, with classes from the
+generated line-break table), so `00:00:00，` stays whole instead of breaking
+after `:` or before the comma. `Intl.Segmenter` keeps a full-width comma, stop
+or semicolon between digits inside one word (`00，2025`), and Safari marks such
+words non-word. Those words now split after the punctuation, where UAX #14
+allows a break, so the time before them merges as one run.
+
+#225's reproductions are reported rows with the reporter's font in `normal` and
+`pre-wrap`: both reproductions, the control, a bare `xxxx，b`, a time at a width
+that fits only part of it, and a comma between digits. They are required in
+Chrome and Safari. Firefox keeps a date such as `2025-08-01` whole, where Chrome
+and Safari break after its hyphens, so the first reproduction only observes
+Firefox.
+
+The installed gate ran this branch against #243's pin `7652cad`: Chrome 153
+through the Playwright transport, and Safari 26.5.2 and Firefox 155 natively, in
+both directions. Chrome fixes 11 LTR and 0 RTL metrics, Safari 10 and 0, and Firefox
+8 and 0. No leg loses a metric or has required failures, execution errors, or new
+API or rich failures.
+
+Two broader rules ran through the same gate and were reverted. Attaching closing
+punctuation after any Latin text (LB13) creates kinsoku units without emergency
+breaks. It lost 42 Chrome, 52 Safari and 52 Firefox LTR rows, mostly shapes like
+`739x「value」! end`. Adding emergency breaks inside kinsoku clusters on top of it
+fixed 624 Chrome, 1,197 Safari and 993 Firefox LTR metrics, but lost 510, 108 and
+200. Chrome's losses are rows that main passes only while unmodeled U+3000
+hanging and controls cancel out. ENGINE_FOLLOWUPS.md keeps both.
+
+`bun test` and `bun run check` pass. The baseline advances to `9270621`, and the
+ordinary snapshots were regenerated against it.
+
 ## Keep-all runs from generated line-break classes
 
 This runtime change starts from the rich-inline boundaries branch. Keep-all runs
