@@ -79,7 +79,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Safari's Canvas gives isolated and fallback-font combining marks an advance they don't have in context.
 - Chrome's Canvas gives VS16 about 4.9px that the DOM doesn't, and one Safari Myanmar corpus row diverges at a cluster boundary.
 - Skip letter spacing inside cursive scripts, per engine. Chrome versions before 149 lack the rule or apply it differently, so choose between a README limitation and a version gate.
-- Arabic letters joined across a soft hyphen are measured at isolated widths. The Chrome widths are recoverable for joining fonts. Study Firefox's joined advances without the DOM (approved), and document them as a limitation if no Canvas recipe works; several Firefox halves of planned rules wait on it.
+- Arabic letters joined across a soft hyphen are measured at isolated widths. The Chrome widths are recoverable for joining fonts. Study Firefox's joined advances without the DOM (approved), and document them as a limitation if no Canvas recipe works; several Firefox halves of planned rules wait on it. The installed-Firefox probe is `bun run probe:arabic-joining`; it has not run yet.
 - Chrome and Firefox shape and kern across rich-inline item boundaries, so per-item widths miss by about 1px there; Safari doesn't. Choose between a prepare-time boundary correction for Blink and Gecko and a README limitation.
 
 ## Per-browser gaps

@@ -54,7 +54,7 @@ async function post(path: string, data: unknown): Promise<void> {
   if (!response.ok) throw new Error(`Report transport ${path}: HTTP ${response.status}`)
 }
 
-async function loadFonts(fixtures: FontFixture[]): Promise<void> {
+export async function loadFonts(fixtures: FontFixture[]): Promise<void> {
   await Promise.all(fixtures.map(async fixture => {
     const response = await fetch(fixture.url)
     if (!response.ok) throw new Error(`Font ${fixture.family}: HTTP ${response.status}`)

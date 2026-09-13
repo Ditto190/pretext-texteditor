@@ -69,6 +69,7 @@
     "start:windows": "bun pages/*.html pages/demos/*.html pages/demos/*/index.html --host=0.0.0.0:3000",
     "justification-check": "bun run scripts/justification-check.ts",
     "font-probe": "bun run scripts/font-probe.ts",
+    "probe:arabic-joining": "bun run scripts/arabic-joining-probe.ts",
     "test:wrapping:snapshot": "bun run scripts/wrapping-check.ts --browser=all --snapshot && bun run scripts/corpus-status.ts && bun run scripts/status-dashboard.ts"
   },
   "devDependencies": {
