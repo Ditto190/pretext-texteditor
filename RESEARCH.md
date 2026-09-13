@@ -776,6 +776,39 @@ follows the flat walker: Japanese dialogue in Hiragino Sans after `」`, numeric
 signs that WebKit keeps with the digit, and fit thresholds. Breaking at every item
 boundary matched some of those rows only by accident.
 
+## Content Language
+
+Some line-break rules follow the page language. The full-schedule
+`maintained/content-language` family renders 28 shapes on `en`, `ja`, `ko`, `zh`
+and `zh-Hant` pages, plus 5 `en` controls, with named CJK fonts. On September 12,
+2026, installed Chrome 153, Safari 26.5.2 and Firefox 155 gave, under
+`line-break: auto`:
+
+| Shape | Chrome | Safari | Firefox |
+| --- | --- | --- | --- |
+| Small kana starting a line (`日本ァア`, `わかって`) | Every page | `ja` and `ko` only | Never |
+| `ー` starting a line after an ideograph or kana | Every page | `ja` and `ko` only | Never |
+| Break before `〜` or `゠` | `zh` and `zh-Hant` only | Never | Never |
+| Curly double quotes around Latin or Hangul act as brackets (`中文“abc”中文`, `했다.”라고`) | `zh` and `zh-Hant` only | Every page except `ja` | Never |
+| Newline next to `。`, `「` or U+3000 | Becomes a space | Becomes a space | Removed on `ja`, `zh` and `zh-Hant` |
+| Newline between wide characters | Becomes a space | Becomes a space | Removed on every page |
+
+These agree with the engine sources: Chromium's `line_normal_cj.txt` tailoring
+for `zh`, Apple ICU's `ja.txt` and `ko.txt` plus its curly-quote patch, and
+Gecko's newline transformation in `nsTextFrameUtils.cpp`.
+
+Some differences from Pretext don't depend on the language:
+- Chrome breaks after a closing curly quote before CJK text (`他说“你好”` /
+  `然后走了`, `かな‘かな’` / `かな`), where Pretext's closing-quote carry keeps the
+  CJK text attached.
+- No browser treats curly single quotes around Latin text as brackets
+  (`中` / `文‘abc’中` / `文`), where Pretext does.
+- Firefox doesn't treat double quotes as brackets either, where Pretext does.
+- Pretext's Firefox profile lets small kana start a line.
+
+The harness still turns newlines into spaces before comparing, so the newline
+rows show Firefox's removal only in native rectangles.
+
 ## Fonts And Other Measurement Engines
 
 Whole-run Canvas/DOM agreement, isolated-letter agreement and matching line
