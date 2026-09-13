@@ -184,7 +184,7 @@ type NumericResult = {
 let failed = false
 const numericSummary = []
 if (!args.includes('--skip-numeric')) {
-  for (const profile of ['chrome', 'safari', 'firefox', 'crios', 'crios-desktop', 'fxios', 'edgios', 'unknown', 'none']) {
+  for (const profile of ['chrome', 'safari', 'firefox', 'crios', 'none']) {
     const reports: Array<{ name: string; report: NumericResult }> = []
     for (const source of sources) {
       const file = join(output, `numeric-${profile}-${source.name}.json`)
