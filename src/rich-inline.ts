@@ -6,6 +6,7 @@ import {
 import {
   analyzeText,
   getBreakablePreferredBreaks,
+  getBreakLanguage,
   getCjkTextUnits,
   getSharedGraphemeSegmenter,
   isCJK,
@@ -23,7 +24,7 @@ import {
   type PreparedLineBreakData,
   stepPreparedLineGeometry,
 } from './line-break.js'
-import { getEngineProfile, getFontMeasurementState, getSegmentMetrics } from './measurement.js'
+import { getDocumentLanguage, getEngineProfile, getFontMeasurementState, getSegmentMetrics } from './measurement.js'
 
 // Helper for rich-text inline flow under `white-space: normal`.
 // It keeps the core layout API low-level while taking over the boring shared
@@ -156,8 +157,8 @@ function isCollapsibleBoundaryWhitespace(code: number): boolean {
   return code === 0x20 || code === 0x09 || code === 0x0A || code === 0x0C || code === 0x0D
 }
 
-function getCollapsedSpaceWidth(font: string, letterSpacing: number): number {
-  const { cache } = getFontMeasurementState(font, false)
+function getCollapsedSpaceWidth(font: string, letterSpacing: number, documentLanguage: string | null): number {
+  const { cache } = getFontMeasurementState(font, false, documentLanguage)
   return getSegmentMetrics(' ', cache).width + letterSpacing
 }
 
@@ -444,7 +445,10 @@ function endsInsideFirstSegment(segmentIndex: number, graphemeIndex: number): bo
 
 export function prepareRichInline(items: RichInlineItem[]): PreparedRichInline {
   const preparedItems = Array.from<PreparedRichInlineItem | undefined>({ length: items.length })
-  const profile = getEngineProfile()
+  // Each item reads the page language as it prepares; the joined analysis and
+  // boundary spaces share one more read.
+  const documentLanguage = getDocumentLanguage()
+  const profile = getEngineProfile(getBreakLanguage(documentLanguage))
   const { inlineItemBreaks } = profile
   // A collapsed SPACE can have zero or negative advance. Its existence and
   // ordinary break opportunity must survive independently of that number.
@@ -531,7 +535,7 @@ export function prepareRichInline(items: RichInlineItem[]): PreparedRichInline {
 
     if (start === text.length) {
       if (start > 0 && pendingGapWidth === null) {
-        pendingGapWidth = getCollapsedSpaceWidth(item.font, letterSpacing)
+        pendingGapWidth = getCollapsedSpaceWidth(item.font, letterSpacing, documentLanguage)
       }
       continue
     }
@@ -546,7 +550,7 @@ export function prepareRichInline(items: RichInlineItem[]): PreparedRichInline {
     if (inlineItemBreaks === 'item-text') boundaryContexts[index] = text.slice(Math.max(0, end - 2), end)
 
     const gapBefore = pendingGapWidth ?? (
-      hasLeadingWhitespace ? getCollapsedSpaceWidth(item.font, letterSpacing) : 0
+      hasLeadingWhitespace ? getCollapsedSpaceWidth(item.font, letterSpacing, documentLanguage) : 0
     )
     // Normalization already drops boundary whitespace, so the item's own text
     // yields the same segments while analysis keeps the source before them:
@@ -616,7 +620,7 @@ export function prepareRichInline(items: RichInlineItem[]): PreparedRichInline {
     }
 
     pendingGapWidth = hasTrailingWhitespace
-      ? getCollapsedSpaceWidth(item.font, letterSpacing)
+      ? getCollapsedSpaceWidth(item.font, letterSpacing, documentLanguage)
       : null
   }
 

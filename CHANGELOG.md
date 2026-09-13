@@ -27,6 +27,7 @@
 - In Chrome and Safari, rich-inline layout now breaks between items only where their joined text has a break opportunity. Punctuation such as `,` or `)` at the start of an item stays with the word before it, and a word split across items wraps as one word. Items without a space between them can also break where the joined text allows it, such as between CJK characters, at Thai word boundaries or after `-`. In Safari, breaks inside each item still come from that item's own text, as Safari wraps each span, so a Thai, Lao, Khmer or Myanmar word split across items wraps like Safari's spans. Firefox still breaks at every item boundary (#241).
 - With `word-break: keep-all` in Chrome and Firefox, lines can now break before an opening bracket such as `(` or `¡` after CJK text, as in `서울(한국)에서`, before `「` or `（` after Latin letters or digits, after a closing bracket such as `❩` before CJK text, and next to Thai text. In Chrome, they can also break next to emoji and symbols such as `★` or `～`, after punctuation such as `/` or `‼` that follows an emoji, after keycaps, between flags, and before an opening quotation mark or after a closing one between CJK characters, as in `他说“你好”然后` (#243).
 - A time or number followed by closing punctuation such as a full-width comma, as in `00:00:00，`, now stays whole instead of breaking after a `:` or before the comma (#245).
+- In Safari, small kana and `ー` can now start a line only on pages whose `<html lang>` is Japanese or Korean, as Safari does.
 
 ## 0.0.9 - 2026-09-07
 
