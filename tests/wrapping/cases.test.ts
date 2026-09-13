@@ -55,6 +55,15 @@ test('ordinary includes complete maintained grids and the original oracle defaul
   expect(ordinary.find(input => input.id === 'wrap-5123bf2f598e26a1')!.context).toBeUndefined()
 })
 
+test('content-language observations run only on full, under each page language, with nothing required', () => {
+  expect(ordinary.some(input => input.family === 'maintained/content-language')).toBe(false)
+  const rows = full.filter(input => input.family === 'maintained/content-language')
+  expect(rows.every(input => input.scope === 'research' && input.required === undefined && input.locale === undefined && input.context?.lang === input.lang)).toBe(true)
+  const perLanguage: Record<string, number> = {}
+  for (const input of rows) perLanguage[input.lang!] = (perLanguage[input.lang!] ?? 0) + 1
+  expect(perLanguage).toEqual({ en: 33, ja: 28, ko: 28, zh: 28, 'zh-Hant': 28 })
+})
+
 test('boundary, rich and flat #210 reproductions are required', () => {
   const exact = ordinary.filter(input => input.origins.some(origin => /^reported-reproduction\/#\d+$/.test(origin)))
   expect(exact.map(input => ({ text: input.text, font: input.font, width: input.width, lineHeight: input.lineHeight, whiteSpace: input.whiteSpace }))).toEqual([

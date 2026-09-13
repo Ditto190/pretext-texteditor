@@ -169,6 +169,61 @@ export function generateCases(measure: Measure, selection: CaseSelection): Wrapp
     note: `${perItem} Gecko segments this joined text differently from Chromium, so Pretext breaks at every item boundary in Firefox.`,
   })
 
+  // Native breaks that depend on the page language. Preparation receives no
+  // language, so each shape runs unchanged on every page. A width ends the first
+  // line at the tested boundary, and the text has an earlier opportunity, so a
+  // forbidden break differs from an emergency break. Nothing is required until
+  // installed observations agree with the engine sources.
+  const contentLanguages = ['en', 'ja', 'ko', 'zh', 'zh-Hant'] as const
+  const jaFont = '20px "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", serif'
+  const zhFont = '20px "Songti SC", "PingFang SC", "Noto Serif CJK SC", serif'
+  const koFont = '20px "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR", sans-serif'
+  const contentLanguage = (label: string, text: string, prefix: string, font: string, languages: readonly string[] = contentLanguages): void => {
+    const width = measure(prefix, font, 0) + 0.1
+    for (const lang of languages) {
+      add({ ...defaults, family: 'maintained/content-language', origins: [`maintained/content-language/${label}`], scope: 'research',
+        context: { kind: 'installed', lang }, lang, text, font, width, lineHeight: 28,
+        note: 'Observation only: native breaks depend on the page language, which preparation does not receive.' }, false)
+    }
+  }
+  // Small kana and U+30FC (CJ) at a line start after EX, ideographs and kana.
+  for (const [label, text, prefix] of [
+    ['cj/question-small-kana', '日本？ァア', '日本？'], ['cj/question-prolonged-mark', '日本？ーー', '日本？'],
+    ['cj/exclamation-small-kana', '日本！ァア', '日本！'], ['cj/exclamation-prolonged-mark', '日本！ーー', '日本！'],
+    ['cj/ideograph-small-kana', '日本ァア', '日本'], ['cj/ideograph-prolonged-mark', '日本ーー', '日本'],
+    ['cj/kana-small-kana', 'わかって', 'わか'], ['cj/kana-prolonged-mark', 'みそラーメン', 'みそラ'],
+  ] as const) contentLanguage(label, text, prefix, jaFont)
+  // Curly quotes around Latin and CJK text, before the opening quote and after the closing one.
+  for (const [label, text, open, close, font] of [
+    ['double-quote/around-latin', '中文“abc”中文', '中文', '中文“abc”', zhFont],
+    ['double-quote/around-cjk', '他说“你好”然后走了', '他说', '他说“你好”', zhFont],
+    ['single-quote/around-latin', '中文‘abc’中文', '中文', '中文‘abc’', zhFont],
+    ['single-quote/around-cjk', 'かな‘かな’かな', 'かな', 'かな‘かな’', jaFont],
+  ] as const) {
+    contentLanguage(`${label}/before-open`, text, open, font)
+    contentLanguage(`${label}/after-close`, text, close, font)
+  }
+  contentLanguage('double-quote/latin-after-close', 'xyz abc”def', 'xyz abc”', '20px Arial')
+  contentLanguage('double-quote/hangul-after-period', '했다.”라고', '했다.”', koFont)
+  contentLanguage('wave-dash', '中文中文〜中文', '中文中文', zhFont)
+  contentLanguage('double-hyphen', 'カタカナ゠カタカナ', 'カタカナ', jaFont)
+  // Newlines in normal white space. Each width fits the text without its newline,
+  // so a newline kept as a space wraps. The last four are removal controls.
+  for (const [label, text, font] of [
+    ['newline/wide', '中文\n中文', zhFont], ['newline/after-ideographic-stop', '中文。\nabc', zhFont],
+    ['newline/before-corner-bracket', 'abc\n「中文」', zhFont], ['newline/after-ideographic-space', '中文　\nabc', zhFont],
+    ['newline/hangul', '한국어\n한국어', koFont], ['newline/emoji', '😀\n中', zhFont],
+    ['newline/won-sign', '₩\n中', koFont], ['newline/word-joiner', '中⁠\n中', koFont],
+  ] as const) contentLanguage(label, text, text.replace('\n', ''), font)
+  // Shapes whose breaks don't depend on language, on an English page.
+  for (const [label, text, prefix, font] of [
+    ['control/question-full-size-kana', '日本？アア', '日本？', jaFont],
+    ['control/corner-bracket-before-open', '中文「abc」中文', '中文', zhFont],
+    ['control/straight-quote-after-close', 'xyz abc"def', 'xyz abc"', '20px Arial'],
+    ['control/ideographic-comma', '中文中文、中文', '中文中文', zhFont],
+    ['control/latin-newline', 'abc\ndef', 'abcdef', '20px Arial'],
+  ] as const) contentLanguage(label, text, prefix, font, ['en'])
+
   const recipeMeasure = (text: string, font: string): number => measure(text, font, 0)
   for (const recipe of [policyCases, generateLanguageCases, generateSeamCases, generateAcceptanceCases]) {
     for (const input of recipe(recipeMeasure)) {

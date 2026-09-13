@@ -10,7 +10,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 
 ## Line breaking
 
-- Take a content language for line breaking (approved). Chrome's Chinese quote rules, Safari's Japanese small-kana and quote rules and Firefox's East Asian newline removal depend on it. Build it on the generated line-break class table once keep-all settles, keep `setLocale()` segmenter-only, and add no expensive browser work to `prepare()` or `layout()`.
+- Take a content language for line breaking (approved). Chrome's Chinese quote rules, Safari's Japanese small-kana and quote rules and Firefox's East Asian newline removal depend on it. Build it on the generated line-break class table once keep-all settles, keep `setLocale()` segmenter-only, and add no expensive browser work to `prepare()` or `layout()`. Run the full-schedule `maintained/content-language` family in installed Chrome, Safari and Firefox first; it records each page language's native breaks and requires nothing.
 - At the start of a word, Firefox breaks after each observed hyphen dash, but Pretext still keeps U+05BE, U+1400, U+2E17 and U+058A with the next letter there. No installed browser was observed on U+2E40, U+2E5D, U+10D6E or U+10EAD.
 - Safari keeps `-` after U+2007 with the following letter but breaks after `-` following NBSP. Chrome and Safari keep U+2010 after either glue. Model both with the glue context rules.
 - A dash before no-break glue should break after the dash (LB12a). Pretext breaks before it, for NBSP and U+2007 alike.
