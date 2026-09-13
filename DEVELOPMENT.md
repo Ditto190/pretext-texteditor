@@ -42,10 +42,10 @@ widths with their existing numeric tolerance.
 - `bun run test:wrapping:snapshot` — refresh accuracy/corpus snapshots and both dashboards from that same run
 - `bun run test:wrapping --family=pre-wrap --browser=safari` — select one family for diagnosis
 - `bun run benchmark-check --output=benchmarks/chrome.json` — refresh the Chrome benchmark snapshot; default is the median of 3 full page runs, use `--runs=1` for a quick local check
-- `bun run benchmark-check:safari --output=benchmarks/safari.json` — refresh the Safari benchmark snapshot
+- `bun run benchmark-check --browser=safari --output=benchmarks/safari.json` — refresh the Safari benchmark snapshot
 - `bun run justification-check` — demo line geometry and source continuity at reported widths; use `--browser=safari` or `--full` for all slider widths
 - `bun run probe-check` — smaller browser diagnostic
-- `bun run probe-check:safari`
+- `bun run probe-check --browser=safari`
 - `bun run font-probe --browser=chrome --output=/tmp/font-probe.json` — optional Shantell Sans and font-language diagnostic; also accepts `safari` and `firefox`. Requires access to Google Fonts. A completed diagnostic records differences; it is not an accuracy pass. See [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
 - `bun run probe:arabic-joining --output=/tmp/pretext-ff-arabic --font=arial-16 --limit=20` — Firefox-only joined-Arabic study. Compares in-word Range advances and native soft-hyphen and emergency thresholds with Canvas recipes and a pair additivity gate. Each page load measures at most 200 words and appends raw NDJSON to the new output folder, then the runner prints pass, fail, false accepts and Canvas calls per font and recipe. A completed run records differences; it is not an accuracy pass.
 
@@ -110,9 +110,9 @@ the same observer; changing an observer is not a library accuracy improvement.
 ### Corpus Tooling
 
 - `bun run corpus-check` — diagnose one corpus at one or a few widths
-- `bun run corpus-check:safari`
+- `bun run corpus-check --browser=safari`
 - `bun run corpus-font-matrix` — same corpus under alternate fonts
-- `bun run corpus-font-matrix:safari`
+- `bun run corpus-font-matrix --browser=safari`
 - `bun run corpus-taxonomy` — group corpus mismatches by likely cause
 - `bun run corpus-status` — rebuild `corpora/dashboard.json`
 
