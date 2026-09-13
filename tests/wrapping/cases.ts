@@ -286,6 +286,33 @@ function addReportedCases(add: (input: Omit<WrappingCase, 'id'>) => void, measur
     ...installed, font: '20px Arial', lineHeight: 28, whiteSpace: 'pre-wrap',
     origins: ['issue/#214-#215', 'reported-reproduction/#214'], required: ['height', 'lineCount', 'source', 'api'],
   })
+  // #225 paginates with the reporter's CJK fallback font. A time stays whole with
+  // its full-width comma. At the bare comma's width, browsers break before it
+  // only as an emergency break.
+  const dateTimeFont = '16px "Times New Roman", SimSun, "Songti SC"'
+  const halfComma = Math.round(measure('，', dateTimeFont, 0) / 2)
+  for (const whiteSpace of ['normal', 'pre-wrap'] as const) {
+    for (const [text, width, firefoxKeepsDate] of [
+      ['2025-08-01 00:00:00，2025-08-01 00:00:00', measure('2025-08-01 00:00:00，', dateTimeFont, 0) - 5, true],
+      ['a 00:00:00，b', measure('a 00:00:00', dateTimeFont, 0) + halfComma, false],
+      ['2025-08-01 00:00:00', measure('2025-08-01 ', dateTimeFont, 0) + 0.1, false],
+      ['xxxx，b', measure('xxxx', dateTimeFont, 0) + halfComma, false],
+      ['a 00:00:00', measure('a 00:0', dateTimeFont, 0) + 0.1, false],
+      ['00:00:00，2025', measure('00:00:00，', dateTimeFont, 0) + 0.1, false],
+    ] as const) {
+      const options = { ...installed, font: dateTimeFont, lineHeight: 21, whiteSpace }
+      if (!firefoxKeepsDate) {
+        report('#225', text, width, { ...options, origins: ['issue/#225', 'reported-reproduction/#225'], required: ['height', 'lineCount', 'source', 'api'] })
+        continue
+      }
+      // Firefox keeps a date such as 2025-08-01 whole, where Chrome and Safari
+      // break after its hyphens, while Pretext splits it for every engine.
+      report('#225', text, width, { ...options, origins: ['issue/#225', 'reported-reproduction/#225'], browsers: ['chrome', 'safari'],
+        required: ['height', 'lineCount', 'source', 'api'] })
+      report('#225', text, width, { ...options, origins: ['issue/#225', 'reported-reproduction/#225'], browsers: ['firefox'],
+        note: 'Firefox keeps 2025-08-01 whole where Chrome and Safari break after its hyphens.' })
+    }
+  }
   const richWitness = (parts: string[], width: number, letterSpacing = 0): void => {
     report('#210-#211', parts.join(''), width, { ...installed, parts, letterSpacing, nativeItems: true,
       origins: ['issue/#210-#211', 'reported-reproduction/#210-rich'], required: ['richHeight'] })
