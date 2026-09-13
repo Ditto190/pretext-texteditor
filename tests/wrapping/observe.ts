@@ -180,7 +180,7 @@ function rectLine(rect: NativeRect, input: WrappingCase, native: NativeObservati
   return lineOnGrid(rect, native.usedLineHeight ?? input.lineHeight, Math.round(native.lineCount))
 }
 
-function pointLine(point: NativePoint, lineHeight: number, lineCount: number): number | null {
+export function pointLine(point: NativePoint, lineHeight: number, lineCount: number): number | null {
   let line: number | null = null
   for (const rect of point.rects) {
     if (rect.width <= RECT_EPSILON || rect.height <= RECT_EPSILON) continue

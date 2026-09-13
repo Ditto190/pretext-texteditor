@@ -47,6 +47,7 @@ widths with their existing numeric tolerance.
 - `bun run probe-check` — smaller browser diagnostic
 - `bun run probe-check:safari`
 - `bun run font-probe --browser=chrome --output=/tmp/font-probe.json` — optional Shantell Sans and font-language diagnostic; also accepts `safari` and `firefox`. Requires access to Google Fonts. A completed diagnostic records differences; it is not an accuracy pass. See [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
+- `bun run probe:arabic-joining --output=/tmp/pretext-ff-arabic --font=arial-16 --limit=20` — Firefox-only joined-Arabic study. Compares in-word Range advances and native soft-hyphen and emergency thresholds with Canvas recipes and a pair additivity gate. Each page load measures at most 200 words and appends raw NDJSON to the new output folder, then the runner prints pass, fail, false accepts and Canvas calls per font and recipe. A completed run records differences; it is not an accuracy pass.
 
 The wrapping suite owns these maintained checks. Case records preserve each
 oracle's content width, whitespace/word-break modes, locale, browser scope,
