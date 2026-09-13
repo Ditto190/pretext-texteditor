@@ -23,14 +23,14 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - After a space, browsers break between the space and a following extender cluster, such as a skin-tone modifier plus ZWJ. Pretext folds the extender into the space.
 - Split numeric runs after en and em dashes (`10–20`, `1990—2000`), as it already does for `-`, so lines can break after the dash.
 - Safari and Firefox keep `n2-1o(r)` together where Pretext breaks after the hyphen. Trace their rules for a hyphen between a digit and a letter before deciding whether real text needs a rule; realistic items such as `v2` followed by `-1 or later` already match.
-- Characters of class NS, such as `：` and `；`, still don't attach to Latin letters or digits before them, although UAX #14 forbids a break before them (LB21). Record installed observations before extending the closing-punctuation attachment to them.
-- A time inside brackets can still break after `:`: `(10:30)，b` gives `(10:` / `30)，` / `b`, because the opener joins the first number before numeric runs merge.
+- After Latin letters, Pretext still allows a break before closing punctuation (CL, CP, EX, IS) and NS such as `，`, `」` or `：`, which UAX #14 forbids (LB13, LB21). Numeric runs already keep it. #245 tried attaching them: it creates kinsoku units that get no emergency breaks, so it lost 42 Chrome, 52 Safari and 52 Firefox LTR rows, mostly shapes like `739x「value」! end`. Land it after emergency breaks inside kinsoku clusters.
+- A time inside brackets such as `(10:30)，b` still allows a break before the full-width comma, because the bracketed run doesn't count as a numeric run.
 - Treat U+2000-U+200A and U+205F as break-after spaces that count their width: break after the last one in a run, never before (LB21). Narrow widths need the emergency permission below first.
 - An opening bracket after emoji or digits should attach to the text that follows it. Chrome and Safari never end an emergency line with `(`; Firefox does.
 - On a line that starts mid-word, Blink offers no dictionary break before the first ordinary opportunity, so soft-hyphen retreat must not target one there.
 - If benchmarks show a cost, add a fast path for a joiner right after a space, which the grapheme rules make unconditional.
 - Hang U+3000 at a line end as Blink and Gecko do, only where a break follows the run, and keep it on the fast path. Removing Chrome's closing-bracket carry exposes this after closing brackets.
-- Allow emergency breaks inside kinsoku clusters that don't fit, such as `漢。字` in narrow boxes, together with a forward carry that keeps combining marks with their base.
+- Allow emergency breaks inside kinsoku clusters that don't fit, such as `漢。字` in narrow boxes, together with a forward carry that keeps combining marks with their base. All three engines break inside them under `overflow-wrap: break-word`. Stacked on the closing-punctuation attachment above, it fixed 624 Chrome, 1,197 Safari and 993 Firefox LTR metrics and lost 510, 108 and 200. Chrome's losses are mostly raw-context rows with controls before openers, U+3000 hang rows and mark rows, which main passes only while those errors cancel out.
 - Attribute the extra Chrome losses when kinsoku emergency breaks are stacked on #234, after `〞 〟 ］ ｝`.
 - Opener runs create false CJK unit boundaries (`「「|tail`).
 - CJK unit construction and emergency breaks must never split a grapheme, such as a Prepend character before U+3000 or a space plus a joiner.

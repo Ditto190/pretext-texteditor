@@ -287,7 +287,8 @@ function addReportedCases(add: (input: Omit<WrappingCase, 'id'>) => void, measur
     origins: ['issue/#214-#215', 'reported-reproduction/#214'], required: ['height', 'lineCount', 'source', 'api'],
   })
   // #225 paginates with the reporter's CJK fallback font. A time stays whole with
-  // its full-width comma, and the comma never starts a line after Latin text.
+  // its full-width comma. At the bare comma's width, browsers break before it
+  // only as an emergency break.
   const dateTimeFont = '16px "Times New Roman", SimSun, "Songti SC"'
   const halfComma = Math.round(measure('，', dateTimeFont, 0) / 2)
   for (const whiteSpace of ['normal', 'pre-wrap'] as const) {

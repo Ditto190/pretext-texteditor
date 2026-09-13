@@ -570,21 +570,11 @@ const closingQuoteChars = new Set([
   '”', '’', '»', '›',
 ])
 
-// UAX #14 forbids a break before closing punctuation, exclamation marks and
-// infix separators whatever precedes them (LB13, LB15d), so `，` or `！` after
-// digits or Latin letters stays with that text, as it does after CJK.
-const noBreakBeforeClasses =
-  (1 << LineBreakClass.CL) | (1 << LineBreakClass.CP) | (1 << LineBreakClass.EX) | (1 << LineBreakClass.IS)
-
-function isNoBreakBeforeCodePoint(codePoint: number): boolean {
-  return ((1 << getLineBreakClass(codePoint)) & noBreakBeforeClasses) !== 0
-}
-
 function isLeftStickyPunctuationSegment(segment: string): boolean {
   if (isPunctuationGlueCluster(segment)) return true
   let sawPunctuation = false
   for (const ch of segment) {
-    if (leftStickyPunctuation.has(ch) || isLineBreakNumericAffix(ch) || isNoBreakBeforeCodePoint(ch.codePointAt(0)!)) {
+    if (leftStickyPunctuation.has(ch) || isLineBreakNumericAffix(ch)) {
       sawPunctuation = true
       continue
     }
@@ -1317,8 +1307,9 @@ export function isNumericRunSegment(text: string): boolean {
 }
 
 // A numeric run can end in closing punctuation, as in `00:00:00，` (LB25's CL
-// or CP suffix, and LB13). Returns where that suffix starts, or -1 when the
-// text is not a numeric run followed by one.
+// or CP suffix, and LB13 for EX). Returns where that suffix starts in the
+// segment after the run: 0 when the segment is only closing punctuation, after
+// its numeric continuation otherwise, or -1 when it is neither.
 function getNumericClosingSuffixStart(text: string): number {
   let start = text.length
   while (start > 0) {
@@ -1326,7 +1317,8 @@ function getNumericClosingSuffixStart(text: string): number {
     if (lineBreakClass !== LineBreakClass.CL && lineBreakClass !== LineBreakClass.CP && lineBreakClass !== LineBreakClass.EX) break
     start--
   }
-  if (start === text.length || start === 0) return -1
+  if (start === text.length) return -1
+  if (start === 0) return 0
   const body = text.slice(0, start)
   return isNumericRunSegment(body) && segmentContainsDecimalDigit(body) ? start : -1
 }
@@ -1400,7 +1392,7 @@ function mergeNumericRuns(segmentation: MergedSegmentation, normalized: string, 
       ) {
         const finalText = segmentation.texts[j]!
         const suffixStart = getNumericClosingSuffixStart(finalText)
-        if (suffixStart > 0) {
+        if (suffixStart >= 0) {
           mergedParts.push(finalText)
           suffixLength = finalText.length - suffixStart
           j++
