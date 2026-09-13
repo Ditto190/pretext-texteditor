@@ -76,7 +76,7 @@ The migration compared the complete expanded set with `a56d0f9`: 209,138 inputs 
 
 ## Provenance and curation
 
-Commit `ac6289f` recorded imported source files, SHA-256 hashes, complete input counts, duplicate aliases, locale policies and rows that were not wrapping inputs in `fixtures/provenance.json`, with paths relative to the original wrapping evidence directory, archived at `~/.codex/visualizations/2026/09/03/01a066d4-77ab-7d90-9cbd-80bb870c71da`; `git show ac6289f:tests/wrapping/fixtures/provenance.json` retrieves it. Every runnable input is checked in here or imported from maintained repository data.
+`fixtures/provenance.json`, added in commit `ac6289f` and since removed, recorded imported source files, SHA-256 hashes, complete input counts, duplicate aliases, locale policies and rows that were not wrapping inputs. Its source paths are relative to the original wrapping evidence directory, archived at `~/.codex/visualizations/2026/09/03/01a066d4-77ab-7d90-9cbd-80bb870c71da`; `git show ac6289f:tests/wrapping/fixtures/provenance.json` retrieves the file. Every runnable input is checked in here or imported from maintained repository data.
 
 The compact data covers all ordinary public inputs in the bounded round's 235-run index and standalone input sets, including raw-control, surrogate/PUA, endpoint, dual-direction, source-window and locale replays. It also retains the final three-browser comparison inputs, the historical Safari 7,776-row cohort, earlier tab/SHY matrices, script/spacing controls, the Firefox emoji-size matrix, cross-item cohorts and ligature/threshold inputs. Byte-identical input files are aliases; equal semantic inputs merge origins. A source file's archived native capture is not reused as a current-browser expectation.
 
