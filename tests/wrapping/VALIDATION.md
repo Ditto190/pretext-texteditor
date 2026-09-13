@@ -17,6 +17,31 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Small kana and ー in Chrome and Firefox
+
+This runtime change starts from main after #249. Chrome and Firefox now resolve
+small kana and `ー` through the class-table predicate that Safari already uses.
+Chromium's ICU data classifies these conditional Japanese starters as ideographic
+for every page language. So in Chrome they may start a line after CJK text,
+including after `？` and `！`. Gecko's `line-break: auto` is strict, so in Firefox,
+and in engines Pretext doesn't recognize, small kana stay with the CJK text before
+them. The `conditionalJapaneseStarterModel` profile field lost its last use and is
+removed.
+
+The installed gate ran against #249's pin `8a54d4c`: Chrome 153 through the
+Playwright transport, Safari 26.5.2 and Firefox 155 natively, both directions.
+Chrome fixes 25 LTR and 0 RTL metrics (25 in `maintained/content-language`). Firefox
+fixes 98 and 0 (80 in `maintained/content-language`, 18 in `maintained/corpus`). Safari changes nothing. No leg
+loses a metric or has required failures, execution errors, or new API or rich
+failures.
+
+After a digit or a Latin letter, Firefox keeps small kana and `ー` attached, but
+Pretext still lets them start a line there. Firefox's emergency split of `本ーー`
+is still unmodeled.
+
+`bun test` and `bun run check` pass. The baseline advances to `b4d9fd7`, and the
+ordinary snapshots were regenerated against it.
+
 ## Safari small kana and ー by page language
 
 This runtime change starts from main after #248. Preparation reads `<html lang>`

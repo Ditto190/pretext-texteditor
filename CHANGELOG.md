@@ -28,8 +28,8 @@
 - With `word-break: keep-all` in Chrome and Firefox, lines can now break before an opening bracket such as `(` or `¡` after CJK text, as in `서울(한국)에서`, before `「` or `（` after Latin letters or digits, after a closing bracket such as `❩` before CJK text, and next to Thai text. In Chrome, they can also break next to emoji and symbols such as `★` or `～`, after punctuation such as `/` or `‼` that follows an emoji, after keycaps, between flags, and before an opening quotation mark or after a closing one between CJK characters, as in `他说“你好”然后` (#243).
 - A time or number followed by closing punctuation such as a full-width comma, as in `00:00:00，`, now stays whole instead of breaking after a `:` or before the comma (#245).
 - In Safari, small kana and `ー` after CJK text can now start a line only on pages whose `<html lang>` is Japanese or Korean, as Safari does (#249).
-- In Chrome, `ー` can now start a line after CJK text, as Chrome does.
-- In Firefox, and in engines Pretext doesn't recognize, small kana no longer start a line after CJK text, as Firefox does.
+- In Chrome, `ー` can now start a line after CJK text, as Chrome does (#250).
+- In Firefox, and in engines Pretext doesn't recognize, small kana no longer start a line after CJK text, as Firefox does (#250).
 
 ## 0.0.9 - 2026-09-07
 
