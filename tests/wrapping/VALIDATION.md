@@ -52,6 +52,15 @@ hanging and controls cancel out. ENGINE_FOLLOWUPS.md keeps both.
 ordinary snapshots were regenerated against it; only provenance and environment
 records change.
 
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 9.55 ms
+(8.75 on the parent branch) and hot `layout()` at 0.0895 ms (0.0885); Safari reads
+11.5 ms (11.0) and 0.105 ms (0.105). Long-form corpus totals read 128.0 ms in
+Chrome (119.4) and 351 ms in Safari (351). Under a counting fake canvas, Canvas calls
+per cold `prepare()` are unchanged on the 18 long-form corpus texts, and a #225
+sample drops from 40 to 31.
+
 ## Keep-all runs from generated line-break classes
 
 This runtime change starts from the rich-inline boundaries branch. Keep-all runs
