@@ -17,6 +17,31 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## One separator check per text
+
+This runtime change starts from main after #245. #245 tested every segment with a
+regex for a digit, a full-width separator and another digit, so words like
+`00，2025` split after the separator. In V8 that regex cost about 1.5% of a cold
+`prepare()` over the long-form corpus texts. Preparation now checks the whole
+text once for the six separators, and scans segments with a character loop only
+when one is present. Line breaks don't change.
+
+An interleaved Node 23 run of cold `prepare()` over the 18 corpus texts, with a
+fake canvas, read 252.0 ms before #245, 255.5 ms with #245 and 252.3 ms with this
+change. The installed gate ran against #245's pin `9270621`: Chrome 153 through
+the Playwright transport, Safari 26.5.2 and Firefox 155 natively, both
+directions. No leg fixes or loses a metric, and none has required failures,
+execution errors or new API or rich failures. `bun test` and `bun run check`
+pass. The baseline advances to `96f4673`, and the ordinary snapshots were
+regenerated against it.
+
+Chrome and Safari benchmark snapshots were refreshed from this branch: three
+foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
+screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 8.75 ms
+(9.15 on the parent branch) and hot `layout()` at 0.0895 ms (0.0895); Safari reads
+11.0 ms (11.5) and 0.105 ms (0.105). Long-form corpus totals read 122.0 ms in
+Chrome (121.4) and 353 ms in Safari (351).
+
 ## Numeric runs with a closing full-width comma
 
 This runtime change starts from main after #243. A numeric run now keeps the
@@ -54,10 +79,13 @@ records change.
 
 Chrome and Safari benchmark snapshots were refreshed from this branch: three
 foreground runs each at DPR 2, visible and focused, with Chrome on the 2560x1440
-screen and Safari on the 1440x2560 screen. Chrome reads `prepare()` at 9.55 ms
-(8.75 on the parent branch) and hot `layout()` at 0.0895 ms (0.0885); Safari reads
-11.5 ms (11.0) and 0.105 ms (0.105). Long-form corpus totals read 128.0 ms in
-Chrome (119.4) and 351 ms in Safari (351). Under a counting fake canvas, Canvas calls
+screen and Safari on the 1440x2560 screen. The Chrome snapshot came from a run that
+needed focus retries while the Mac was in use, and its measurement totals moved
+as much as its analysis totals. A rerun on an idle Mac read `prepare()` at 9.15 ms
+(8.75 on the parent branch), hot `layout()` at 0.0895 ms (0.0885) and corpus
+totals at 121.4 ms (119.4), with analysis 3.4 ms slower; #248 removes that cost.
+Safari reads 11.5 ms (11.0) and 0.105 ms (0.105), and its corpus total reads
+351 ms (351). Under a counting fake canvas, Canvas calls
 per cold `prepare()` are unchanged on the 18 long-form corpus texts, and a #225
 sample drops from 40 to 31.
 

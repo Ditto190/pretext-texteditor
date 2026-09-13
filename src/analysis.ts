@@ -848,17 +848,20 @@ function joinReversedPrefixParts(prefixParts: string[], tail: string): string {
 // one numeric word (UAX #29 MidNum and MidNumLet). UAX #14 classes them CL or
 // NS, which allow a break after them before a digit, as in `00，2025`. Safari
 // marks digit strings non-word, so the split doesn't depend on word-likeness.
-const numericWordPunctuationRe = /\p{Nd}[﹐﹒﹔，．；]\p{Nd}/u
+// Text without any of them skips the per-segment scan.
+const numericWordPunctuationCharRe = /[\uFE50\uFE52\uFE54\uFF0C\uFF0E\uFF1B]/
 
 function getNumericWordPunctuationSplits(segment: string): number[] | null {
-  if (!numericWordPunctuationRe.test(segment)) return null
-  const splits: number[] = []
+  let splits: number[] | null = null
   for (let i = 1; i < segment.length - 1; i++) {
     const code = segment.charCodeAt(i)
     if (code !== 0xFE50 && code !== 0xFE52 && code !== 0xFE54 && code !== 0xFF0C && code !== 0xFF0E && code !== 0xFF1B) continue
-    if (decimalDigitRe.test(segment[i - 1]!) && decimalDigitRe.test(segment[i + 1]!)) splits.push(i + 1)
+    if (decimalDigitRe.test(segment[i - 1]!) && decimalDigitRe.test(segment[i + 1]!)) {
+      if (splits === null) splits = []
+      splits.push(i + 1)
+    }
   }
-  return splits.length === 0 ? null : splits
+  return splits
 }
 
 function splitSegmentByBreakKind(
@@ -867,8 +870,9 @@ function splitSegmentByBreakKind(
   start: number,
   whiteSpace: WhiteSpaceMode,
   breakOnlyAfterNextLine: boolean,
+  mayContainNumericWordPunctuation: boolean,
 ): SegmentationPiece[] {
-  const numericSplits = getNumericWordPunctuationSplits(segment)
+  const numericSplits = mayContainNumericWordPunctuation ? getNumericWordPunctuationSplits(segment) : null
   if (numericSplits === null) return splitTextByBreakKind(segment, isWordLike, start, whiteSpace, breakOnlyAfterNextLine)
   const pieces: SegmentationPiece[] = []
   let pieceStart = 0
@@ -1601,6 +1605,7 @@ function buildMergedSegmentation(
   const markKeepingZeroWidthSpaces = getMarkKeepingZeroWidthSpaces(source, normalized, profile)
   const hyphensAfterSourceTab = getHyphensAfterSourceTab(source, normalized, profile, whiteSpace)
   const wordSegmenter = getSharedWordSegmenter()
+  const mayContainNumericWordPunctuation = numericWordPunctuationCharRe.test(normalized)
   let mergedLen = 0
   const mergedTexts: string[] = []
   const mergedWordLike: boolean[] = []
@@ -1624,7 +1629,7 @@ function buildMergedSegmentation(
   let tailIsWordInitialHyphen = false
 
   for (const s of wordSegmenter.segment(normalized)) {
-    for (const piece of splitSegmentByBreakKind(s.segment, s.isWordLike ?? false, s.index, whiteSpace, profile.breakOnlyAfterNextLine)) {
+    for (const piece of splitSegmentByBreakKind(s.segment, s.isWordLike ?? false, s.index, whiteSpace, profile.breakOnlyAfterNextLine, mayContainNumericWordPunctuation)) {
       if (
         piece.kind === 'zero-width-break' &&
         piece.text.length === 1 &&
