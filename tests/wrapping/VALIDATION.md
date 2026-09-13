@@ -17,6 +17,31 @@ All accuracy, letter-spacing and corpus result payloads are unchanged; refreshed
 snapshots change only provenance and environment records. Runtime sources and
 the baseline pin are unchanged, so no runtime benchmark was needed.
 
+## Safari small kana and ー by page language
+
+This runtime change starts from main after #248. Preparation reads `<html lang>`
+once and resolves a line-break language from its primary subtag: `ja`, `ko`,
+`zh` or the root rules. In Safari, small kana and `ー` after CJK text may start a
+line on Japanese and Korean pages. Elsewhere they stay with the text before them,
+as the content-language observations show. One predicate now decides where CJ
+characters can start a line, from the generated class table and the profile's CJ
+resolution. It replaces a hand-kept set that listed `ー` but no small kana. Chrome
+and Firefox keep their previous rules.
+
+The installed gate ran against #248's pin `96f4673`: Chrome 153 through the
+Playwright transport, Safari 26.5.2 and Firefox 155 natively, both directions.
+Safari fixes 68 LTR metrics (68 in `maintained/content-language`) and loses none. Chrome and Firefox
+change nothing, and no leg has required failures, execution errors or new API or
+rich failures.
+
+Preparation now reads `<html lang>` once per call instead of twice. A handle
+prepared before a language change keeps its line-break rules as well as its
+widths, as README says. After Latin letters or digits, Safari's profile still lets
+small kana and `ー` start a line on other pages.
+
+`bun test` and `bun run check` pass. The baseline advances to `8a54d4c`, and the
+ordinary snapshots were regenerated against it.
+
 ## One separator check per text
 
 This runtime change starts from main after #245. #245 tested every segment with a
