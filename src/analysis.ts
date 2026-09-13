@@ -846,7 +846,8 @@ function joinReversedPrefixParts(prefixParts: string[], tail: string): string {
 
 // Intl.Segmenter keeps a full-width comma, stop or semicolon between digits in
 // one numeric word (UAX #29 MidNum and MidNumLet). UAX #14 classes them CL or
-// NS, which allow a break after them before a digit, as in `00，2025`.
+// NS, which allow a break after them before a digit, as in `00，2025`. Safari
+// marks digit strings non-word, so the split doesn't depend on word-likeness.
 const numericWordPunctuationRe = /\p{Nd}[﹐﹒﹔，．；]\p{Nd}/u
 
 function getNumericWordPunctuationSplits(segment: string): number[] | null {
@@ -867,7 +868,7 @@ function splitSegmentByBreakKind(
   whiteSpace: WhiteSpaceMode,
   breakOnlyAfterNextLine: boolean,
 ): SegmentationPiece[] {
-  const numericSplits = isWordLike ? getNumericWordPunctuationSplits(segment) : null
+  const numericSplits = getNumericWordPunctuationSplits(segment)
   if (numericSplits === null) return splitTextByBreakKind(segment, isWordLike, start, whiteSpace, breakOnlyAfterNextLine)
   const pieces: SegmentationPiece[] = []
   let pieceStart = 0
