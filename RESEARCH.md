@@ -702,6 +702,13 @@ in A–A kerning, so it is not a clean space measurement. Measure the space itse
 After forced overflow, preserve the negative remaining width; clamping it to zero
 gives a following negative gap room it did not have.
 
+A whole zero-width item fits at the end of an exactly filled line. Checking
+whole-item fit before reserving the item's gap and extra width admitted it, but
+lost nine Safari forced-overflow matches: a negative next item could undo forced
+overflow. A broader guard on prior overflow lost 62 matches where item and style
+boundaries differed. Reservation therefore stays first and rejects only a reserved
+width strictly greater than the remaining width (`>` rather than `>=`).
+
 An item boundary is not a break opportunity by itself. Chrome runs one line-break
 iterator over the text of the whole inline formatting context, and Gecko keeps
 collecting a word across text frames until whitespace. `prepareRichInline()`
