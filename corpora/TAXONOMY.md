@@ -6,7 +6,7 @@ Use this when a corpus or probe disagrees with the engine and the question is
 "what class of problem is this?" rather than "what width missed?"
 
 `RESEARCH.md` stays the detailed exploration log.
-`corpora/dashboard.json` is the current scorecard.
+The `corpora/*-step10.json` snapshots are the current scorecard.
 This file is the shared vocabulary for deciding what kind of work should happen next.
 
 Useful command:

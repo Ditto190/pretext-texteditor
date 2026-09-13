@@ -25,7 +25,7 @@ function environmentsFor(capture: Capture, rows: Row[]): Environment[] {
   return environments
 }
 
-// Dashboards consume the same observations as the gate. Only mismatches need
+// Snapshots consume the same observations as the gate. Only mismatches need
 // checked-in rows; the complete input, rectangle and API evidence stays in NDJSON.
 export function createSnapshots() {
   const captures: Record<BrowserKind, Capture> = {
@@ -121,7 +121,7 @@ export function createSnapshots() {
         firstBreakMismatchCount: spacingResults.filter(row => row.breaks === 'fail').length,
         results: spacingResults,
       } })
-      // Validate every requested capture before replacing any dashboard input.
+      // Validate every requested capture before replacing any snapshot.
       for (const file of files) await writeFile(join(root, file.path), JSON.stringify(file.data, null, 2) + '\n')
       console.log(`Updated maintained snapshots from ${evidence.output}`)
     },

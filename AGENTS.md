@@ -1,6 +1,6 @@
 ## Pretext
 
-Use `README.md` as the public source of truth for API examples and user-facing limitations. See `DEVELOPMENT.md` for commands, packaging/release checks, and the canonical dashboards/snapshots to consult before making browser-accuracy or benchmark claims. Use `TODO.md` for the current priorities. **Every time before you commit, ensure you've synced the docs**.
+Use `README.md` as the public source of truth for API examples and user-facing limitations. See `DEVELOPMENT.md` for commands, packaging/release checks, and the canonical snapshots to consult before making browser-accuracy or benchmark claims. Use `TODO.md` for the current priorities. **Every time before you commit, ensure you've synced the docs**.
 Do not change the existing tone of the documents unless they're wrong.
 Do `bun install` if you're in a fresh worktree.
 
@@ -87,6 +87,6 @@ Changelog updates guideline: don't add dev-facing notes, only user-facing ones. 
 - Derive diagnostic lines from `layoutWithLines()` and source offsets from prepared segments and grapheme cursors. Do not duplicate the line walker or reconstruct offsets from `line.text.length`.
 - Use existing corpus `font` / `lineHeight` overrides for font comparisons. Start font matrices in Chrome; use Safari for follow-up smoke coverage.
 - Keep mixed app text as a canary for URLs, emoji ZWJ runs, and mixed-script punctuation. See `RESEARCH.md` for corpus findings and rejected fixes.
-- Refresh `benchmarks/chrome.json` and `benchmarks/safari.json` when a diff changes benchmark methodology or the text engine hot path (`src/analysis.ts`, `src/measurement.ts`, `src/line-break.ts`, `src/layout.ts`, `src/bidi.ts`, or `pages/benchmark.ts`). Regenerate `status/dashboard.json` after snapshot changes.
+- Refresh `benchmarks/chrome.json` and `benchmarks/safari.json` when a diff changes benchmark methodology or the text engine hot path (`src/analysis.ts`, `src/measurement.ts`, `src/line-break.ts`, `src/layout.ts`, `src/bidi.ts`, or `pages/benchmark.ts`).
 - Refresh `accuracy/chrome.json`, `accuracy/safari.json`, and `accuracy/firefox.json` when a diff changes the browser sweep methodology or the main text engine behavior (`src/analysis.ts`, `src/measurement.ts`, `src/line-break.ts`, `src/layout.ts`, `src/bidi.ts`, or the wrapping suite’s case/observation methodology). Use `bun run test:wrapping:snapshot`.
-- Refresh `corpora/chrome-step10.json`, `corpora/safari-step10.json`, and `corpora/firefox-step10.json`, then regenerate `corpora/dashboard.json`, when corpus sweep methodology or long-form canary behavior changes in a way that moves the dashboard counts. Use `bun run test:wrapping:snapshot`.
+- Refresh `corpora/chrome-step10.json`, `corpora/safari-step10.json`, and `corpora/firefox-step10.json` when corpus sweep methodology or long-form canary behavior changes in a way that moves the snapshot counts. Use `bun run test:wrapping:snapshot`.

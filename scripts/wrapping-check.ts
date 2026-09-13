@@ -23,7 +23,7 @@ bun run test:wrapping [--browser=chrome|safari|firefox|all] [--suite=ordinary|fu
   --family=substring        Select a family or provenance label.
   --case=wrap-ID            Reproduce one ID (defaults to the full inventory).
   --strict                 Fail on all observed supported incompatibilities.
-  --snapshot               Refresh maintained dashboards from this checkout.
+  --snapshot               Refresh maintained snapshots from this checkout.
   --skip-numeric           Browser-only diagnostic; omits numeric API validation.
   --transport=playwright   Portable headed installed Chrome; native is default.
   --output=/new/directory   Frozen sources, raw NDJSON, and summaries.

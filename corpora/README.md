@@ -4,8 +4,8 @@ Starter long-form stress corpora for browser-layout experiments.
 
 These files are checked in so we have stable canaries when probing languages and
 punctuation systems beyond the current 7680-case browser sweep. The main corpus
-set is wired into `/corpus` and the long-form rows on `/benchmark`; the status
-pages are the compact source of truth for current results.
+set is wired into `/corpus` and the long-form rows on `/benchmark`; the checked-in
+`step=10` snapshots are the compact source of truth for current results.
 
 Current bundle:
 
@@ -118,17 +118,15 @@ Current bundle:
 
 Machine-readable metadata lives in `sources.json`.
 
-Machine-readable corpus status lives in [dashboard.json](dashboard.json), and its main snapshot
-inputs are [chrome-step10.json](chrome-step10.json), [safari-step10.json](safari-step10.json)
-and [firefox-step10.json](firefox-step10.json). In the dashboard,
-"anchors" means `300 / 600 / 800` unless noted otherwise, and "step=10" means
-the `300..900` sweep. Results describe the machine that produced the snapshots;
-they are not a promise of universal permanence.
+Machine-readable corpus status lives in [chrome-step10.json](chrome-step10.json),
+[safari-step10.json](safari-step10.json) and [firefox-step10.json](firefox-step10.json).
+"step=10" means the `300..900` sweep. Results describe the machine that produced
+the snapshots; they are not a promise of universal permanence.
 Mismatch taxonomy and steering vocabulary live in `TAXONOMY.md`.
 
 Useful commands:
 
-- `bun run test:wrapping:snapshot` — refresh all three browser snapshots and the dashboards from the shared suite
+- `bun run test:wrapping:snapshot` — refresh all three browser snapshots from the shared suite
 - `bun run corpus-check --id=ko-unsu-joh-eun-nal 300 600 800`
 - `bun run corpus-check --id=ko-sonagi 300 600 800`
 - `bun run corpus-check --id=ar-risalat-al-ghufran-part-1 --diagnose 300`

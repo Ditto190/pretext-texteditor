@@ -264,7 +264,7 @@ export function generateCases(measure: Measure, selection: CaseSelection): Wrapp
       ...(input.expectedText === undefined ? {} : { discretionary: { expectedText: [...input.expectedText] }, required: ['height', 'lineCount', 'widths', 'hyphen'] }) })
   }
 
-  // The canonical dashboard historically measures height, not source placement.
+  // The canonical accuracy sweep historically measures height, not source placement.
   for (const family of ACCURACY_FONTS) for (const size of SIZES) for (const width of WIDTHS) for (const sample of TEXTS) {
     add({ ...defaults, family: 'maintained/accuracy', origins: [`accuracy/${sample.label}`],
       text: sample.text, font: `${size}px ${family}`, width, lineHeight: Math.round(size * 1.2), lang: 'en', context: { kind: 'installed', lang: 'en' },
