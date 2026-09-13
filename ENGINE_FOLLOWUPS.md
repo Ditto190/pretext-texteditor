@@ -4,12 +4,9 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 
 ## Decisions
 
-- Decide the public output changes the combined engine rules need: segment kinds for controls and for U+3000, raw CR, FF and VT kept in `line.text`, and U+00AD stripped from `line.text` when an unhyphenated soft hyphen stays inside text.
-- Decide whether Safari cursors may land inside a grapheme. WebKit's emergency breaks step by code point on its simple font path and by ICU cluster on its complex path, while the API promises grapheme boundaries.
-- Decide between a dedicated no-DOM study of Firefox's joined Arabic advances and documenting them as a limitation. Several Firefox halves of planned rules wait on it.
-- Decide on a feature-detected `fontKerning` prepare option (#199, #216), which would be a no-op on Safari's OffscreenCanvas, and on other Canvas font settings (#107).
+- Decide on other Canvas font settings (#107). README says Pretext assumes default font kerning; #199 and #216 stay open in case Safari's OffscreenCanvas ever follows `fontKerning`.
 - Decide whether `prepareRichInline()` supports `whiteSpace: 'pre-wrap'` (#173, #193). Accepting it needs a native styled-inline pre-wrap oracle.
-- Triage the community backlog of translations, demos, docs and feature requests.
+- Revisit what rich-text editing needs from Pretext: source offsets through whitespace normalization (#90) and caret positions (#198). Do a pass over the open demo and showcase issues (#94, #99, #150, #167).
 
 ## Line breaking
 
@@ -61,7 +58,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - For tab stops with letter spacing, WebKit hangs whole tab runs, and Firefox grows a tab by nine times the letter spacing.
 - In pre-wrap, Safari hangs a whole trailing tab run at a line end, while Pretext ends the line after the first tab that overflows. #240 loses one suite row per direction to this.
 - Under keep-all, Safari offers no break on either side of NEL and fills an overflowing space-delimited word by graphemes. Outside CJK runs Pretext still breaks after NEL, as it still breaks after `-` in Latin keep-all text.
-- Model lone CR, FF and VT in pre-wrap per engine instead of as hard breaks. This needs the harness contract and `line.text` decisions.
+- Model lone CR, FF and VT in pre-wrap per engine instead of as hard breaks. This needs the harness contract change; keeping them in `line.text` is approved.
 - Firefox removes a newline next to East Asian punctuation on ja and zh pages, and between wide characters. This needs the content-language decision and a re-observed Firefox corpus.
 - Rich-inline items should break only where the joined text breaks (#177). Chrome and Safari now do. Firefox still breaks at every item boundary: the joined rule lost 40 installed Myanmar split-word rows to Gecko's segmentation, so enabling it waits on a model of that segmentation and an installed re-gate.
 - In Chrome, line-break context crosses rich-inline items after a word-initial hyphen, as in items `foo` and U+2010 `bar baz`.
@@ -83,7 +80,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Safari's Canvas gives isolated and fallback-font combining marks an advance they don't have in context.
 - Chrome's Canvas gives VS16 about 4.9px that the DOM doesn't, and one Safari Myanmar corpus row diverges at a cluster boundary.
 - Skip letter spacing inside cursive scripts, per engine. Chrome versions before 149 lack the rule or apply it differently, so choose between a README limitation and a version gate.
-- Arabic letters joined across a soft hyphen are measured at isolated widths. The Chrome widths are recoverable for joining fonts; Firefox's have not been recovered from Canvas.
+- Arabic letters joined across a soft hyphen are measured at isolated widths. The Chrome widths are recoverable for joining fonts. Study Firefox's joined advances without the DOM (approved), and document them as a limitation if no Canvas recipe works; several Firefox halves of planned rules wait on it.
 - Chrome and Firefox shape and kern across rich-inline item boundaries, so per-item widths miss by about 1px there; Safari doesn't. Choose between a prepare-time boundary correction for Blink and Gecko and a README limitation.
 
 ## Per-browser gaps
@@ -118,7 +115,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Correct INVENTORY: three rows it lists as API failures now pass, although their native misses remain.
 - Before refreshing benchmark snapshots, add benchmark cases for U+3000 indentation, VS16 emoji paragraphs, long invisible tails and letter-spaced CJK, and numeric recipes for soft-hyphen, mark and control shapes.
 - Settle shared representations once before combining engine rules: one per-grapheme letter-spacing unit and lazily allocated per-segment arrays.
-- The Blink and WebKit rules that hide each other's errors (soft hyphens, U+3000, Arabic widths, controls, kinsoku, letter spacing, line fit) can only gate together. Build them in layers, with a replay after each layer.
+- The Blink and WebKit rules that hide each other's errors (soft hyphens, U+3000, Arabic widths, controls, kinsoku, letter spacing, line fit) can only gate together. Build them in layers, with a replay after each layer. The public output changes they need are approved: segment kinds for controls and for U+3000, raw CR, FF and VT kept in `line.text`, and U+00AD stripped from `line.text` when an unhyphenated soft hyphen stays inside text.
 - Name the origin set behind VALIDATION's 3,635 LTR recipe rows, which include 51 issue #212 and #214 rows.
 - Add `(#230)` to its CHANGELOG line.
 - Cite the HTML spec for the OffscreenCanvas language snapshot in PLATFORM_BUGS, and fix VALIDATION's sentence about the older cohorts' document language.
@@ -132,5 +129,3 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 
 - Rerun the Retina emoji and `system-ui` repros headed at DPR 2. The trackers were rechecked on September 12.
 - Compare the gallery's local Pretext 0.0.8 patch, which changes overflow fit, overflow-word kerning, continuation widths, tabs and caret ranges, with upstream.
-- Review and merge #226, which fixes broken preload links in the published bubbles demo.
-- Close the superseded draft PRs #218 and #112.
