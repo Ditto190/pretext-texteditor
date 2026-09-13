@@ -608,6 +608,27 @@ describe('boundary-policy regressions', () => {
       .toEqual(['\u65E5\uFF1F', '\u30FC'])
   })
 
+  test('closing punctuation stays with digits and Latin text, and times stay whole (#225)', async () => {
+    const { analyzeText } = await import('./analysis.ts')
+    const profile = {
+      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: true, keepAllPairModel: 'blink-general-category' as const,
+      keepZeroWidthSpaceMarkAtScanStart: false,
+      breakBeforeConditionalJapaneseStarter: true, breakAroundEastAsianQuotes: true,
+      wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: false,
+      segmentBreakRemovalRun: 'blink' as const, breakOnlyAfterNextLine: false,
+    }
+    for (const [text, expected] of [
+      ['a 00:00:00\uFF0Cb', ['a', ' ', '00:00:00\uFF0C', 'b']],
+      ['2025-08-01 00:00:00\uFF0C2025-08-01 00:00:00', ['2025-', '08-', '01', ' ', '00:00:00\uFF0C', '2025-', '08-', '01', ' ', '00:00:00']],
+      ['00:00:00\uFF0C2025', ['00:00:00\uFF0C', '2025']],
+      ['xxxx\uFF0Cb', ['xxxx\uFF0C', 'b']],
+      ['abc\u3002def', ['abc\u3002', 'def']],
+      ['ab\uFF01cd', ['ab\uFF01', 'cd']],
+    ] as const) {
+      expect(analyzeText(text, profile).texts).toEqual([...expected])
+    }
+  })
+
   test('ZWJ and a word-initial hyphen keep the following character', async () => {
     const { analyzeText, getBreakablePreferredBreaks } = await import('./analysis.ts')
     const profile = {

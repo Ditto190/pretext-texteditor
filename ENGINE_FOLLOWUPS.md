@@ -26,7 +26,8 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - After a space, browsers break between the space and a following extender cluster, such as a skin-tone modifier plus ZWJ. Pretext folds the extender into the space.
 - Split numeric runs after en and em dashes (`10–20`, `1990—2000`), as it already does for `-`, so lines can break after the dash.
 - Safari and Firefox keep `n2-1o(r)` together where Pretext breaks after the hyphen. Trace their rules for a hyphen between a digit and a letter before deciding whether real text needs a rule; realistic items such as `v2` followed by `-1 or later` already match.
-- #225: keep digits together across `:` (LB25), and attach a full-width comma to preceding digits (`00:00:00，`).
+- Characters of class NS, such as `：` and `；`, still don't attach to Latin letters or digits before them, although UAX #14 forbids a break before them (LB21). Record installed observations before extending the closing-punctuation attachment to them.
+- A time inside brackets can still break after `:`: `(10:30)，b` gives `(10:` / `30)，` / `b`, because the opener joins the first number before numeric runs merge.
 - Treat U+2000-U+200A and U+205F as break-after spaces that count their width: break after the last one in a run, never before (LB21). Narrow widths need the emergency permission below first.
 - An opening bracket after emoji or digits should attach to the text that follows it. Chrome and Safari never end an emergency line with `(`; Firefox does.
 - On a line that starts mid-word, Blink offers no dictionary break before the first ordinary opportunity, so soft-hyphen retreat must not target one there.

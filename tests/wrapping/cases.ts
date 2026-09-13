@@ -286,6 +286,25 @@ function addReportedCases(add: (input: Omit<WrappingCase, 'id'>) => void, measur
     ...installed, font: '20px Arial', lineHeight: 28, whiteSpace: 'pre-wrap',
     origins: ['issue/#214-#215', 'reported-reproduction/#214'], required: ['height', 'lineCount', 'source', 'api'],
   })
+  // #225 paginates with the reporter's CJK fallback font. A time stays whole with
+  // its full-width comma, and the comma never starts a line after Latin text.
+  const dateTimeFont = '16px "Times New Roman", SimSun, "Songti SC"'
+  const halfComma = Math.round(measure('，', dateTimeFont, 0) / 2)
+  for (const whiteSpace of ['normal', 'pre-wrap'] as const) {
+    for (const [text, width] of [
+      ['2025-08-01 00:00:00，2025-08-01 00:00:00', measure('2025-08-01 00:00:00，', dateTimeFont, 0) - 5],
+      ['a 00:00:00，b', measure('a 00:00:00', dateTimeFont, 0) + halfComma],
+      ['2025-08-01 00:00:00', measure('2025-08-01 ', dateTimeFont, 0) + 0.1],
+      ['xxxx，b', measure('xxxx', dateTimeFont, 0) + halfComma],
+      ['a 00:00:00', measure('a 00:0', dateTimeFont, 0) + 0.1],
+      ['00:00:00，2025', measure('00:00:00，', dateTimeFont, 0) + 0.1],
+    ] as const) {
+      report('#225', text, width, {
+        ...installed, font: dateTimeFont, lineHeight: 21, whiteSpace,
+        origins: ['issue/#225', 'reported-reproduction/#225'], required: ['height', 'lineCount', 'source', 'api'],
+      })
+    }
+  }
   const richWitness = (parts: string[], width: number, letterSpacing = 0): void => {
     report('#210-#211', parts.join(''), width, { ...installed, parts, letterSpacing, nativeItems: true,
       origins: ['issue/#210-#211', 'reported-reproduction/#210-rich'], required: ['richHeight'] })

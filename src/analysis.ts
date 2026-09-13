@@ -570,11 +570,21 @@ const closingQuoteChars = new Set([
   '”', '’', '»', '›',
 ])
 
+// UAX #14 forbids a break before closing punctuation, exclamation marks and
+// infix separators whatever precedes them (LB13, LB15d), so `，` or `！` after
+// digits or Latin letters stays with that text, as it does after CJK.
+const noBreakBeforeClasses =
+  (1 << LineBreakClass.CL) | (1 << LineBreakClass.CP) | (1 << LineBreakClass.EX) | (1 << LineBreakClass.IS)
+
+function isNoBreakBeforeCodePoint(codePoint: number): boolean {
+  return ((1 << getLineBreakClass(codePoint)) & noBreakBeforeClasses) !== 0
+}
+
 function isLeftStickyPunctuationSegment(segment: string): boolean {
   if (isPunctuationGlueCluster(segment)) return true
   let sawPunctuation = false
   for (const ch of segment) {
-    if (leftStickyPunctuation.has(ch) || isLineBreakNumericAffix(ch)) {
+    if (leftStickyPunctuation.has(ch) || isLineBreakNumericAffix(ch) || isNoBreakBeforeCodePoint(ch.codePointAt(0)!)) {
       sawPunctuation = true
       continue
     }
@@ -844,7 +854,43 @@ function joinReversedPrefixParts(prefixParts: string[], tail: string): string {
   return joinTextParts(parts)
 }
 
+// Intl.Segmenter keeps a full-width comma, stop or semicolon between digits in
+// one numeric word (UAX #29 MidNum and MidNumLet). UAX #14 classes them CL or
+// NS, which allow a break after them before a digit, as in `00，2025`.
+const numericWordPunctuationRe = /\p{Nd}[﹐﹒﹔，．；]\p{Nd}/u
+
+function getNumericWordPunctuationSplits(segment: string): number[] | null {
+  if (!numericWordPunctuationRe.test(segment)) return null
+  const splits: number[] = []
+  for (let i = 1; i < segment.length - 1; i++) {
+    const code = segment.charCodeAt(i)
+    if (code !== 0xFE50 && code !== 0xFE52 && code !== 0xFE54 && code !== 0xFF0C && code !== 0xFF0E && code !== 0xFF1B) continue
+    if (decimalDigitRe.test(segment[i - 1]!) && decimalDigitRe.test(segment[i + 1]!)) splits.push(i + 1)
+  }
+  return splits.length === 0 ? null : splits
+}
+
 function splitSegmentByBreakKind(
+  segment: string,
+  isWordLike: boolean,
+  start: number,
+  whiteSpace: WhiteSpaceMode,
+  breakOnlyAfterNextLine: boolean,
+): SegmentationPiece[] {
+  const numericSplits = isWordLike ? getNumericWordPunctuationSplits(segment) : null
+  if (numericSplits === null) return splitTextByBreakKind(segment, isWordLike, start, whiteSpace, breakOnlyAfterNextLine)
+  const pieces: SegmentationPiece[] = []
+  let pieceStart = 0
+  for (let i = 0; i <= numericSplits.length; i++) {
+    const pieceEnd = i < numericSplits.length ? numericSplits[i]! : segment.length
+    const split = splitTextByBreakKind(segment.slice(pieceStart, pieceEnd), isWordLike, start + pieceStart, whiteSpace, breakOnlyAfterNextLine)
+    for (let j = 0; j < split.length; j++) pieces.push(split[j]!)
+    pieceStart = pieceEnd
+  }
+  return pieces
+}
+
+function splitTextByBreakKind(
   segment: string,
   isWordLike: boolean,
   start: number,
@@ -1270,15 +1316,31 @@ export function isNumericRunSegment(text: string): boolean {
   return true
 }
 
+// A numeric run can end in closing punctuation, as in `00:00:00，` (LB25's CL
+// or CP suffix, and LB13). Returns where that suffix starts, or -1 when the
+// text is not a numeric run followed by one.
+function getNumericClosingSuffixStart(text: string): number {
+  let start = text.length
+  while (start > 0) {
+    const lineBreakClass = getLineBreakClass(text.charCodeAt(start - 1))
+    if (lineBreakClass !== LineBreakClass.CL && lineBreakClass !== LineBreakClass.CP && lineBreakClass !== LineBreakClass.EX) break
+    start--
+  }
+  if (start === text.length || start === 0) return -1
+  const body = text.slice(0, start)
+  return isNumericRunSegment(body) && segmentContainsDecimalDigit(body) ? start : -1
+}
+
 function mergeNumericRuns(segmentation: MergedSegmentation, normalized: string, profile: AnalysisProfile): MergedSegmentation {
   const texts: string[] = []
   const isWordLike: boolean[] = []
   const kinds: SegmentBreakKind[] = []
   const starts: number[] = []
 
-  function pushNumericRun(text: string, start: number): void {
+  function pushNumericRun(text: string, start: number, suffixLength: number): void {
     if (text.includes('-')) {
-      const parts = text.split('-')
+      const suffix = text.slice(text.length - suffixLength)
+      const parts = text.slice(0, text.length - suffixLength).split('-')
       let shouldSplit = parts.length > 1
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i]!
@@ -1296,7 +1358,7 @@ function mergeNumericRuns(segmentation: MergedSegmentation, normalized: string, 
         let offset = 0
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i]!
-          const splitText = i < parts.length - 1 ? `${part}-` : part
+          const splitText = i < parts.length - 1 ? `${part}-` : part + suffix
           texts.push(splitText)
           isWordLike.push(true)
           kinds.push('text')
@@ -1330,7 +1392,22 @@ function mergeNumericRuns(segmentation: MergedSegmentation, normalized: string, 
         j++
       }
 
-      pushNumericRun(joinTextParts(mergedParts), segmentation.starts[i]!)
+      let suffixLength = 0
+      if (
+        j < segmentation.len &&
+        segmentation.kinds[j] === 'text' &&
+        numericAffixBoundary(normalized, segmentation.starts[j]!, profile) !== false
+      ) {
+        const finalText = segmentation.texts[j]!
+        const suffixStart = getNumericClosingSuffixStart(finalText)
+        if (suffixStart > 0) {
+          mergedParts.push(finalText)
+          suffixLength = finalText.length - suffixStart
+          j++
+        }
+      }
+
+      pushNumericRun(joinTextParts(mergedParts), segmentation.starts[i]!, suffixLength)
       i = j - 1
       continue
     }
