@@ -61,7 +61,7 @@ test('content-language observations run only on full, under each page language, 
   expect(rows.every(input => input.scope === 'research' && input.required === undefined && input.locale === undefined && input.context?.lang === input.lang)).toBe(true)
   const perLanguage: Record<string, number> = {}
   for (const input of rows) perLanguage[input.lang!] = (perLanguage[input.lang!] ?? 0) + 1
-  expect(perLanguage).toEqual({ en: 33, ja: 28, ko: 28, zh: 28, 'zh-Hant': 28 })
+  expect(perLanguage).toEqual({ en: 36, ja: 31, ko: 31, zh: 31, 'zh-Hant': 31 })
 })
 
 test('boundary, rich and flat #210 reproductions are required', () => {

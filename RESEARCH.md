@@ -778,10 +778,10 @@ boundary matched some of those rows only by accident.
 ## Content Language
 
 Some line-break rules follow the page language. The full-schedule
-`maintained/content-language` family renders 28 shapes on `en`, `ja`, `ko`, `zh`
+`maintained/content-language` family renders 31 shapes on `en`, `ja`, `ko`, `zh`
 and `zh-Hant` pages, plus 5 `en` controls, with named CJK fonts. On September 12,
 2026, installed Chrome 153, Safari 26.5.2 and Firefox 155 gave, under
-`line-break: auto`:
+`line-break: auto`, for the 28 shapes it had then:
 
 | Shape | Chrome | Safari | Firefox |
 | --- | --- | --- | --- |
@@ -814,9 +814,13 @@ root. An empty or missing language, or no document, is root. Each engine keeps
 one profile per language, created once, and a language whose rules match root
 shares that object. Only the WebKit profile varies so far: small kana and `ー`
 (CJ in the generated class table) resolve to ID on `ja` and `ko` pages, so they
-may start a line, and to NS elsewhere, so they stay with the character before
-them. It applies that resolution in CJK units, to a segmenter piece that starts
-with CJ, and after EX. The Blink and Gecko profiles still resolve CJ only after
+may start a line, and to NS elsewhere, so they stay with CJK text before them. It
+applies that resolution in CJK units, to a segmenter piece that starts with CJ
+after CJK text, and after EX. After a digit or Latin letter, as in `約3ヶ月` or
+`日本abcァア`, the profile still lets them start a line on every page. ICU's
+strict rules never break before NS (LB21), so Safari likely keeps them on other
+pages, but the family's digit and Latin shapes have no installed observation
+yet. The Blink and Gecko profiles still resolve CJ only after
 EX and in keep-all pairs; elsewhere small kana start a line and `ー` does not. A
 prepared handle keeps the rules it was prepared under, like its widths. Nothing
 derived from break rules is cached across preparations. The attribute read costs
