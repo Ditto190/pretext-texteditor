@@ -2,8 +2,8 @@
 
 This is the maintained browser test runner for main, wrapping worktrees and
 experiments. [INVENTORY.md](INVENTORY.md) records the behavioral obligations and
-their provenance; [VALIDATION.md](VALIDATION.md) records completed comparisons,
-limitations and test timings.
+their provenance; [VALIDATION.md](VALIDATION.md) records completed comparisons
+and limitations.
 
 ```sh
 bun test

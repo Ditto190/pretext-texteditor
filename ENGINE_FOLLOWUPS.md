@@ -55,6 +55,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Give zero-advance characters (word joiners, glued ZWSP, lone marks) no letter-spacing gap, per engine: Blink per shaping cluster, WebKit only on glyphs with an advance. Several planned rules lose rows until this exists.
 - A leading ZWNJ, joiner, bidi mark or bare combining mark before a long word over-counts lines. A paragraph of only soft hyphens has 1 line in Chrome and Safari but none in Pretext.
 - A ZWSP right after a forced break inside a word gets its own line in all three browsers. Copying that loses hundreds of rows until joined Arabic widths, the U+3000 hang and letter spacing on invisibles land.
+- A leading ZWSP before some closing quotes (locale-dependent) can still wrap differently; U+201D locale tailoring remains unmodeled.
 - If demand for Persian appears, observe how browsers render soft hyphens typed in place of ZWNJ before weighing any Arabic-script soft-hyphen policy.
 - Firefox and Safari add a line for CRLF, or for a lone CR, at very narrow widths. Trace their line builders before modeling it.
 - In pre-wrap, Chrome hangs preserved spaces and tabs after an overflowing letter, including a space after a tab. WebKit also hangs whole white-space runs.
@@ -82,6 +83,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - Letter-spaced Shantell widths are 0.016px wider than Canvas with `letterSpacing` set, likely because ligatures turn off. Probe before changing measurement.
 - Safari's Canvas gives isolated and fallback-font combining marks an advance they don't have in context.
 - Chrome's Canvas gives VS16 about 4.9px that the DOM doesn't, and one Safari Myanmar corpus row diverges at a cluster boundary.
+- Headless WebKit sweeps lose a few native line counts in italic 18px Times New Roman, 17px Hoefler Text and italic 16px Gill Sans; those have not been diagnosed.
 - Skip letter spacing inside cursive scripts, per engine. Chrome versions before 149 lack the rule or apply it differently, so choose between a README limitation and a version gate.
 - Arabic letters joined across a soft hyphen are measured at isolated widths. The Chrome widths are recoverable for joining fonts. In installed Firefox, per-grapheme ZWJ forms recover the joined advances for Noto Naskh Arabic and for the system Arabic font behind Latin font stacks, with no false accepts from the pair additivity gate; Amiri and Noto Nastaliq Urdu stay out of reach (FONT_DIAGNOSTICS.md). Prototype the gated recipe for the Gecko profile together with the Firefox halves of the planned rules that wait on it.
 - Chrome and Firefox shape and kern across rich-inline item boundaries, so per-item widths miss by about 1px there; Safari doesn't. Choose between a prepare-time boundary correction for Blink and Gecko and a README limitation.
@@ -120,7 +122,7 @@ Open engine work deferred from the #210 series: decisions for the maintainer, kn
 - The Blink and WebKit rules that hide each other's errors (soft hyphens, U+3000, Arabic widths, controls, kinsoku, letter spacing, line fit) can only gate together. Build them in layers, with a replay after each layer. The public output changes they need are approved: segment kinds for controls and for U+3000, raw CR, FF and VT kept in `line.text`, and U+00AD stripped from `line.text` when an unhyphenated soft hyphen stays inside text.
 - Name the origin set behind VALIDATION's 3,635 LTR recipe rows, which include 51 issue #212 and #214 rows.
 - Add `(#230)` to its CHANGELOG line.
-- Cite the HTML spec for the OffscreenCanvas language snapshot in PLATFORM_BUGS, and fix VALIDATION's sentence about the older cohorts' document language.
+- Cite the HTML spec for the OffscreenCanvas language snapshot in PLATFORM_BUGS.
 - Treat headless replay numbers as advisory: headless Chromium ships an older ICU than installed Chrome, and there is no headless Firefox.
 - Accepted losses live only in VALIDATION prose and go silent once the pin advances. If they become frequent, consider a gated `changedFailures` report.
 - Assign Range points to lines with the harness `pointLine()` rule, never `rects[0]`: Safari gives a line-initial character a zero-width rect at the end of the previous line. Consider a sentence next to the Safari extractor caveats in DEVELOPMENT.md.
