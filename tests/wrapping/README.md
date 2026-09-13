@@ -36,7 +36,10 @@ curly double quotes on Chinese pages. Safari allows extra breaks around curly
 quotes on pages without a language and in `en`, `zh-Hans` and `ko`, but not `ja`.
 Glyphs missing from the named font fall back to a language-specific font with
 different widths. Under `ja`, `zh-Hans` and `ko`, Safari and Firefox also shape
-some of the named font's own punctuation differently. Pretext's OffscreenCanvas
+some of the named font's own punctuation differently. The full schedule's
+`maintained/content-language` family records curly-quote, small-kana, wave-dash
+and newline breaks on `en`, `ja`, `ko`, `zh` and `zh-Hant` pages; none of its
+results is required. Pretext's OffscreenCanvas
 follows `<html lang>` in Chrome and Firefox, never in Safari. The case generator
 measures width recipes with a hidden canvas attached to the page, which inherits
 `<html lang>` in all three browsers. A detached canvas ignores it in all three:
