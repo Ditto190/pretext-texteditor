@@ -531,6 +531,19 @@ describe('shared public contracts', () => {
 })
 
 describe('boundary-policy regressions', () => {
+  const blinkLikeProfile = {
+    geckoAsciiLineBreaks: false,
+    carryCJKAfterClosingQuote: false,
+    keepAllPairModel: 'blink-general-category' as const,
+    keepZeroWidthSpaceMarkAtScanStart: false,
+    breakBeforeConditionalJapaneseStarter: false,
+    breakAroundEastAsianQuotes: true,
+    wordInitialHyphenLetters: 'alphabetic' as const,
+    breakHyphenAfterCollapsedTab: false,
+    segmentBreakRemovalRun: 'none' as const,
+    breakOnlyAfterNextLine: false,
+  }
+
   test('independent symbols use grapheme overflow without splitting attached marks', () => {
     for (const text of ['||||', '|\u0301|\u0301']) {
       const clusters = getSegmentGraphemes(text)
@@ -553,13 +566,7 @@ describe('boundary-policy regressions', () => {
 
   test('Gecko ASCII opener attachment does not broaden the Unicode-affix model', async () => {
     const { analyzeText } = await import('./analysis.ts')
-    const profile = {
-      geckoAsciiLineBreaks: true, carryCJKAfterClosingQuote: false, keepAllPairModel: 'icu4x-classes' as const,
-      keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: false,
-      wordInitialHyphenLetters: 'none' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
-    }
+    const profile = { ...blinkLikeProfile, geckoAsciiLineBreaks: true, keepAllPairModel: 'icu4x-classes' as const, breakAroundEastAsianQuotes: false, wordInitialHyphenLetters: 'none' as const }
     for (const text of ['####((aabb', '""""[[aabb', '−+x«value»!']) {
       expect(analyzeText(text, profile).texts).toEqual([text])
     }
@@ -572,13 +579,7 @@ describe('boundary-policy regressions', () => {
 
   test('exclamation punctuation keeps the break browsers offer before a word', async () => {
     const { analyzeText } = await import('./analysis.ts')
-    const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
-      keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
-    }
+    const profile = blinkLikeProfile
     // The ASCII pair tables keep '!' with a following ASCII letter, and break
     // '?' before '-' and '|'. UAX #14 otherwise separates EX from any
     // following class that allows a break before it (LB31).
@@ -610,13 +611,7 @@ describe('boundary-policy regressions', () => {
 
   test('times and numbers keep a closing full-width comma (#225)', async () => {
     const { analyzeText } = await import('./analysis.ts')
-    const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: true, keepAllPairModel: 'blink-general-category' as const,
-      keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: true, breakAroundEastAsianQuotes: true,
-      wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'blink' as const, breakOnlyAfterNextLine: false,
-    }
+    const profile = { ...blinkLikeProfile, carryCJKAfterClosingQuote: true, breakBeforeConditionalJapaneseStarter: true, wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, segmentBreakRemovalRun: 'blink' as const }
     for (const [text, expected] of [
       ['a 00:00:00\uFF0Cb', ['a', ' ', '00:00:00\uFF0C', 'b']],
       ['2025-08-01 00:00:00\uFF0C2025-08-01 00:00:00', ['2025-', '08-', '01', ' ', '00:00:00\uFF0C', '2025-', '08-', '01', ' ', '00:00:00']],
@@ -629,13 +624,7 @@ describe('boundary-policy regressions', () => {
 
   test('ZWJ and a word-initial hyphen keep the following character', async () => {
     const { analyzeText, getBreakablePreferredBreaks } = await import('./analysis.ts')
-    const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
-      keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
-    }
+    const profile = blinkLikeProfile
     // UAX #14 LB8a and LB20a. A ZWJ after a space belongs to that space's
     // grapheme cluster and keeps its existing boundaries. The pair tables still
     // break '-' before an ASCII letter, and Firefox's ICU4X rules predate LB20a.
@@ -706,13 +695,7 @@ describe('boundary-policy regressions', () => {
 
   test('segmenting a ZWJ after a space grows linearly with the text', async () => {
     const { analyzeText, clearAnalysisCaches } = await import('./analysis.ts')
-    const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'blink-general-category' as const,
-      keepZeroWidthSpaceMarkAtScanStart: false,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      wordInitialHyphenLetters: 'alphabetic' as const, breakHyphenAfterCollapsedTab: false,
-      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: false,
-    }
+    const profile = blinkLikeProfile
     const Segmenter = Intl.Segmenter
     let segmentedUnits = 0
     Reflect.set(Intl, 'Segmenter', class extends Segmenter {
@@ -742,13 +725,7 @@ describe('boundary-policy regressions', () => {
 
   test('a ZWSP that starts a WebKit scan keeps a basic combining mark', async () => {
     const { analyzeText } = await import('./analysis.ts')
-    const profile = {
-      geckoAsciiLineBreaks: false, carryCJKAfterClosingQuote: false, keepAllPairModel: 'webkit-spaces' as const,
-      keepZeroWidthSpaceMarkAtScanStart: true,
-      breakBeforeConditionalJapaneseStarter: false, breakAroundEastAsianQuotes: true,
-      wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: true,
-      segmentBreakRemovalRun: 'none' as const, breakOnlyAfterNextLine: true,
-    }
+    const profile = { ...blinkLikeProfile, keepAllPairModel: 'webkit-spaces' as const, keepZeroWidthSpaceMarkAtScanStart: true, wordInitialHyphenLetters: 'alphabetic-and-hebrew' as const, breakHyphenAfterCollapsedTab: true, breakOnlyAfterNextLine: true }
     expect(analyzeText('\u200B\u0301ab', profile).texts).toEqual(['\u200B\u0301ab'])
     expect(analyzeText('x\n\u200B\u0301ab', profile, 'pre-wrap').texts).toEqual(['x', '\n', '\u200B\u0301ab'])
     // Source before the ZWSP, even a collapsed leading space, is prior context.
