@@ -425,6 +425,14 @@ Canvas calls; they also do not create shaping information we never measured.
 The extra compiler/adapter remains experimental and has not earned its production
 cost.
 
+Safari's emergency breaks can land inside a grapheme. WebKit steps through an
+overflowing word by code point on its simple font path and by ICU cluster on its
+complex path, so in a narrow box Safari can end a line partway through a
+multi-code-point grapheme. Pretext keeps every public cursor on a grapheme
+boundary and moves the whole grapheme instead. That mismatch is accepted: the API
+promises grapheme boundaries, and the affected lines only occur where a word
+doesn't fit its box.
+
 ## Widths After A Line Break
 
 These are findings from the September 2026 wrapping experiments around

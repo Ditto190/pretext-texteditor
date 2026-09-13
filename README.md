@@ -249,6 +249,8 @@ Pretext doesn't try to be a full font rendering engine (yet?). It currently targ
 - In Chrome, text is measured under the page direction (`<html dir>`) from when Pretext first measured, or last saw `<html lang>` change. Text whose direction differs from the page, like an Arabic paragraph on an LTR page, can wrap slightly differently around brackets and other neutral characters.
 - Runtime requires `Intl.Segmenter`, Canvas 2D text measurement, and Unicode property escapes (`\p{...}`). Browsers without these features aren't supported. Without Unicode property escapes, Pretext can't load and throws a `SyntaxError`.
 - Pretext uses the canvas `font` string. Separate CSS settings such as `font-optical-sizing`, `font-feature-settings`, and `font-variation-settings` aren't supported. Variable-font settings only apply when expressed through that string, such as font weight.
+- Pass font sizes in px. If your CSS sizes text in `rem` or `em`, resolve them to px once, higher up in your app (for example, when the root font size changes), and pass that string to Pretext.
+- Pretext assumes default font kerning. Text painted with a different `font-kerning` can wrap differently.
 
 ## Develop
 
