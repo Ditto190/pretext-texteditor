@@ -371,7 +371,8 @@ export async function runInvariants(profile: Profile, lib: string, draws: { dir:
   // A mark after a word joiner, where Chrome and Firefox measure a fresh line's first graphemes apart (entry geometry).
   plainInput('fixed a WJ U+0301 bc', 'a\u2060\u0301bc ', FONT, { letterSpacing: -1 }, 27, 20)
   plainInput('fixed a WJ U+0301 bc x16', 'a\u2060\u0301bc '.repeat(16), FONT, { letterSpacing: -1 }, 27, 20)
-  for (const letterSpacing of [0, 1, -5]) rich(`fixed a gap at letter spacing ${letterSpacing}`, [{ text: 'x ', font: FONT, letterSpacing }, { text: 'y', font: FONT, letterSpacing }], Infinity)
+  // A SPACE is 4px here: the gap's sign changes at letter spacing -4.
+  for (const letterSpacing of [-10, -4.1, -4, -3.9, 0, 2]) rich(`fixed a gap at letter spacing ${letterSpacing}`, [{ text: 'x ', font: FONT, letterSpacing }, { text: 'y', font: FONT, letterSpacing }], Infinity)
   rich('fixed empty and blank items', ['', 'AB', ' ', 'CD', ''].map(text => ({ text, font: FONT })), 16.1)
   rich('fixed one item a line', ['A', 'B', 'C'].map(text => ({ text, font: FONT })), 8.1)
   const pill: RichInlineItem = { text: 'ABCD', font: FONT, break: 'never', extraWidth: 18 }

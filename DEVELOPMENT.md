@@ -51,7 +51,6 @@ judged, the case sets and the pinned browsers.
 - `bun run test:wrapping --family=pre-wrap --browser=safari` — select one family for diagnosis
 - `bun run benchmark-check --output=benchmarks/chrome.json` — refresh the Chrome benchmark snapshot; default is the median of 3 full page runs, use `--runs=1` for a quick local check
 - `bun run benchmark-check --browser=safari --output=benchmarks/safari.json` — refresh the Safari benchmark snapshot
-- `bun run justification-check` — demo line geometry and source continuity at reported widths; use `--browser=safari` or `--full` for all slider widths
 - `bun run probe-check --text='...' --width=320 --font='18px serif'` — one-paragraph browser diagnostic; also `--browser=safari`, `--method=span|range`, `--whiteSpace=pre-wrap`, `--wordBreak=keep-all`, `--lang`, `--dir=rtl`
 - `bun run font-probe --browser=chrome --output=/tmp/font-probe.json` — optional Shantell Sans and font-language diagnostic; also accepts `safari` and `firefox`. See [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
 - `bun run probe:arabic-joining --output=/tmp/pretext-ff-arabic --font=arial-16 --limit=20` — Firefox-only joined-Arabic study; see [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).

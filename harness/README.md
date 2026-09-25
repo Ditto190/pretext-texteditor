@@ -175,7 +175,9 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 `bun harness/sets/make.ts` makes every case file but the smoke, census and book sets, which are the rebuild's, and the
 old-gate and follow-up sets, all taken once; its header lists the steps. A case's id hashes what the browser lays out, so making a set again keeps its ids and
 their recordings. The catalog's line-break classes come from `sets/data/LineBreak-17.0.0.txt`, Unicode 17's file, which
-main's generic table was made from before the engine tables replaced it.
+main's generic table was made from before the engine tables replaced it. Line numbers of `src/layout.test.ts` in case
+origins, `sets/data/engine-facts.json`, the `rich.ts` header and five accepted-list reasons are those of main before #340
+(6d1d210); the files keep them as they were taken.
 
 | File | Cases | What it holds | Reported as |
 |---|---:|---|---|
