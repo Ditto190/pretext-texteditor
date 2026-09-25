@@ -173,7 +173,7 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 | Line APIs checked on every case, recorded or not | A disagreement on a page-history case, or one with nothing visible, goes unseen |
 | First and last visible character per line | A word paints on the wrong line while the height is right; main before #340 passed 4.5-8.1% of its census cases this way |
 | Chrome's soft hyphen copies left out | A wrong break at a soft hyphen passes unseen |
-| Lines from rect positions | Fractional line boxes read as a wrong count, as Safari 27's did in the old harness (`tests/wrapping`) |
+| Lines from rect positions | Fractional line boxes read as a wrong count, as Safari 27's did in the old harness (`tests/wrapping`, since removed) |
 | Line-start search | Long paragraphs would take minutes per browser; a wrong search would hide or invent a book's wrong line |
 | Environment key | A browser or OS update reads as library regressions or fixes |
 | Page-history list, kept across recordings of one environment | Cases that lay out differently after other cases block changes at random; one recording's two sorted orders found 11 of WebKit's 87 |
@@ -211,7 +211,7 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 
 - `recordings/<browser>.txt`: one case per line, sorted, under a `# env` header: `<id>\t<height>\t<first>-<last>:<width> ...`
   per line, `-` for a line with no visible character. `recordings/<browser>.history.txt`: two recordings of each
-  page-history case that differ. `recordings/safari.txt` holds installed Safari's recording of 2,000 cases.
+  page-history case that differ. `recordings/safari.txt` holds installed Safari's recording of 1,995 of the 2,000 cases it recorded, and its history file the other 5.
 - `accepted/<browser>.txt`: `## <reason>` headings, each followed by `<id> <status>` lines, the status `count`, `breaks`
   or `error`.
 - `varying/<browser>.txt`: `## <reason>` headings, each followed by `<id> <kind>` lines, the kind `runs` or `order`.
@@ -240,7 +240,7 @@ origins, `sets/data/engine-facts.json`, the `rich.ts` header and five accepted-l
 | `reports.ndjson` | 28 | Filed reports, with the input and width as filed | Pinned cases |
 | `oracles.ndjson` | 56 | The mode oracles the old harness ran in Chrome and Safari, now in Firefox too; taken once | Pinned cases |
 | `followups.ndjson` | 2 | The two fuzz strings `ENGINE_FOLLOWUPS.md` names for Firefox's accepted list: the Gecko scan no longer splits text runs where the script changes; taken once | Pinned cases |
-| `old-gate.ndjson` | 322 | The rows the old gate (`tests/wrapping`) lost with #340's engine at 24 px and wider, true losses by its attribution, whose input no other case shows that engine failing; taken once | Pinned cases |
+| `old-gate.ndjson` | 322 | The rows the old gate (`tests/wrapping`, since removed) lost with #340's engine at 24 px and wider, true losses by its attribution, whose input no other case shows that engine failing; taken once | Pinned cases |
 
 **The sample.** A draw picks a surface (chat, AI replies, cards, documents, UI, editorial pages), a script by that
 surface's mix, a text from the pools, the style settings apps use, and a width from a device, its viewport and the

@@ -1435,7 +1435,8 @@ reason still holds, and record the new decision here with its date.
   as Firefox's script itemizer does. It was rejected on 2026-09-16 for parity with
   Firefox's break oracle and approved under the relaxed stance: no suite or corpus
   text moves, only mixed-script strings with stray marks, and it removed 189 runtime
-  lines. Firefox 156 sides with the splits on those strings (VALIDATION.md).
+  lines. Firefox 156 sides with the splits on those strings
+  (`tests/wrapping/VALIDATION.md` at 6fadbe5).
 - **2026-09-24: there is no `glue` kind.** Runs of only no-break characters (NBSP,
   U+2007, U+202F, word joiner, U+FEFF) are text, so they take emergency breaks where
   browsers do; the scans already decide where they break, so the kind was only a

@@ -11,19 +11,14 @@ bun install
 - `bun start` — stable local page server at <http://localhost:3000>
 - `bun run start:windows` — Windows-friendly fallback without automatic port cleanup
 - `bun run check` — typecheck, lint, dead-code scan (`knip`) and a check that the generated engine break data is current
-- `bun test` — durable invariant suite
-- `bun run test:wrapping --browser=all` — complete maintained checks and selected regressions against a fresh pinned-main comparison
-- `bun run test:wrapping --suite=full --browser=all` — also run the broad exploratory wrapping matrices
+- `bun test` — the unit tests, the harness's offline tests and the demo models' tests
 
 The report-server tests use temporary loopback ports; sandboxed runs need local
 listener access. They do not launch browsers.
 
-See [the wrapping suite](tests/wrapping/README.md) for worktree comparisons,
-known-failure reporting, native observation limits and reproducible case IDs.
-
 ### Harness
 
-The new harness in `harness/` keeps each browser's layout of every case in git, recorded once per browser build, and
+The harness in `harness/` keeps each browser's layout of every case in git, recorded once per browser build, and
 predicts every case in the browser the way an app does. See [harness/README.md](harness/README.md) for how a case is
 judged, the case sets and the pinned browsers.
 
@@ -54,11 +49,9 @@ judged, the case sets and the pinned browsers.
 
 ### Browser Accuracy And Benchmarking
 
-- `bun run test:wrapping --family=pre-wrap --browser=safari` — select one family for diagnosis
 - `bun run benchmark-check --output=benchmarks/chrome.json` — refresh the Chrome benchmark snapshot; default is the median of 3 full page runs, use `--runs=1` for a quick local check
 - `bun run benchmark-check --browser=safari --output=benchmarks/safari.json` — refresh the Safari benchmark snapshot
 - `bun run font-probe --browser=chrome --output=/tmp/font-probe.json` — optional Shantell Sans and font-language diagnostic; also accepts `safari` and `firefox`. See [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
-- `bun run probe:arabic-joining --output=/tmp/pretext-ff-arabic --font=arial-16 --limit=20` — Firefox-only joined-Arabic study; see [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
 - `bun scripts/grapheme-check/build.ts`, then `bun scripts/grapheme-check/run.ts --browser=chrome` — compare `src/graphemes.ts` with the browser's own `Intl.Segmenter` on every code point in contexts that tell the grapheme classes apart, the harness's case texts with their prepared segments, and random strings, under the table the engine profile takes and the other one; also `firefox` and `webkit-host`, in the harness's background browsers, one job per browser at a time. `ENGINE=webkit bun scripts/grapheme-check/offline.ts` runs it under Bun. Node can't load `src/` directly, so bundle it with `bun build --target=node scripts/grapheme-check/offline.ts --outfile=.artifacts/grapheme-check/offline.mjs` and run `ENGINE=blink node .artifacts/grapheme-check/offline.mjs`.
 
 Failed benchmark reports retain their evidence in `<output>.failed.json`, or under
@@ -87,8 +80,6 @@ foreground) and stops the process that names its disposable profile, because
 macOS 27 denies a shell's processes access to apps' folders under
 `~/Library/Application Support` and a directly spawned Firefox exits with
 "Could not find profile folder." for any `--profile`.
-
-For portable Chrome correctness checks, use `bun run test:wrapping --transport=playwright --browser=chrome`. This launches installed Chrome in an isolated headed browser with its native viewport. Install Chrome normally first; the adapter uses `playwright-core` without downloading another browser. Safari continues to use the native macOS path; Playwright WebKit is not treated as Safari. This transport is for correctness checks only; Playwright can emulate focus, so its visible/focused fields do not prove native tab attention. Benchmark scripts retain foreground native automation.
 
 ## Useful Pages
 

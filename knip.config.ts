@@ -17,10 +17,6 @@ const config: KnipConfig = {
     'harness/invariants.ts',
     // The bench's page, bundled by its runner.
     'harness/bench/page.ts',
-    // Bundled through the comparison runner's generated candidate entry.
-    'tests/wrapping/browser.ts',
-    'tests/wrapping/contracts.ts',
-    'tests/wrapping/numeric.ts',
   ],
   ignore: [
     '**/*.test.ts', // Exclude tests so their imports don't count as "usage"

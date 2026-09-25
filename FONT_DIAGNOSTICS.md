@@ -104,12 +104,14 @@ word and does not reshape at a break, so a joined letter keeps the glyph the fon
 chose for its neighbour. A Canvas total gives one equation per string, so no
 recipe can split a word for every font.
 
-`bun run probe:arabic-joining --browser=firefox --output=<dir>` compares DOM
-`Range` advances inside the intact word, and native soft-hyphen and emergency
-thresholds, with Canvas recipes. On September 12, 2026, installed Firefox 155 at
-DPR 2 measured 200 words from each Arabic and Urdu corpus plus witnesses, 1,808
-rows per font setup. Widths pass within 1/60px. A false accept is a partition the
-pair additivity gate admitted whose widths did not match.
+The Arabic joining probe
+(`bun run probe:arabic-joining --browser=firefox --output=<dir>` at 6fadbe5, a
+commit from before its removal) compares DOM `Range` advances inside the intact
+word, and native soft-hyphen and emergency thresholds, with Canvas recipes. On
+September 12, 2026, installed Firefox 155 at DPR 2 measured 200 words from each
+Arabic and Urdu corpus plus witnesses, 1,808 rows per font setup. Widths pass
+within 1/60px. A false accept is a partition the pair additivity gate admitted
+whose widths did not match.
 
 | Font setup | Isolated widths | Per-grapheme ZWJ forms | Prefix + ZWJ |
 | --- | --- | --- | --- |
