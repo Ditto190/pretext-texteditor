@@ -1,4 +1,4 @@
-// The behaviour catalog's templates, before widths.ts cuts them. Four sources:
+// The behaviour catalog's templates, before widths.ts cuts them. Five sources:
 // - main's adversarial families, taken from its own generator (tests/wrapping/cases.ts) so nothing is retyped. main
 //   measures some widths with the browser's Canvas; run with two made-up measures, a width that stays put is main's own
 //   and one that moves was measured, and a template with measured widths is searched from the coarse grid instead.
@@ -7,7 +7,9 @@
 // - the per-engine rebuild's rule families (data/rule-families.ndjson), the flat ones within what the library takes;
 // - filed reports whose reporter measured the width with their own Canvas;
 // - a matrix of every UAX #14 line-break class between the scripts apps mix, under the CSS settings the library takes,
-//   each pair of values of two axes in at least one template.
+//   each pair of values of two axes in at least one template;
+// - shapes ENGINE_FOLLOWUPS.md names, with their neighbours, each neighbour a family of its own, so the cover keeps a
+//   change of each.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { generateCases } from '../../tests/wrapping/cases.ts'
@@ -202,13 +204,44 @@ export function classMatrixTemplates(): Template[] {
   return out
 }
 
+// A line holding only soft hyphens, which a hard break ends (ENGINE_FOLLOWUPS.md): between lines of text, at the
+// paragraph start and end, as a run, twice over, beside a combining mark or a preserved space, between CRLFs, and
+// before text; and between two U+2028, which WebKit takes as hard breaks in normal white space too. Two words on each
+// side give the search widths where the lines around it change.
+export function followupTemplates(): Template[] {
+  const shapes: ReadonlyArray<readonly [string, string, 'normal' | 'pre-wrap']> = [
+    ['between', 'ab cd\n\u00AD\nef gh', 'pre-wrap'],
+    ['start', '\u00AD\nab cd', 'pre-wrap'],
+    ['end', 'ab cd\n\u00AD', 'pre-wrap'],
+    ['run', 'ab cd\n\u00AD\u00AD\nef gh', 'pre-wrap'],
+    ['twice', 'ab cd\n\u00AD\n\u00AD\nef gh', 'pre-wrap'],
+    ['mark-after', 'ab cd\n\u00AD\u0301\nef gh', 'pre-wrap'],
+    ['mark-before', 'ab cd\n\u0301\u00AD\nef gh', 'pre-wrap'],
+    ['space-before', 'ab cd\n \u00AD\nef gh', 'pre-wrap'],
+    ['space-after', 'ab cd\n\u00AD \nef gh', 'pre-wrap'],
+    ['crlf', 'ab cd\r\n\u00AD\r\nef gh', 'pre-wrap'],
+    ['text-after', 'ab cd\n\u00ADef gh', 'pre-wrap'],
+    ['line-separators', 'ab cd\u2028\u00AD\u2028ef gh', 'pre-wrap'],
+    ['line-separators-normal', 'ab cd\u2028\u00AD\u2028ef gh', 'normal'],
+  ]
+  const out: Template[] = []
+  for (let i = 0; i < shapes.length; i++) {
+    const [name, text, whiteSpace] = shapes[i]!
+    out.push({
+      family: `followups/soft-hyphen-line/${name}`, origin: `ENGINE_FOLLOWUPS.md: a line holding only a soft hyphen, ${name}`,
+      pageLang: 'en', paragraph: paragraph({ font: font('Arial', 16), lang: 'en', whiteSpace }, [text]), widths: [], grid: true,
+    })
+  }
+  return out
+}
+
 export function catalogTemplates(): { catalog: Template[]; rich: Template[] } {
   const main = mainTemplates()
   const catalog: Template[] = []
   const seen = new Set<string>()
   // The order decides which template shows a line break first, which the cover keeps (widths.ts): filed reports, the
-  // rebuild's rule families, main's families, then the class matrix.
-  const lists = [reportedTemplates(), ruleFamilyTemplates(), main.catalog, classMatrixTemplates()]
+  // rebuild's rule families, main's families, the class matrix, then the follow-ups' shapes.
+  const lists = [reportedTemplates(), ruleFamilyTemplates(), main.catalog, classMatrixTemplates(), followupTemplates()]
   for (let l = 0; l < lists.length; l++) {
     for (let i = 0; i < lists[l]!.length; i++) {
       const t = lists[l]![i]!

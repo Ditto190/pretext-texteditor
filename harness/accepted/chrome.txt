@@ -815,6 +815,7 @@ catalog-2c67bebcc9709f67 breaks
 catalog-2c97b24aa85e956e count
 catalog-2d7e2b8d6e42dc43 count
 catalog-2d8821fe24f7685a count
+catalog-2dbd50538137e141 count
 catalog-2dd726ff37f72ba9 breaks
 catalog-2e000ddf030cdfb0 count
 catalog-2e692057fc1a4f86 breaks
@@ -888,6 +889,7 @@ catalog-39a90bfb60c1936c count
 catalog-39bc777eb006dc13 breaks
 catalog-39cc05eb07f69006 count
 catalog-39cf74557e24b11b count
+catalog-3b59b3d6731c82bd breaks
 catalog-3b5a756c8182c128 count
 catalog-3b6941c96eda3f3b count
 catalog-3b77ae41f7790b2c count
@@ -898,6 +900,7 @@ catalog-3ce02d071883a2ac count
 catalog-3ce75492ff6e8026 count
 catalog-3d04dc4ea42e7f4e count
 catalog-3d4018e9f86b48a5 count
+catalog-3d73b2dbc1f8d277 count
 catalog-3d948f3b00fca787 breaks
 catalog-3db1278ee22a5945 breaks
 catalog-3e9633280b498de3 count
@@ -1149,6 +1152,7 @@ catalog-71277bfb8c92d466 count
 catalog-717019909f2e825b count
 catalog-71acac4eb8102123 breaks
 catalog-72012b30623cf532 breaks
+catalog-722b54e84a346c5d count
 catalog-7254daa71ee40bde count
 catalog-7261c94cff961225 count
 catalog-72ac7251491ecffe breaks
@@ -1279,6 +1283,7 @@ catalog-8ba6de8582e31922 count
 catalog-8bacabbc8abfad4b count
 catalog-8c4f6a08dd8f4802 count
 catalog-8c795372508cf1ca count
+catalog-8c8b426b2e0d9a8b count
 catalog-8cb304c663a2cfb5 breaks
 catalog-8cf1a19f51058f96 count
 catalog-8d0b1793cd98d42c breaks
@@ -1436,6 +1441,7 @@ catalog-a9eeea99d0ff5494 count
 catalog-aa3e6034afd4ebf0 count
 catalog-aa6b033a3b865163 count
 catalog-aa8038462590fd30 count
+catalog-aa9bb386d1462de1 breaks
 catalog-aab3c4586d47d3ab count
 catalog-aadc29ab95c0a445 count
 catalog-ab17ac6f8d0ae5c9 count
@@ -1460,6 +1466,7 @@ catalog-aef9d41e64358dae count
 catalog-af048c7999f360b0 breaks
 catalog-af21a48ff14a9c44 count
 catalog-af2f122623c8d9d2 breaks
+catalog-af7b28e8489defb2 count
 catalog-afa8b74b9e20b4c5 count
 catalog-afbe65aee94d6c7a count
 catalog-afce23b0e6bfa6ca count
@@ -1569,6 +1576,7 @@ catalog-c6bad6417d0040ec count
 catalog-c6cb925665e6ec4f count
 catalog-c6dae3a411ffaf5d count
 catalog-c6e4a2e602245a92 count
+catalog-c6f5df18678e0e2e count
 catalog-c728621dd0e4f421 breaks
 catalog-c74fd4f8239b8466 count
 catalog-c781203c5b09480a breaks
@@ -1669,6 +1677,7 @@ catalog-e08e90775d442ddf breaks
 catalog-e0db4952aeba6a1c count
 catalog-e0f60da9297d04d5 breaks
 catalog-e17b8ff868ed2488 count
+catalog-e1a0d96fb970be25 count
 catalog-e1bf64cb7e3e67ac count
 catalog-e1eda21d818b2c92 count
 catalog-e1fdb5e09574fc3d count
@@ -1963,6 +1972,8 @@ catalog-0151e16ac41db768 count
 catalog-0197950fabc9d701 count
 catalog-0219dc7792760891 count
 catalog-02306d3b5591570b count
+catalog-028358d922f5bce5 count
+catalog-03033fa0d2ab5d97 count
 catalog-032e0458b1f97ee4 count
 catalog-033350be4534eacd count
 catalog-03428470ea84490d count
@@ -1989,6 +2000,7 @@ catalog-086c8ef30fa56ab9 count
 catalog-089bc808a2da9329 breaks
 catalog-09151d7aa61c671e count
 catalog-097cda52164fa2d7 count
+catalog-0a7e0f069ef36ff7 count
 catalog-0a9bca448c5494b8 count
 catalog-0ab9fd744890ea61 count
 catalog-0b72981a7d964bb9 breaks
@@ -2071,6 +2083,7 @@ catalog-1e012ff42e35bb9d count
 catalog-1ed4943d113b7224 count
 catalog-1ed8a59def215fde count
 catalog-1f5c0a46e8cc67e7 count
+catalog-1f836104eba3a492 count
 catalog-1f992a117c09b59b breaks
 catalog-1fcd7f15b731a5b5 breaks
 catalog-201895f7004a8804 count
@@ -2450,6 +2463,7 @@ catalog-726407b8d7b72e61 count
 catalog-7273b5dc7f1e097c count
 catalog-72b149dc57a0c3fc breaks
 catalog-72c3c7325eaa2ed9 breaks
+catalog-72db93461df86981 breaks
 catalog-732234d6e5e42247 count
 catalog-7333dc1ce937eabf count
 catalog-73927d302be7ea5e count
@@ -2538,6 +2552,7 @@ catalog-84147961e177440a count
 catalog-846fd94bec6cb9db count
 catalog-84bae453490a51c5 count
 catalog-8593099047825bdb count
+catalog-85c6573c9eda5357 count
 catalog-85caccd47cbe9e8b count
 catalog-862f171aac17af0e count
 catalog-86d6feb804040f7a count
@@ -2587,6 +2602,7 @@ catalog-9227b033cf6354af count
 catalog-92a31c1c58786517 count
 catalog-92d4a4ad6e6c56fa count
 catalog-93086e7614e9bcba count
+catalog-931fa1928b14c969 count
 catalog-932d104056460eb4 count
 catalog-93710a9b6fa14c1a count
 catalog-93f6afa889b07461 count
@@ -2632,6 +2648,7 @@ catalog-9de90a2a56d05a5f count
 catalog-9e3c57841739a550 count
 catalog-9e936125cd1f244a count
 catalog-9f64807852f64e80 count
+catalog-9f7c210b1c9385e0 count
 catalog-9fa590db253bb619 breaks
 catalog-a03ac92c6d3630ad count
 catalog-a0c2b0fc928e7ef9 count
@@ -2730,6 +2747,7 @@ catalog-b83f63301ea42b0f count
 catalog-b869efac65ec1db6 count
 catalog-b894a27c1473b787 count
 catalog-b899011af891333e count
+catalog-b920b261b7fb2ff5 count
 catalog-b930fa3f3b615b1a count
 catalog-b953a5f3d998cfc1 breaks
 catalog-b98b89cdcdf4d0b2 breaks
@@ -2865,6 +2883,7 @@ catalog-da8104a576cc0430 count
 catalog-da875f708d6747ed count
 catalog-daa4112589bac89b count
 catalog-dad10649dc745d68 count
+catalog-dae78687d20805d4 count
 catalog-db2890812a7e4c0f count
 catalog-db3bd37e0d719e85 count
 catalog-db4a6a6069bc4f0e count
@@ -2916,6 +2935,7 @@ catalog-e6d8a1093b2059f4 count
 catalog-e7387b4b46217e2e count
 catalog-e738dafd9f70dc0c count
 catalog-e73e6a1d4927c978 breaks
+catalog-e8174539d3cf9bc2 count
 catalog-e8186a0f0e19b42c count
 catalog-e86c5e239c5151c1 count
 catalog-e89406ffa7640ea0 count
@@ -2957,6 +2977,7 @@ catalog-ef646457166687c7 count
 catalog-ef7c2aa028761dd1 count
 catalog-efb25b03085edffb count
 catalog-efc81357f4fda582 count
+catalog-efcd88bc9a52bcfa count
 catalog-efdb053bf9210cad count
 catalog-efe4338b439c9998 count
 catalog-f01cbdc55e949ea9 count
@@ -3905,6 +3926,15 @@ sample-b440ccf29c8506b7 breaks
 sample-78c75e7e120daf03 count
 sample-aa5df1d0b23661a0 count
 sample-b178e456f685db2e count
+
+## Soft hyphens alone after the last line feed of a pre-wrap paragraph: Chrome gives them a line of their own, the library none (main before #340 too; ENGINE_FOLLOWUPS.md)
+catalog-6eee548463a90026 count
+catalog-887921f266e411d6 count
+catalog-9404a5e2236d18b2 count
+catalog-94e4fef2d84b0df6 count
+catalog-b7f8be299e603dc1 count
+catalog-e12579ca01f5be5f count
+catalog-f3b0385715a2a1b0 count
 
 ## Spaces other than U+0020 (U+3000, U+2007, U+202F, NBSP) beside marks, brackets or other spaces, at 24 px and wider: Chrome breaks or hangs them where the library doesn't
 catalog-030161f630e04cb9 breaks
