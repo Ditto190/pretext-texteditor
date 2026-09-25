@@ -1484,3 +1484,12 @@ reason still holds, and record the new decision here with its date.
   opaque, and the offline invariants (`harness/invariants.ts`) copy handles with
   `structuredClone()`. Cursors and ranges are plain JSON and resume the same from
   a JSON copy.
+- **2026-09-25: the old wrapping suite, its snapshots and its diagnostic tools
+  are gone.** Browser-accuracy claims rest on the harness's recordings and
+  accepted lists. main's catalog, rich and oracle cases were taken once and stay
+  frozen, since their generator went with the suite. The font and Arabic joining
+  probes measure browsers, not `src/`, so they still run from 6fadbe5, a commit
+  from before their removal. Speed is to rest on same-document ratios from
+  `bun harness bench` in PR descriptions, with nothing timed checked in; the
+  benchmark page and `benchmarks/*.json` stay until the bench's noise floors are
+  calibrated and it calls a known change.
