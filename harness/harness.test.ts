@@ -1,5 +1,6 @@
 // Planted defects: each test plants one fault the harness exists to catch and checks that it is caught. The test name
 // says what an app developer would see if the fault went unseen.
+import './watchdog.ts'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'

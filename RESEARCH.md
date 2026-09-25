@@ -1462,3 +1462,10 @@ reason still holds, and record the new decision here with its date.
 - **2026-09-24: the engine tables land before the new test harness**, judged by
   main's installed gate, the real-text sets and an attribution of every lost row.
   The harness replaces `tests/wrapping` and its snapshots in its own change.
+- **2026-09-25: a prepared handle needn't survive a JSON round trip.** Its
+  per-segment flags are a `Uint8Array`, which `JSON.stringify()` turns into an
+  object without a `length`, so the line walkers never finish on a JSON copy.
+  `structuredClone()` and `postMessage()` copies work, README calls the handle
+  opaque, and the offline invariants (`harness/invariants.ts`) copy handles with
+  `structuredClone()`. Cursors and ranges are plain JSON and resume the same from
+  a JSON copy.

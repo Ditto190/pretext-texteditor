@@ -6,8 +6,8 @@ Open engine work: decisions for the maintainer, known gaps and harness debt.
 
 - Decide on other Canvas font settings (#107), including whether a kerning-enabled Canvas is viable: Chromium layout kerns across spaces, ZWSP and soft hyphens, but default Canvas doesn't report that kerning. README says Pretext assumes default font kerning; #199 and #216 stay open in case Safari's OffscreenCanvas ever follows `fontKerning`.
 - Decide whether `prepareRichInline()` supports `whiteSpace: 'pre-wrap'` (#173, #193). Accepting it needs a native styled-inline pre-wrap oracle.
-- Decide whether a prepared handle must survive a JSON round trip. Since its per-segment flags became a `Uint8Array`, a `JSON.parse(JSON.stringify(prepared))` copy has no `length` on them and the line walkers never finish on it; `structuredClone()` and `postMessage()` copies work. README calls the handle opaque, and the harness's cache-lifetime check now copies with `structuredClone()`.
 - Revisit what rich-text editing needs from Pretext: source offsets through whitespace normalization (#90) and caret positions (#198), and whether bidi selection and copy/paste behavior stay outside this package. Do a pass over the open demo and showcase issues (#94, #99, #150, #167).
+- Decide what `materializeLineRange()` and `materializeRichInlineLineRange()` do with a range whose end is past its text, such as one kept from a text that was since prepared again: the line-text builder reads it unchecked, so each missing segment adds `undefined` to the line's text, and a very large end index builds text until memory runs out. The harness checks every range against its text before building it (`harness/predict.ts`).
 
 ## Line breaking
 
@@ -124,7 +124,6 @@ Same-document timings in Chrome 153, Firefox 156 and Safari 27.0 against main (V
 - Rich-inline research lacks several loss shapes, such as an emoji modifier split across items and bold items. Its Latin rows were never compared against the maintained witnesses' page type.
 - Compare Arabic corpus line placement near 320-780px in installed browsers with a Range-based diagnostic; the gate scores counts, not placement.
 - Observe hyphen placement beyond the tiny discretionary protocol, so a wrong hyphen with the right line count fails.
-- Add numeric recipes for soft-hyphen, mark and control shapes.
 - Settle shared representations once before combining engine rules: one per-grapheme letter-spacing unit and lazily allocated per-segment arrays.
 - The Blink and WebKit rules that hide each other's errors (soft hyphens, U+3000, Arabic widths, controls, kinsoku, letter spacing, line fit) can only gate together. Build them in layers, with a replay after each layer. The public output changes they need are approved: segment kinds for controls (landed for NEL in the WebKit profile) and for U+3000, raw CR, FF and VT kept in `line.text`, and U+00AD stripped from `line.text` when an unhyphenated soft hyphen stays inside text.
 - Name the origin set behind VALIDATION's 3,635 LTR recipe rows, which include 51 issue #212 and #214 rows.

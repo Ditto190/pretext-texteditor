@@ -1,3 +1,4 @@
+import '../harness/watchdog.ts'
 import { beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { createVariant } from '../tests/wrapping/contracts.ts'
 import type { AnalysisProfile } from './analysis.ts'

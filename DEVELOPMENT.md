@@ -27,7 +27,8 @@ The new harness in `harness/` keeps each browser's layout of every case in git, 
 predicts every case in the browser the way an app does. See [harness/README.md](harness/README.md) for how a case is
 judged, the case sets and the pinned browsers.
 
-- `bun test harness` — the harness's offline tests, each planting a fault it exists to catch
+- `bun test harness` — the harness's offline tests, each planting a fault it exists to catch, and the line APIs'
+  invariants in four engine profiles on cases drawn from the case files (`harness/invariants.ts`)
 - `bun harness check` — predict every pinned case in Chrome, Firefox and webkit-host and score it; a failure that
   `harness/accepted/<browser>.txt` doesn't list under a written reason blocks, and `--accept="<reason>"` lists the new ones
 - `bun harness gate` — `check`, plus predictions in reverse order, a fresh recording of 1,000 cases and the attribution

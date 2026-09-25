@@ -92,6 +92,30 @@ The gate adds three checks:
   called a library defect: the browser's go on the varying list with a reason. Otherwise the failure is a true loss,
   printed with its family, width band and first differing line.
 
+## Offline invariants
+
+`bun test harness` also runs `invariants.ts` in one process per engine profile (Blink, WebKit, Gecko, and an engine
+Pretext doesn't recognize, which no browser here runs), each with a stand-in Canvas, on about 500 plain and 100 rich
+cases drawn from the case files with a fixed seed, at each case's width, half and 1.5 times it, 1 and Infinity, and on a
+few fixed inputs. It checks what an app relies on that no recording shows: every line API agrees with the walk and
+layoutWithLines and layoutNextLine give equal line objects; lines cover the source forward, at a fixed width and at one
+that changes per line; stepping leaves its cursor alone and the ranges a stream gives as they were, and JSON copies of
+cursors and ranges resume the same; a visitor that edits its range changes no later line; rich gaps and line widths,
+empty items, atomic items and extraWidth; held handles and their `structuredClone()` copies after other prepares,
+`clearCache()` and `setLocale()`, and prepares with filled caches against cold ones; and that measureText calls and the
+units submitted to them grow at most linearly while every walker ends. A handle is copied with `structuredClone()`: it
+needn't survive a JSON round trip. The Blink and Gecko processes run under a desktop user agent with a string
+`letterSpacing` on the context, as Chrome's and Firefox's have; without both, preparation skips the geometry of a fresh
+line's first graphemes that those browsers take, and a held handle changed by a later prepare went unseen in 500 draws.
+`invariants.test.ts` plants a fault in a copy of `src/` for every check but coverage, round trip and asking Canvas
+nothing after preparing. Every walk and stream stops after a line per source unit, plus one, as a failure, and a range
+or rich fragment that names no place in its text fails before its text is built. A walker that never returns inside the
+library can take a gigabyte a second, or spin without allocating, so four processes run at a time, each is killed after
+10 s, all of them once one ends without its report, and `watchdog.ts` kills a process that holds more than 1 GB (bun
+test itself 2 GB), whose parent is gone or whose main thread has run no timer for 30 s. `bun test` preloads it
+(`bunfig.toml`), which bun reads only when started from the repository root, so each test file that runs the library in
+bun test's own process imports it first too.
+
 What each piece catches, as an app developer would see it. `bun test harness` plants each fault, running the commands
 with a stand-in browser. Two pieces run only in a real browser and aren't planted: the Firefox hold, and the page
 (`page.ts`) passing the browser's name to the recorder, which leaves Chrome's soft hyphen copies out:
@@ -120,6 +144,11 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 | Fresh re-recording (gate), a differing case recorded alone twice more | Stored recordings stop describing the browser; or the gate blocks at random on emoji beside Arial in Firefox |
 | Seeded sample with a fixed default, ranked by id | The gate is green or red by the clock, or draws another sample whenever a case leaves |
 | Line APIs asking Canvas nothing after preparing (blocks), calls while preparing (printed) | Every window resize measures text again, or preparing gets slower unnoticed |
+| A walk that goes past a line per source unit, plus one, or a range or rich fragment that names no place in its text, fails its case | A walker that never ends, or a text builder given a range that ends at segment Infinity, stalls the page until the 2-minute watchdog, naming no case |
+| The line APIs' invariants offline, in four engine profiles (`invariants.ts`) | A list keeping the cursor it passed, the ranges a walk visits or a stream gives, or a JSON copy of a cursor lays out other lines, a chip counts its padding twice, and the profile of an engine Pretext doesn't recognize is checked nowhere |
+| Held handles and their copies after other prepares, `clearCache()` and `setLocale()`, and warm prepares against cold ones | A message a list prepared moves when another is prepared with other letter spacing, or a message prepared again at other letter spacing takes the first one's geometry |
+| Canvas calls and submitted units that grow at most linearly | A long word measures every prefix, so preparing it grows with the square of its length while the calls grow linearly |
+| `watchdog.ts`: past 1 GB (bun test 2 GB), a parent that is gone, or 30 s without a timer | A library under test whose walker runs away inside it fills the machine's memory from a process no test waits for any more, or hangs `bun test` |
 | A case without a recording blocks | A generator change that renames ids unpins cases silently |
 | Two recordings kept apart, sorted and stable | The gate is green or red on another case's layout, and every recording churns in git |
 | Sample draws weighted back to their share | A rare group topped up to 300 draws moves the headline far more than it moves real apps |
