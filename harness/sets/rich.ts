@@ -6,8 +6,8 @@
 //   shapes are 2604's);
 // - filed reports: #177 (punctuation split across items), #120 (CJK in rich mode), #171 (a bold first letter), #323 (a
 //   soft hyphen in the item after a bold word);
-// - styles changing at run boundaries (weight, size, family, italic, letter spacing) over the accuracy texts, as the
-//   rebuild's runs families do, and spaces at span edges;
+// - styles changing at run boundaries (weight, size, family, italic, letter spacing) over src/test-data.ts's texts, as
+//   the rebuild's runs families do, and spaces at span edges;
 // - chips and code spans as the demos write them: an atomic mention chip with padding, and inline code with padding
 //   that can break (pages/demos/rich-note.model.ts, markdown-chat.model.ts).
 import { TEXTS } from '../../src/test-data.ts'
@@ -62,7 +62,7 @@ export function richTemplates(): Template[] {
   for (const [a, b] of [['hello ', 'world'], ['hello', ' world'], ['hello ', ' world'], ['hello  ', 'world'], ['hello', '\u{A0}world'], ['hello\u{200B}', 'world']] as const) {
     out.push(template('span-edges', 'spaces and breaks at the edge of a bold span', ARIAL, [a, span(b, BOLD(ARIAL)), ' and more words']))
   }
-  // Styles that change at run boundaries, over the accuracy texts (src/test-data.ts).
+  // Styles that change at run boundaries, over src/test-data.ts's texts.
   const rng = createRng('harness-rich-runs')
   const bases = [ARIAL, HELVETICA, INTER, GEORGIA]
   for (let i = 0; i < TEXTS.length; i++) {

@@ -54,11 +54,9 @@ judged, the case sets and the pinned browsers.
 
 ### Browser Accuracy And Benchmarking
 
-- `bun run test:wrapping:snapshot` — run the suite and refresh accuracy/corpus snapshots from that run
 - `bun run test:wrapping --family=pre-wrap --browser=safari` — select one family for diagnosis
 - `bun run benchmark-check --output=benchmarks/chrome.json` — refresh the Chrome benchmark snapshot; default is the median of 3 full page runs, use `--runs=1` for a quick local check
 - `bun run benchmark-check --browser=safari --output=benchmarks/safari.json` — refresh the Safari benchmark snapshot
-- `bun run probe-check --text='...' --width=320 --font='18px serif'` — one-paragraph browser diagnostic; also `--browser=safari`, `--method=span|range`, `--whiteSpace=pre-wrap`, `--wordBreak=keep-all`, `--lang`, `--dir=rtl`
 - `bun run font-probe --browser=chrome --output=/tmp/font-probe.json` — optional Shantell Sans and font-language diagnostic; also accepts `safari` and `firefox`. See [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
 - `bun run probe:arabic-joining --output=/tmp/pretext-ff-arabic --font=arial-16 --limit=20` — Firefox-only joined-Arabic study; see [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
 - `bun scripts/grapheme-check/build.ts`, then `bun scripts/grapheme-check/run.ts --browser=chrome` — compare `src/graphemes.ts` with the browser's own `Intl.Segmenter` on every code point in contexts that tell the grapheme classes apart, the harness's case texts with their prepared segments, and random strings, under the table the engine profile takes and the other one; also `firefox` and `webkit-host`, in the harness's background browsers, one job per browser at a time. `ENGINE=webkit bun scripts/grapheme-check/offline.ts` runs it under Bun. Node can't load `src/` directly, so bundle it with `bun build --target=node scripts/grapheme-check/offline.ts --outfile=.artifacts/grapheme-check/offline.mjs` and run `ENGINE=blink node .artifacts/grapheme-check/offline.mjs`.
@@ -92,46 +90,18 @@ macOS 27 denies a shell's processes access to apps' folders under
 
 For portable Chrome correctness checks, use `bun run test:wrapping --transport=playwright --browser=chrome`. This launches installed Chrome in an isolated headed browser with its native viewport. Install Chrome normally first; the adapter uses `playwright-core` without downloading another browser. Safari continues to use the native macOS path; Playwright WebKit is not treated as Safari. This transport is for correctness checks only; Playwright can emulate focus, so its visible/focused fields do not prove native tab attention. Benchmark scripts retain foreground native automation.
 
-When a probe finds a first-break mismatch, the report includes a short trace. `sN:gM` identifies a segment and grapheme; `[ours]` and `[browser]` identify the competing break positions. Assign Range points to lines with the harness `pointLine()` rule, never `rects[0]`: Safari 26 gives a line-initial character a zero-width rect at the end of the previous line; Safari 27 doesn't.
-
-### Corpus Tooling
-
-- `bun run corpus-check --id=ko-unsu-joh-eun-nal 300 600 800` — diagnose one corpus at one or a few widths; add `--browser=safari`, `--diagnose`, `--method=span|range`, `--sliceStart=`/`--sliceEnd=`, `--font=`/`--lineHeight=`
-- `bun run corpus-font-matrix --id=<corpus-id>` — same corpus under alternate fonts; also `--browser=safari`
-- `bun run corpus-taxonomy --id=ja-rashomon 330 450` — group corpus mismatches by likely cause
-
-The corpus, probe, font-matrix and taxonomy tools remain detailed investigation
-tools, including source slices and alternate extractors. They do not run as a
-second maintained acceptance suite.
-
-Use existing corpus `font` / `lineHeight` overrides for font comparisons. Start
-font matrices in Chrome; use Safari for follow-up smoke coverage. For
-Arabic/Urdu, use normalized slices, the exact corpus font, and RTL `Range`
-diagnostics. Use `Range` for Thai/Lao/Khmer/Myanmar too; span probing can change
-their line breaks. Derive diagnostic lines from `layoutWithLines()` and source
-offsets from prepared segments and grapheme cursors. Do not duplicate the line
-walker or reconstruct offsets from `line.text.length`. Small automation reports
-can use the hash; large batched reports need the local POST side channel. A
-timeout in the `posting` phase points to report transport first. Scripted
-checkers use temporary `--no-hmr` servers. Connection-refused tabs after
-teardown are expected; use `bun start` for a persistent dev server.
-
 ## Useful Pages
 
 - `/demos/index` — index of the public demos
-- `/accuracy` — checked-in accuracy snapshots produced by the shared suite
 - `/benchmark` — performance comparisons
-- `/corpus` — long-form corpus diagnostics
 - `/font-probe` — whole-run, isolated-grapheme, in-context and language-bound font measurements; see [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md)
 
 ## Current Snapshots
 
-Use these for the current checked-in results:
+Use these for the current checked-in benchmark results; accuracy rests on the harness's recordings and accepted lists
+([harness/README.md](harness/README.md)):
 
-- [accuracy/chrome.json](accuracy/chrome.json), [accuracy/safari.json](accuracy/safari.json), [accuracy/firefox.json](accuracy/firefox.json) — accuracy totals, environment/source fingerprints and mismatching cases; complete rows are in the run artifacts
-- [accuracy/letter-spacing.json](accuracy/letter-spacing.json) — results from the small Chrome + Safari `{ letterSpacing }` check
 - [benchmarks/chrome.json](benchmarks/chrome.json), [benchmarks/safari.json](benchmarks/safari.json) — raw benchmark snapshots
-- [corpora/chrome-step10.json](corpora/chrome-step10.json), [corpora/safari-step10.json](corpora/safari-step10.json), [corpora/firefox-step10.json](corpora/firefox-step10.json) — checked-in browser `step=10` corpus sweep snapshots
 
 ## Deep Profiling
 

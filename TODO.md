@@ -10,8 +10,8 @@
 
 ## 2. Regression Coverage
 
-- Keep mixed app text as the main app-like regression case. Add only real text patterns that the current corpus misses.
-- Add corpora only from clean source text. Expand the font matrix only around a case with a reproducible mismatch.
+- Keep the real app text in the harness's sample as the main regression case. Add only real text patterns that the current corpus misses.
+- Add corpora only from clean source text. A font joins `harness/sets/weights.json` only with a source for its usage.
 - Prefer a new Southeast Asian source that broadens coverage over another wrapped legal or raw-source artifact.
 
 ## Open Design Questions

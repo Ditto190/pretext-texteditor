@@ -997,7 +997,10 @@ and gave 118 others another line start at the same height, mostly narrower than
 24px and at `?`, `=`, tabs and soft hyphens. The harness's Range reading, one
 code point at a time on the text node, is the one webkit-host's recordings and
 the WebKit scan agree with there, so Safari 26's extractor caveat for pre-wrap
-and URL queries was dropped with the span probes.
+and URL queries was dropped with the span probes. Spans change Thai, Lao, Khmer
+and Myanmar breaks in every browser too: read them with Range. And take source
+offsets from prepared segments and grapheme cursors, never from
+`line.text.length`, whose text can hold a hyphen the source doesn't.
 
 ## Rich Inline Boundaries
 
@@ -1281,7 +1284,7 @@ It returns no levels and assumes a left-to-right paragraph.
 ## Corpus Lessons
 
 Short examples catch regressions; long text reveals accumulated differences.
-Current counts belong in the `corpora/*-step10.json` snapshots, not here.
+Current counts are the census and book sets' in `bun harness check`, not here.
 
 - **Application text:** books miss URLs, numeric expressions, emoji sequences,
   non-breaking spaces and discretionary breaks.

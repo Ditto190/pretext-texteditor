@@ -236,7 +236,7 @@ origins, `sets/data/engine-facts.json`, the `rich.ts` header and five accepted-l
 | `facts.ndjson` | 10,018 (4,820-4,929) | The 28 engine facts `src/layout.test.ts` checks on plain text with a fake Canvas, in a browser | Behaviours modelled |
 | `rich.ndjson` | 3,334 (1,617-1,636) | Rich-inline paragraphs: styled runs, span edges, atomic chips and padded code spans, main's inline items (taken once), #120, #171, #177, #323 and main's engine facts about rich items | Behaviours modelled |
 | `census.ndjson` | 4,386 | The rebuild's census of real text (census-20260919): paragraphs of the 18 corpora at six widths, less the 300 in the smoke set | Pinned cases |
-| `books.ndjson` | 72 | The rebuild's book survey: each corpus whole, raw and as main normalizes it, at the narrowest and widest step-10 widths | Pinned cases |
+| `books.ndjson` | 72 | The rebuild's book survey: each corpus whole, raw and as main normalizes it, at 220 and 820 px | Pinned cases |
 | `reports.ndjson` | 28 | Filed reports, with the input and width as filed | Pinned cases |
 | `oracles.ndjson` | 56 | The mode oracles the old harness ran in Chrome and Safari, now in Firefox too; taken once | Pinned cases |
 | `followups.ndjson` | 2 | The two fuzz strings `ENGINE_FOLLOWUPS.md` names for Firefox's accepted list: the Gecko scan no longer splits text runs where the script changes; taken once | Pinned cases |
