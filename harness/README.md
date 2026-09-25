@@ -153,7 +153,7 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 | Two recordings kept apart, sorted and stable | The gate is green or red on another case's layout, and every recording churns in git |
 | Sample draws weighted back to their share | A rare group topped up to 300 draws moves the headline far more than it moves real apps |
 | The checked-in sample equal to what the weights draw | A changed weight scores the old usage |
-| The checked-in reports and oracles equal to what their sources make | An oracle added to `src/test-data.ts` goes unchecked |
+| The checked-in reports equal to what `sets/exact.ts` makes | A report added there goes unchecked |
 | Controls of one category merged where browsers agree | Each copy of a pasted-control family counts as a behaviour of its own |
 | Only the widths around a change, at most three per template, the widest first | One input is pinned at hundreds of widths, and review drowns in near-copies |
 | A width inside each layout besides the edges of a change | A behaviour the library models reads as missing whenever its fit is off by 1/128 px |
@@ -173,8 +173,10 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 ## Case sets
 
 `bun harness/sets/make.ts` makes every case file but the smoke, census and book sets, which are the rebuild's, and the
-old-gate and follow-up sets, all taken once; its header lists the steps. A case's id hashes what the browser lays out, so making a set again keeps its ids and
-their recordings. The catalog's line-break classes come from `sets/data/LineBreak-17.0.0.txt`, Unicode 17's file, which
+old-gate, follow-up and oracle sets, all taken once; its header lists the steps. main's catalog and rich cases
+(`catalog/main/*`, `rich/main/*`) were taken once from the old harness's generator too: `cut` keeps them as they are. A
+case's id hashes what the browser lays out, not its family or origin, so making a set again keeps its ids and their
+recordings. The catalog's line-break classes come from `sets/data/LineBreak-17.0.0.txt`, Unicode 17's file, which
 main's generic table was made from before the engine tables replaced it. Line numbers of `src/layout.test.ts` in case
 origins, `sets/data/engine-facts.json`, the `rich.ts` header and five accepted-list reasons are those of main before #340
 (6d1d210); the files keep them as they were taken.
@@ -182,13 +184,13 @@ origins, `sets/data/engine-facts.json`, the `rich.ts` header and five accepted-l
 | File | Cases | What it holds | Reported as |
 |---|---:|---|---|
 | `sample.ndjson` | 11,901 | The real-usage sample: 10,000 draws by `sets/weights.json`, plus the draws that bring 21 rare groups to 300 each, weighted back to their real share | The headline |
-| `catalog.ndjson` | 37,511 (18,101-19,514 per browser) | main's adversarial families, the rebuild's rule families, filed reports whose reporter measured the width, and every UAX #14 line-break class between the scripts apps mix, pairwise over the CSS settings the library takes | Behaviours modelled |
+| `catalog.ndjson` | 37,511 (18,101-19,514 per browser) | main's adversarial families (taken once), the rebuild's rule families, filed reports whose reporter measured the width, and every UAX #14 line-break class between the scripts apps mix, pairwise over the CSS settings the library takes | Behaviours modelled |
 | `facts.ndjson` | 10,018 (4,820-4,929) | The 28 engine facts `src/layout.test.ts` checks on plain text with a fake Canvas, in a browser | Behaviours modelled |
-| `rich.ndjson` | 3,334 (1,617-1,636) | Rich-inline paragraphs: styled runs, span edges, atomic chips and padded code spans, main's inline items, #120, #171, #177, #323 and main's engine facts about rich items | Behaviours modelled |
+| `rich.ndjson` | 3,334 (1,617-1,636) | Rich-inline paragraphs: styled runs, span edges, atomic chips and padded code spans, main's inline items (taken once), #120, #171, #177, #323 and main's engine facts about rich items | Behaviours modelled |
 | `census.ndjson` | 4,386 | The rebuild's census of real text (census-20260919): paragraphs of the 18 corpora at six widths, less the 300 in the smoke set | Pinned cases |
 | `books.ndjson` | 72 | The rebuild's book survey: each corpus whole, raw and as main normalizes it, at the narrowest and widest step-10 widths | Pinned cases |
 | `reports.ndjson` | 28 | Filed reports, with the input and width as filed | Pinned cases |
-| `oracles.ndjson` | 56 | The mode oracles in `src/test-data.ts`, now in Firefox too | Pinned cases |
+| `oracles.ndjson` | 56 | The mode oracles the old harness ran in Chrome and Safari, now in Firefox too; taken once | Pinned cases |
 | `followups.ndjson` | 2 | The two fuzz strings `ENGINE_FOLLOWUPS.md` names for Firefox's accepted list: the Gecko scan no longer splits text runs where the script changes; taken once | Pinned cases |
 | `old-gate.ndjson` | 322 | The rows the old gate (`tests/wrapping`) lost with #340's engine at 24 px and wider, true losses by its attribution, whose input no other case shows that engine failing; taken once | Pinned cases |
 

@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { writeRecordings } from '../store.ts'
 import type { Recording } from '../types.ts'
 import { font, paragraph, writeCases } from './build.ts'
-import { oracleCases, reportCases } from './exact.ts'
+import { reportCases } from './exact.ts'
 import { checkedInSample, type Sample } from './sample.ts'
 import { CUT_BROWSERS, cut, dirOf, probesFile, recordingsFile, select, sweepId, templateKey, type Template } from './widths.ts'
 
@@ -41,16 +41,13 @@ describe('the real-usage sample', () => {
 })
 
 describe('the sets taken as they are', () => {
-  test('the checked-in reports and oracles are what their sources make: a report or an oracle added to src/test-data.ts would go unchecked', () => {
+  test('the checked-in reports are what exact.ts makes: a report added there would go unchecked', () => {
     const dir = join(import.meta.dir, '../../.artifacts/harness-sets')
     mkdirSync(dir, { recursive: true })
-    const sets: Array<[string, ReturnType<typeof reportCases>]> = [['reports', reportCases()], ['oracles', oracleCases()]]
-    for (let i = 0; i < sets.length; i++) {
-      const path = join(dir, `${sets[i]![0]}-check.ndjson`)
-      writeCases(path, sets[i]![1])
-      expect(readFileSync(path, 'utf8')).toBe(readFileSync(join(import.meta.dir, `../cases/${sets[i]![0]}.ndjson`), 'utf8'))
-      rmSync(path)
-    }
+    const path = join(dir, 'reports-check.ndjson')
+    writeCases(path, reportCases())
+    expect(readFileSync(path, 'utf8')).toBe(readFileSync(join(import.meta.dir, '../cases/reports.ndjson'), 'utf8'))
+    rmSync(path)
   })
 })
 
