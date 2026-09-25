@@ -988,6 +988,17 @@ box widths followed 1/60px rounding in a narrow sweep, but copying that rounding
 into line fitting regressed unrelated cases: box resolution does not establish
 the browser's text-fit rule.
 
+A span around each character is no witness of WebKit's breaks. WebKit breaks
+inside an inline box from that box's text and reads only the previous box's last
+two characters at a boundary, so the spans move breaks the text node doesn't
+have. Rechecked in Safari 27.0 on 1,336 of the harness's pre-wrap and URL-query
+cases (September 25), a span per grapheme laid 157 of them out at another height
+and gave 118 others another line start at the same height, mostly narrower than
+24px and at `?`, `=`, tabs and soft hyphens. The harness's Range reading, one
+code point at a time on the text node, is the one webkit-host's recordings and
+the WebKit scan agree with there, so Safari 26's extractor caveat for pre-wrap
+and URL queries was dropped with the span probes.
+
 ## Rich Inline Boundaries
 
 Rich items retain source identity even when they measure zero. Filtering them

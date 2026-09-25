@@ -6,6 +6,9 @@
 // record and gate draw with --seed=S (default 20260924).
 //   equal <ref>              whether this tree's src/ and <ref>'s predict the same lines for every case
 //   explain <id>             one case's recorded lines against the predicted ones, character by character
+//   explain --text=<text> [--width=320] [--font="16px Arial"] [--lang=en] [--white-space=pre-wrap] [--word-break=keep-all]
+//           [--letter-spacing=<px>]  the same for a paragraph with no recording, or for the one case of a --cases file:
+//                            recorded alone in a fresh document, never kept
 // --lib=<dir> predicts with another build's src/ directory. Default browsers: chrome, firefox and webkit-host, side by side;
 // explain takes one, chrome by default.
 import { execFileSync } from 'node:child_process'
@@ -16,12 +19,12 @@ import {
   shown, shrinkWrapShort, widthBand, type Outcome,
 } from './score.ts'
 import { LIB, runJob, type Job, type JobResult, type Mode } from './run.ts'
-import { createRng } from './sets/build.ts'
+import { createRng, makeCase, paragraph, parseFont } from './sets/build.ts'
 import {
   acceptedPath, assertSameEnvironment, caseText, historyPath, readAccepted, readCases, readHistory, readRecordings, readVarying, recordingText,
   recordingsPath, splitHistory, varyingPath, writeAccepted, writeHistory, writeRecordings, type Accepted, type Varying,
 } from './store.ts'
-import { BROWSERS, type BrowserKind, type Case, type Prediction, type Recording } from './types.ts'
+import { BROWSERS, type BrowserKind, type Case, type Paragraph, type Prediction, type Recording } from './types.ts'
 
 // A document holds this many cases while recording, so each case sees a short page history.
 const RECORD_DOCUMENT = 200
@@ -32,7 +35,7 @@ const ATTRIBUTE_AT_MOST = 200
 // What the flags ask for. `sample`: --sample's count, or null. `partial`: the run covers some case files only (--cases),
 // so it leaves the other cases' entries alone.
 export type Options = { lib: string; seed: number; sample: number | null; accept: string; partial: boolean; onlyNew: boolean }
-export type Args = { command: string | undefined; positional: string[]; browsers: BrowserKind[]; cases: string | null; options: Options }
+export type Args = { command: string | undefined; positional: string[]; browsers: BrowserKind[]; cases: string | null; options: Options; flags: Map<string, string> }
 
 export function parseArgs(args: readonly string[]): Args {
   const flags = new Map<string, string>()
@@ -50,7 +53,7 @@ export function parseArgs(args: readonly string[]): Args {
     lib: resolve(flags.get('lib') ?? LIB), seed: Number(flags.get('seed') ?? SEED), sample: flags.has('sample') ? Number(flags.get('sample')) : null,
     accept: flags.get('accept') ?? '', partial: flags.has('cases'), onlyNew: flags.has('only-new'),
   }
-  return { command, positional, browsers, cases: flags.get('cases') ?? null, options }
+  return { command, positional, browsers, cases: flags.get('cases') ?? null, options, flags }
 }
 
 // Where a command reads and writes the harness's files, how it runs a job in a browser, and where it prints. The tests
@@ -352,10 +355,34 @@ async function equal(browser: BrowserKind, cases: Case[], ref: string, lib: stri
   return differ.length > 0
 }
 
-async function explain(browser: BrowserKind, cases: Case[], id: string, lib: string): Promise<void> {
-  const c = cases.find(x => x.id === id)
-  if (c === undefined) throw new Error(`No case ${id}`)
-  const recording = readRecordings(recordingsPath(import.meta.dir, browser))?.recordings.get(id) ?? readHistory(historyPath(import.meta.dir, browser))?.cases.get(id)?.[0]
+// The case `explain` shows: a pinned one by id with its stored recording, or else a paragraph from the flags (or the one
+// case of a --cases file) recorded alone in a fresh document, and not kept.
+async function explainCase(browser: BrowserKind, cases: Case[], id: string | undefined, flags: Map<string, string>, lib: string): Promise<{ c: Case; recording: Recording | undefined }> {
+  if (id !== undefined) {
+    const c = cases.find(x => x.id === id)
+    if (c === undefined) throw new Error(`No case ${id}`)
+    return { c, recording: readRecordings(recordingsPath(import.meta.dir, browser))?.recordings.get(id) ?? readHistory(historyPath(import.meta.dir, browser))?.cases.get(id)?.[0] }
+  }
+  let c: Case
+  const text = flags.get('text')
+  if (text !== undefined) {
+    const lang = flags.get('lang') ?? 'en'
+    const p = paragraph({
+      font: parseFont(flags.get('font') ?? '16px Arial'), lang, width: Number(flags.get('width') ?? 320), letterSpacing: Number(flags.get('letter-spacing') ?? 0),
+      whiteSpace: (flags.get('white-space') ?? 'normal') as Paragraph['whiteSpace'], wordBreak: (flags.get('word-break') ?? 'normal') as Paragraph['wordBreak'],
+    }, [text])
+    c = makeCase('explain', { family: 'explain', origin: 'bun harness explain', pageLang: lang, paragraph: p })
+  } else if (cases.length === 1 && flags.has('cases')) {
+    c = cases[0]!
+  } else {
+    throw new Error('explain needs a case id, --text=, or a --cases file of one case')
+  }
+  const job = await runJob<Recording>({ browser, mode: 'record', cases: [c], documentSize: ALONE, lib })
+  return { c, recording: job.results.get(c.id) }
+}
+
+async function explain(browser: BrowserKind, c: Case, recording: Recording | undefined, lib: string): Promise<void> {
+  const id = c.id
   if (recording === undefined) throw new Error(`${browser} has no recording of ${id}`)
   if ('error' in recording) throw new Error(`${browser} couldn't record ${id}: ${recording.error}`)
   const job = await runJob<Prediction>({ browser, mode: 'predict', cases: [c], documentSize: ALONE, lib })
@@ -392,7 +419,7 @@ async function explain(browser: BrowserKind, cases: Case[], id: string, lib: str
 }
 
 async function main(): Promise<number> {
-  const { command, positional, browsers, cases: file, options: o } = parseArgs(process.argv.slice(2))
+  const { command, positional, browsers, cases: file, options: o, flags } = parseArgs(process.argv.slice(2))
   const dir = join(import.meta.dir, 'cases')
   const cases = loadCases(file !== null ? [file] : readdirSync(dir).filter(name => name.endsWith('.ndjson')).sort().map(name => join(dir, name)))
   const io: Io = { root: import.meta.dir, run: runJob, log: text => console.log(text) }
@@ -413,12 +440,13 @@ async function main(): Promise<number> {
       const differ = await Promise.all(browsers.map(b => equal(b, cases, positional[1]!, o.lib)))
       return differ.some(Boolean) ? 1 : 0
     }
-    case 'explain':
-      if (positional[1] === undefined) throw new Error('explain needs a case id')
-      await explain(browsers[0]!, cases, positional[1], o.lib)
+    case 'explain': {
+      const { c, recording } = await explainCase(browsers[0]!, cases, positional[1], flags, o.lib)
+      await explain(browsers[0]!, c, recording, o.lib)
       return 0
+    }
     default:
-      console.error('Usage: bun harness record|check|gate|equal <ref>|explain <id> [--browser=...] [--cases=...] [--lib=...]')
+      console.error('Usage: bun harness record|check|gate|equal <ref>|explain <id>|explain --text=... [--browser=...] [--cases=...] [--lib=...]')
       return 2
   }
 }

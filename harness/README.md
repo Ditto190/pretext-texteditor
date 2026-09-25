@@ -10,6 +10,8 @@ bun harness check [--accept="<reason>"]  # predict every pinned case and score i
 bun harness gate [--sample=1000]         # check, plus reverse-order predictions, a fresh re-recording and attribution
 bun harness equal <ref>                  # whether <ref>'s src/ predicts the same lines on every case
 bun harness explain <id>                 # one case's recorded lines against the predicted ones
+bun harness explain --text=<text> --width=<px> [--font=] [--lang=] [--white-space=] [--word-break=] [--letter-spacing=]
+                                         # the same for a paragraph, recorded alone in a fresh document and not kept
 ```
 
 Every command takes `--browser=chrome|firefox|webkit-host|safari` (several with commas; default Chrome, Firefox and
