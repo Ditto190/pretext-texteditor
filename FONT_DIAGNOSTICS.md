@@ -1,8 +1,10 @@
 # Font context diagnostics
 
-Findings from the optional font-probe tool: why whole-word, individual-letter and
-line-prefix measurements differ. It is development tooling, not part of the
-library's layout path. General measurement pitfalls belong in
+Findings from the optional font-probe tool
+(`bun run font-probe --browser=chrome|safari|firefox` at 6fadbe5, a commit
+from before its removal): why whole-word, individual-letter and line-prefix
+measurements differ. It is development tooling, not part of the library's
+layout path. General measurement pitfalls belong in
 [RESEARCH.md](RESEARCH.md#reading-browser-output).
 
 The tool uses the Google Fonts request from [#195](https://github.com/chenglou/pretext/issues/195)

@@ -51,7 +51,6 @@ judged, the case sets and the pinned browsers.
 
 - `bun run benchmark-check --output=benchmarks/chrome.json` — refresh the Chrome benchmark snapshot; default is the median of 3 full page runs, use `--runs=1` for a quick local check
 - `bun run benchmark-check --browser=safari --output=benchmarks/safari.json` — refresh the Safari benchmark snapshot
-- `bun run font-probe --browser=chrome --output=/tmp/font-probe.json` — optional Shantell Sans and font-language diagnostic; also accepts `safari` and `firefox`. See [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md).
 - `bun scripts/grapheme-check/build.ts`, then `bun scripts/grapheme-check/run.ts --browser=chrome` — compare `src/graphemes.ts` with the browser's own `Intl.Segmenter` on every code point in contexts that tell the grapheme classes apart, the harness's case texts with their prepared segments, and random strings, under the table the engine profile takes and the other one; also `firefox` and `webkit-host`, in the harness's background browsers, one job per browser at a time. `ENGINE=webkit bun scripts/grapheme-check/offline.ts` runs it under Bun. Node can't load `src/` directly, so bundle it with `bun build --target=node scripts/grapheme-check/offline.ts --outfile=.artifacts/grapheme-check/offline.mjs` and run `ENGINE=blink node .artifacts/grapheme-check/offline.mjs`.
 
 Failed benchmark reports retain their evidence in `<output>.failed.json`, or under
@@ -85,7 +84,6 @@ macOS 27 denies a shell's processes access to apps' folders under
 
 - `/demos/index` — index of the public demos
 - `/benchmark` — performance comparisons
-- `/font-probe` — whole-run, isolated-grapheme, in-context and language-bound font measurements; see [FONT_DIAGNOSTICS.md](FONT_DIAGNOSTICS.md)
 
 ## Current Snapshots
 
