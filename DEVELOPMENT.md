@@ -82,7 +82,7 @@ macOS 27 denies a shell's processes access to apps' folders under
 
 ## Useful Pages
 
-- `/demos/index` — index of the public demos
+- `/demos` — index of the public demos; `/` redirects there
 - `/benchmark` — performance comparisons
 
 ## Current Snapshots
