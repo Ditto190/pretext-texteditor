@@ -15,6 +15,8 @@ const config: KnipConfig = {
     'harness/page.ts',
     'harness/sets/make.ts',
     'harness/invariants.ts',
+    // The bench's page, bundled by its runner.
+    'harness/bench/page.ts',
     // Bundled through the comparison runner's generated candidate entry.
     'tests/wrapping/browser.ts',
     'tests/wrapping/contracts.ts',

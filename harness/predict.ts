@@ -133,14 +133,16 @@ function sourceRanges(source: string, prepared: PreparedTextWithSegments, whiteS
   }
 }
 
-// measureText calls, counted on the Canvas prototypes while a prediction prepares and while its line APIs run.
+// measureText calls, counted on the Canvas prototypes while a prediction prepares and while its line APIs run, and the
+// UTF-16 units submitted while preparing.
 let counting: 'prepare' | 'lines' | null = null
-const calls = { prepare: 0, lines: 0 }
+const calls = { prepare: 0, lines: 0, units: 0 }
 function countCalls(proto: { measureText: (this: unknown, text: string) => TextMetrics } | undefined): void {
   if (proto === undefined) return
   const original = proto.measureText
   proto.measureText = function (this: unknown, text: string): TextMetrics {
     if (counting !== null) calls[counting]++
+    if (counting === 'prepare') calls.units += text.length
     return original.call(this, text)
   }
 }
@@ -295,6 +297,7 @@ export function predict(c: Case): Prediction {
   let disagreement: string | null
   calls.prepare = 0
   calls.lines = 0
+  calls.units = 0
   let source = ''
   for (let i = 0; i < runs.length; i++) source += runs[i]!.text
   // A walker that doesn't end within a line per source unit, plus one, fails the case instead of stalling the page.
@@ -363,5 +366,5 @@ export function predict(c: Case): Prediction {
   } finally {
     counting = null
   }
-  return { lines, prepareCalls: calls.prepare, lineCalls: calls.lines, disagreement }
+  return { lines, prepareCalls: calls.prepare, prepareUnits: calls.units, lineCalls: calls.lines, disagreement }
 }

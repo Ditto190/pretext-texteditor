@@ -8,17 +8,19 @@ the per-engine rebuild's without inline structure.
 bun harness record [--only-new]         # the browser's layout of every case, sorted and shuffled, in fresh short documents
 bun harness check [--accept="<reason>"]  # predict every pinned case and score it; about a minute
 bun harness gate [--sample=1000]         # check, plus reverse-order predictions, a fresh re-recording and attribution
-bun harness equal <ref>                  # whether <ref>'s src/ predicts the same lines on every case
+bun harness equal <ref>                  # whether <ref>'s src/ predicts the same lines on every case, and each set's
+                                         # measureText calls and submitted units here and there
+bun harness bench <base> [--sessions=3]  # <base>'s src/ timed against this tree's in the same documents (Bench)
 bun harness explain <id>                 # one case's recorded lines against the predicted ones
 bun harness explain --text=<text> --width=<px> [--font=] [--lang=] [--white-space=] [--word-break=] [--letter-spacing=]
                                          # the same for a paragraph, recorded alone in a fresh document and not kept
 ```
 
 Every command takes `--browser=chrome|firefox|webkit-host|safari` (several with commas; default Chrome, Firefox and
-webkit-host side by side, and Chrome for `explain`, which takes one), `--cases=<file.ndjson>` in place of
-`harness/cases/*.ndjson`, and `--lib=<dir>` to predict with another build's `src/`. `record` and `gate` draw with
-`--seed=<n>`, 20260924 by default, so a gate's result doesn't depend on the clock. `bun test harness` runs the offline
-tests.
+webkit-host side by side, Chrome for `explain`, which takes one, and for `bench` the browsers under Bench),
+`--cases=<file.ndjson>` in place of `harness/cases/*.ndjson`, and `--lib=<dir>` to predict with another build's `src/`.
+`record` and `gate` draw with `--seed=<n>`, 20260924 by default, so a gate's result doesn't depend on the clock.
+`bun test harness` runs the offline tests.
 
 ## How a case is judged
 
@@ -118,6 +120,47 @@ test itself 2 GB), whose parent is gone or whose main thread has run no timer fo
 (`bunfig.toml`), which bun reads only when started from the repository root, so each test file that runs the library in
 bun test's own process imports it first too.
 
+## Bench
+
+`bun harness bench <base> [--lib=<dir|ref>] [--browser=chrome,firefox,safari] [--sessions=3] [--rows=…] [--background]`
+times `<base>`'s `src/`, a git ref or a directory, against `--lib`'s, this tree's by default. Every document evaluates
+three minified bundles with the timing loops inside them: base, the candidate and a second copy of base as the
+control, each with a comment of its own so no compiled code is shared, and each round times every one once, in an
+order shuffled with a seed the run prints. Costs are per 1,000 UTF-16 units, and per call for labels.
+
+| Row | What it times | Rounds (warm-up + timed) |
+|---|---|---|
+| new | `prepare()` + `layout()` at 320 px of chat messages no library or browser has laid out, in Latin, CJK, Arabic, Thai, mixed scripts and UI labels (`sets/data/ui-strings.json`, the per-call cost of many `prepare()` calls in a virtualized list) | 2 + 12 |
+| fresh | A new page per library per round: compiling and running the bundle, timed apart, then two batches of new messages, in the five message families | 2 + 9 |
+| rich | `prepareRichInline()` of new rich messages (code pills, chips, italics), then its stats, walk and stream at 180/220/260 px | 2 + 12 |
+| seen | The same messages prepared again after their handles are dropped, as on a remount | 2 + 16 |
+| resize | `layout()` of kept handles at widths used before (260, 380, 440) and at new fractional widths each round | 2 + 16 each |
+| lines | `measureLineStats()`, `walkLineRanges()`, `layoutNextLineRange()` and `layoutWithLines()` on mixed messages at 180/240/320 px | 2 + 12 each |
+| worst | One document per shape: letter-spaced CJK, soft hyphens with marks, controls next to spaces, invisible tails, pre-wrap chunks, keep-all CJK brackets, emoji (prepare only), long breakable runs and one book-length Arabic paragraph | 2 + 12 each |
+
+- **Samples:** a new-text sample prepares a batch of its own, read forward, and batches hold the same units; the rows
+  that want new text read each family's text in order, so no document meets text one before it laid out. A repeated
+  sample runs its operation enough times to take 50 ms, sized from the fastest library in the warm-up rounds. A
+  MessageChannel yield comes before each sample.
+- **Guards:** the page must be cross-origin isolated and prints its timer step. Focus and visibility are checked around
+  every sample and the device pixel ratio at both ends; a document that loses focus is laid out again after 60 s, up to
+  4 times. In the foreground the bench refuses to time on battery under 20%; it prints the load and the power source
+  at both ends.
+- **Browsers:** pinned Chrome and Firefox and installed Safari run one at a time in the foreground, each brought to the
+  front. `--background` runs the harness's background browsers, webkit-host for WebKit, where no focus can be required,
+  so every verdict is a hypothesis. A browser whose session fails sits out the rest of the run; the others' tables still
+  print, and then the bench exits with the failure.
+- **Output,** per browser, row and family or operation: base's and the candidate's cost; candidate/base as the median
+  over rounds of each round's paired ratio, with its quartiles and each session's median; control/base the same way;
+  and a verdict. A session's band is 1 ± the larger of its |control/base − 1| and the row's floor, and a row reads
+  "slower" or "faster" only when candidate/base is outside the band in every session, otherwise "within noise"; a
+  browser's verdicts from one session are hypotheses. Then the costliest entry per row, the fresh pages and each bundle's
+  minified and gzipped size. Raw samples go to `.artifacts/harness-bench/`; nothing timed is checked in, and the bench
+  never blocks.
+- **Floors:** each row's floor is the largest control deviation a calibration of HEAD against itself found, kept in
+  `bench/report.ts` with the date, builds, machine and device pixel ratio it came from; calibrate again after a
+  browser pin bump or on another machine. A row without one prints as uncalibrated.
+
 What each piece catches, as an app developer would see it. `bun test harness` plants each fault, running the commands
 with a stand-in browser. Two pieces run only in a real browser and aren't planted: the Firefox hold, and the page
 (`page.ts`) passing the browser's name to the recorder, which leaves Chrome's soft hyphen copies out:
@@ -151,6 +194,9 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 | Held handles and their copies after other prepares, `clearCache()` and `setLocale()`, and warm prepares against cold ones | A message a list prepared moves when another is prepared with other letter spacing, or a message prepared again at other letter spacing takes the first one's geometry |
 | Canvas calls and submitted units that grow at most linearly | A long word measures every prefix, so preparing it grows with the square of its length while the calls grow linearly |
 | `watchdog.ts`: past 1 GB (bun test 2 GB), a parent that is gone, or 30 s without a timer | A library under test whose walker runs away inside it fills the machine's memory from a process no test waits for any more, or hangs `bun test` |
+| `equal`'s calls and submitted units per set, here against there | Preparing a set gets slower with the same lines, unseen until someone times it |
+| Bench: base, candidate and a control copy of base in each document, in a shuffled order | A change's speed reads from sessions that drifted apart by 5-19%, so a slower row goes unseen or noise reads as a change |
+| Bench: new text read forward, never prepared twice | Browser and library caches make new text look as fast as seen text |
 | A case without a recording blocks | A generator change that renames ids unpins cases silently |
 | Two recordings kept apart, sorted and stable | The gate is green or red on another case's layout, and every recording churns in git |
 | Sample draws weighted back to their share | A rare group topped up to 300 draws moves the headline far more than it moves real apps |

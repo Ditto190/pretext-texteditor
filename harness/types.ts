@@ -78,10 +78,11 @@ export type Status = 'pass' | 'count' | 'breaks' | 'error'
 export type Failure = Exclude<Status, 'pass'>
 
 // What a library build predicted: the walk's lines (predict.ts), the measureText calls made while preparing and while
-// the line APIs ran (they should make none), and the first way another line API disagrees with the walk, or null.
+// the line APIs ran (they should make none), the UTF-16 units submitted while preparing, and the first way another
+// line API disagrees with the walk, or null.
 // `unsupported`: the adapter can't express the case. `error`: the library threw.
 export type Prediction =
-  | { lines: PredictedLine[]; prepareCalls: number; lineCalls: number; disagreement: string | null }
+  | { lines: PredictedLine[]; prepareCalls: number; prepareUnits: number; lineCalls: number; disagreement: string | null }
   | { unsupported: string }
   | { error: string }
 

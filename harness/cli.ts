@@ -4,20 +4,23 @@
 //   check [--accept=<why>]   predict every pinned case in the browser and score it against the recordings
 //   gate [--sample=N]        check, plus a prediction in reverse order, N cases recorded again, and attribution
 // record and gate draw with --seed=S (default 20260924).
-//   equal <ref>              whether this tree's src/ and <ref>'s predict the same lines for every case
+//   equal <ref>              whether this tree's src/ and <ref>'s predict the same lines for every case, and each set's
+//                            measureText calls and submitted units here and there
+//   bench <base> [--sessions=3] [--rows=new,...] [--background]   <base>'s src/ timed against --lib's (bench/run.ts)
 //   explain <id>             one case's recorded lines against the predicted ones, character by character
 //   explain --text=<text> [--width=320] [--font="16px Arial"] [--lang=en] [--white-space=pre-wrap] [--word-break=keep-all]
 //           [--letter-spacing=<px>]  the same for a paragraph with no recording, or for the one case of a --cases file:
 //                            recorded alone in a fresh document, never kept
 // --lib=<dir> predicts with another build's src/ directory. Default browsers: chrome, firefox and webkit-host, side by side;
 // explain takes one, chrome by default.
-import { execFileSync } from 'node:child_process'
 import { mkdirSync, readdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import {
   accept, attribute, checkBlocks, freshRecordings, gateBlocks, gateSample, headline, judge, observable, outsideClaims, pinning, predictionChange, reverseOrder, score, SEED,
   shown, shrinkWrapShort, widthBand, type Outcome,
 } from './score.ts'
+import { bench, ROWS } from './bench/run.ts'
+import { srcOf } from './bench/lib.ts'
 import { LIB, runJob, type Job, type JobResult, type Mode } from './run.ts'
 import { createRng, makeCase, paragraph, parseFont } from './sets/build.ts'
 import {
@@ -60,18 +63,20 @@ export function parseArgs(args: readonly string[]): Args {
 // give it a folder of their own and a stand-in browser.
 export type Io = { root: string; run: <T extends Recording | Prediction>(job: Job) => Promise<JobResult<T>>; log: (text: string) => void }
 
-function loadCases(files: readonly string[]): Case[] {
+// The cases, and each case's set: the name of its case file.
+function loadCases(files: readonly string[]): { cases: Case[]; sets: Map<string, string> } {
   const cases: Case[] = []
-  const ids = new Set<string>()
+  const sets = new Map<string, string>()
   for (let f = 0; f < files.length; f++) {
     const list = readCases(files[f]!)
+    const set = basename(files[f]!, '.ndjson')
     for (let i = 0; i < list.length; i++) {
-      if (ids.has(list[i]!.id)) throw new Error(`${files[f]}: duplicate case ${list[i]!.id}`)
-      ids.add(list[i]!.id)
+      if (sets.has(list[i]!.id)) throw new Error(`${files[f]}: duplicate case ${list[i]!.id}`)
+      sets.set(list[i]!.id, set)
       cases.push(list[i]!)
     }
   }
-  return cases
+  return { cases, sets }
 }
 
 // webkit-host runs installed Safari's engine, so it takes Safari's cases.
@@ -333,24 +338,24 @@ export async function gate(browser: BrowserKind, cases: Case[], o: Options, io: 
 
 // ---- equal and explain ----
 
-async function equal(browser: BrowserKind, cases: Case[], ref: string, lib: string): Promise<boolean> {
-  const sha = execFileSync('git', ['rev-parse', ref], { encoding: 'utf8' }).trim()
-  const dir = resolve(import.meta.dir, `../.artifacts/harness-equal/${sha}`)
-  mkdirSync(dir, { recursive: true })
-  execFileSync('sh', ['-c', `git archive ${sha} src | tar -x -C "${dir}"`])
+async function equal(browser: BrowserKind, cases: Case[], setOf: Map<string, string>, ref: string, lib: string): Promise<boolean> {
   const list = cases.filter(c => applies(c, browser))
   const mine = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib })
-  const theirs = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib: join(dir, 'src') })
+  const theirs = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib: srcOf(ref) })
   const differ = list.filter(c => predictionChange(mine.results.get(c.id)!, theirs.results.get(c.id)!) !== 'same')
-  let callsMine = 0
-  let callsTheirs = 0
+  // Per case file, measureText calls and the units submitted to them, here and there.
+  const sets = new Map<string, number[]>()
   for (let i = 0; i < list.length; i++) {
+    const set = setOf.get(list[i]!.id)!
+    const counts = sets.get(set) ?? [0, 0, 0, 0]
+    sets.set(set, counts)
     const a = mine.results.get(list[i]!.id)!
     const b = theirs.results.get(list[i]!.id)!
-    if ('lines' in a) callsMine += a.prepareCalls + a.lineCalls
-    if ('lines' in b) callsTheirs += b.prepareCalls + b.lineCalls
+    if ('lines' in a) { counts[0]! += a.prepareCalls + a.lineCalls; counts[2]! += a.prepareUnits }
+    if ('lines' in b) { counts[1]! += b.prepareCalls + b.lineCalls; counts[3]! += b.prepareUnits }
   }
-  console.log(`${browser}: ${differ.length} of ${list.length} predictions differ from ${ref} (${sha.slice(0, 10)}); measureText calls ${callsMine} here, ${callsTheirs} there`)
+  console.log(`${browser}: ${differ.length} of ${list.length} predictions differ from ${ref}; measureText calls and units submitted to them, here against there:`)
+  for (const [set, [a, b, ua, ub]] of [...sets].sort((x, y) => (x[0] < y[0] ? -1 : 1))) console.log(`  ${set}: calls ${a} / ${b}, units ${ua} / ${ub}`)
   for (let i = 0; i < differ.length && i < 20; i++) console.log(`  ${differ[i]!.id}  ${differ[i]!.family}`)
   return differ.length > 0
 }
@@ -421,7 +426,7 @@ async function explain(browser: BrowserKind, c: Case, recording: Recording | und
 async function main(): Promise<number> {
   const { command, positional, browsers, cases: file, options: o, flags } = parseArgs(process.argv.slice(2))
   const dir = join(import.meta.dir, 'cases')
-  const cases = loadCases(file !== null ? [file] : readdirSync(dir).filter(name => name.endsWith('.ndjson')).sort().map(name => join(dir, name)))
+  const { cases, sets } = loadCases(file !== null ? [file] : readdirSync(dir).filter(name => name.endsWith('.ndjson')).sort().map(name => join(dir, name)))
   const io: Io = { root: import.meta.dir, run: runJob, log: text => console.log(text) }
   switch (command) {
     case 'record':
@@ -437,8 +442,15 @@ async function main(): Promise<number> {
     }
     case 'equal': {
       if (positional[1] === undefined) throw new Error('equal needs a git ref')
-      const differ = await Promise.all(browsers.map(b => equal(b, cases, positional[1]!, o.lib)))
+      const differ = await Promise.all(browsers.map(b => equal(b, cases, sets, positional[1]!, o.lib)))
       return differ.some(Boolean) ? 1 : 0
+    }
+    case 'bench': {
+      if (positional[1] === undefined) throw new Error('bench needs a base: a git ref or a src/ directory')
+      const background = flags.has('background')
+      const chosen = flags.has('browser') ? browsers : background ? ['chrome', 'firefox', 'webkit-host'] as BrowserKind[] : ['chrome', 'firefox', 'safari'] as BrowserKind[]
+      await bench(positional[1], flags.get('lib') ?? LIB, chosen, Number(flags.get('sessions') ?? 3), flags.get('rows')?.split(',') ?? ROWS, background)
+      return 0
     }
     case 'explain': {
       const { c, recording } = await explainCase(browsers[0]!, cases, positional[1], flags, o.lib)
@@ -446,7 +458,7 @@ async function main(): Promise<number> {
       return 0
     }
     default:
-      console.error('Usage: bun harness record|check|gate|equal <ref>|explain <id>|explain --text=... [--browser=...] [--cases=...] [--lib=...]')
+      console.error('Usage: bun harness record|check|gate|equal <ref>|bench <base>|explain <id>|explain --text=... [--browser=...] [--cases=...] [--lib=...]')
       return 2
   }
 }

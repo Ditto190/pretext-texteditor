@@ -35,6 +35,10 @@ judged, the case sets and the pinned browsers.
   of new failures
 - `bun harness record --only-new` — record new cases; after a browser or OS update, `bun harness record` records every
   case again
+- `bun harness bench main` — time `main`'s `src/` against this tree's in the same documents, in pinned Chrome and
+  Firefox and installed Safari in the foreground, 3 sessions, about 9 minutes per browser; `--rows=new,worst` narrows
+  it while iterating, and `--background` runs the background browsers, whose results are hypotheses
+  ([harness/README.md](harness/README.md), Bench)
 - `bun harness explain <id>` — one case's recorded lines against the predicted ones; `bun harness explain --text='...'
   --width=120.5 --font='16px Arial'` (also `--lang=`, `--white-space=pre-wrap`, `--word-break=keep-all`,
   `--letter-spacing=`) or `--cases=<file of one case>` records that paragraph alone in a fresh document first, in any

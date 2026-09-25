@@ -8,7 +8,8 @@
 // Contents/Resources/distribution/policies.json holding {"policies": {"DisableAppUpdate": true}} before its first
 // launch, after which macOS keeps other apps from writing inside it. WebKit runs as webkit-host, the system
 // WebKit.framework that installed Safari runs, in a background window (harness/webkit-host/build.sh); installed Safari
-// opens one window of its own. None of them takes focus.
+// opens one window of its own. None of them takes focus, but the bench's foreground runs, where Chrome, Firefox
+// and Safari come to the front.
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -73,7 +74,7 @@ export function environmentKey(browser: BrowserKind, env: PageEnv): string {
   })
 }
 
-export type Session = { close: () => Promise<void> }
+export type Session = { close: () => Promise<void>; pid?: number }
 
 function processes(): Array<{ pid: number; command: string }> {
   const out: Array<{ pid: number; command: string }> = []
@@ -107,11 +108,11 @@ async function stop(pid: number, profile: string): Promise<void> {
 
 // Chrome and Firefox start through LaunchServices without activation: macOS 27 won't let a shell-spawned Firefox read
 // its data folders. One attempt only, since a failed launch can show the user a dialog.
-async function openApp(app: string, executable: string, marker: string, profile: string, args: string[]): Promise<Session> {
-  execFileSync('open', ['-n', '-g', '-a', app, '--args', ...args], { stdio: 'ignore', timeout: 60_000 })
+async function openApp(app: string, executable: string, marker: string, profile: string, args: string[], foreground: boolean): Promise<Session> {
+  execFileSync('open', ['-n', ...(foreground ? [] : ['-g']), '-a', app, '--args', ...args], { stdio: 'ignore', timeout: 60_000 })
   for (let i = 0; i < 100; i++) {
     const found = processes().find(entry => entry.command.startsWith(`${executable} `) && entry.command.includes(marker))
-    if (found !== undefined) return { close: () => stop(found.pid, profile) }
+    if (found !== undefined) return { close: () => stop(found.pid, profile), pid: found.pid }
     await Bun.sleep(100)
   }
   throw new Error(`Could not find the ${app} process just launched`)
@@ -119,7 +120,7 @@ async function openApp(app: string, executable: string, marker: string, profile:
 
 // Chrome activates itself when it shows a window the usual way, so it starts with none, and the job's one window is
 // opened in the background through the DevTools protocol (Target.createTarget { newWindow, background }).
-async function launchChrome(url: string, profile: string): Promise<Session> {
+async function launchChrome(url: string, profile: string, foreground: boolean): Promise<Session> {
   const app = appPath('chrome')
   mkdirSync(join(profile, 'Default'), { recursive: true })
   writeFileSync(join(profile, 'Default/Preferences'), JSON.stringify({ intl: { accept_languages: 'en-US,en', selected_languages: 'en-US,en' } }))
@@ -128,7 +129,7 @@ async function launchChrome(url: string, profile: string): Promise<Session> {
     '--disable-extensions', '--disable-component-update', '--disable-background-timer-throttling',
     '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--window-size=1200,900',
     '--no-startup-window', '--remote-debugging-port=0', '-AppleLanguages', '(en-US)',
-  ])
+  ], foreground)
   try {
     let endpoint: string | null = null
     for (let i = 0; i < 150 && endpoint === null; i++) {
@@ -145,7 +146,7 @@ async function launchChrome(url: string, profile: string): Promise<Session> {
     await new Promise<void>((done, fail) => {
       const timer = setTimeout(() => fail(new Error('Target.createTarget did not answer in 15 s')), 15_000)
       socket.onerror = () => fail(new Error('DevTools socket error'))
-      socket.onopen = () => socket.send(JSON.stringify({ id: 1, method: 'Target.createTarget', params: { url, newWindow: true, background: true } }))
+      socket.onopen = () => socket.send(JSON.stringify({ id: 1, method: 'Target.createTarget', params: { url, newWindow: true, background: !foreground } }))
       socket.onmessage = event => {
         const reply = JSON.parse(String(event.data)) as { id?: number; error?: { message: string } }
         if (reply.id !== 1) return
@@ -161,7 +162,7 @@ async function launchChrome(url: string, profile: string): Promise<Session> {
   return session
 }
 
-function launchFirefox(url: string, profile: string): Promise<Session> {
+function launchFirefox(url: string, profile: string, foreground: boolean): Promise<Session> {
   const app = appPath('firefox')
   mkdirSync(profile, { recursive: true })
   const prefs: Array<[string, boolean | string]> = [
@@ -173,7 +174,7 @@ function launchFirefox(url: string, profile: string): Promise<Session> {
     ['intl.locale.requested', 'en-US'], ['intl.accept_languages', 'en-US, en'], ['intl.regional_prefs.use_os_locales', false],
   ]
   writeFileSync(join(profile, 'user.js'), prefs.map(([name, value]) => `user_pref(${JSON.stringify(name)}, ${JSON.stringify(value)});\n`).join(''))
-  return openApp(app, `${app}/Contents/MacOS/firefox`, ` --profile ${profile} `, profile, ['--new-instance', '--profile', profile, url])
+  return openApp(app, `${app}/Contents/MacOS/firefox`, ` --profile ${profile} `, profile, ['--new-instance', '--profile', profile, url], foreground)
 }
 
 async function launchWebKitHost(url: string): Promise<Session> {
@@ -203,8 +204,8 @@ function frontmostApp(): string | null {
 // a frontmost Safari opens over the user's windows and takes the keyboard, so the window is made only while another app
 // is frontmost, and that app gets the focus back if Safari takes it. WebKit suspends a hidden page, so the window must
 // stay uncovered while the job runs.
-async function launchSafari(url: string, jobId: string, owns: (tabUrl: string) => boolean): Promise<Session> {
-  for (let waited = 0; frontmostApp() === 'Safari'; waited += 2000) {
+async function launchSafari(url: string, jobId: string, owns: (tabUrl: string) => boolean, foreground: boolean): Promise<Session> {
+  for (let waited = 0; !foreground && frontmostApp() === 'Safari'; waited += 2000) {
     if (waited >= 600_000) throw new Error('Safari stayed the frontmost app for 10 minutes; not opening a window over the user\'s')
     await Bun.sleep(2000)
   }
@@ -215,8 +216,9 @@ async function launchSafari(url: string, jobId: string, owns: (tabUrl: string) =
     'repeat with w in windows', `if (count of tabs of w) is 1 and URL of tab 1 of w is ${marker} then`,
     `set URL of tab 1 of w to ${JSON.stringify(url)}`, 'return id of w', 'end if', 'end repeat', 'end tell',
   ])
-  if (front !== null && frontmostApp() !== front) appleScript([`tell application ${JSON.stringify(front)} to activate`])
   if (!/^\d+$/.test(id)) throw new Error('Could not find the Safari window just made')
+  if (foreground) appleScript(['tell application "Safari"', 'activate', `set index of (first window whose id is ${id}) to 1`, 'end tell'])
+  else if (front !== null && frontmostApp() !== front) appleScript([`tell application ${JSON.stringify(front)} to activate`])
   return {
     close() {
       try {
@@ -230,12 +232,17 @@ async function launchSafari(url: string, jobId: string, owns: (tabUrl: string) =
   }
 }
 
-export function launch(browser: BrowserKind, url: string, jobId: string, owns: (tabUrl: string) => boolean): Promise<Session> {
+// `foreground` (the bench's timed runs) brings Chrome, Firefox or Safari to the front; webkit-host stays below.
+export async function launch(browser: BrowserKind, url: string, jobId: string, owns: (tabUrl: string) => boolean, foreground = false): Promise<Session> {
   const profile = join(PROFILES, `${browser}-${jobId}`)
   switch (browser) {
-    case 'chrome': return launchChrome(url, profile)
-    case 'firefox': return launchFirefox(url, profile)
+    case 'chrome':
+    case 'firefox': {
+      const session = await (browser === 'chrome' ? launchChrome(url, profile, foreground) : launchFirefox(url, profile, foreground))
+      if (foreground) appleScript(['tell application "System Events"', `set frontmost of (first application process whose unix id is ${session.pid}) to true`, 'end tell'])
+      return session
+    }
     case 'webkit-host': return launchWebKitHost(url)
-    case 'safari': return launchSafari(url, jobId, owns)
+    case 'safari': return launchSafari(url, jobId, owns, foreground)
   }
 }
