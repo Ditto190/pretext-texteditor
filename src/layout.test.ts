@@ -3748,11 +3748,13 @@ describe('layout invariants', () => {
     expect(collectStreamedLines(mixed, 200)).toEqual(mixedLines.lines)
   })
 
-  test('consecutive consumed-only chunks retain the visible tail and real empty lines', () => {
+  test('consecutive chunks of a soft hyphen or ZWSP each hold a line and keep the visible tail', () => {
     for (const control of ['\u00AD', '\u200B']) for (const prefix of ['', 'a\n']) for (const emptyLine of ['', '\n']) {
       const prepared = prepareWithSegments(prefix + control + '\n' + control + '\n' + emptyLine + 'b', FONT, { whiteSpace: 'pre-wrap' })
-      // A hard-break chunk that starts with ZWSP retains that source as a line.
-      const retained = control === '\u200B' ? [control, control] : []
+      // A hard break ends a line, as in Chrome, Safari and Firefox: a chunk that starts
+      // with ZWSP retains that source as a line, and one holding only a soft hyphen,
+      // which a line start consumes, is an empty line.
+      const retained = control === '\u200B' ? [control, control] : ['', '']
       const expected = [...(prefix ? ['a'] : []), ...retained, ...(emptyLine ? [''] : []), 'b']
       const batch = layoutWithLines(prepared, 100, LINE_HEIGHT)
       expect(batch.lines.map(line => line.text)).toEqual(expected)
