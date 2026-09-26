@@ -39,6 +39,9 @@
 //   Dumped by a small Rust program that depends on that crate alone.
 // - bidi_pairs_table.rs: servo/unicode-bidi ca612daf's bracket table,
 //   src/char_data/tables.rs:519-535.
+// - property_enum_bidi_class_v1.rs.data: third_party/rust/icu_properties_data/data/ in
+//   Firefox 156.0's source tree, the baked Bidi_Class trie properties.json's bidiClass holds;
+//   this script doesn't read it, and `bun harness repin firefox` looks for its bytes in XUL.
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'

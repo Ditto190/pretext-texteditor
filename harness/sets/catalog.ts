@@ -156,7 +156,7 @@ export function classMatrixTemplates(): Template[] {
 // line holding only a collapsible space is one as well. Two words on each side give the search widths where the lines
 // around it change.
 export function followupTemplates(): Template[] {
-  const shapes: ReadonlyArray<readonly [string, string, 'normal' | 'pre-wrap']> = [
+  const shapes: ReadonlyArray<readonly [string, string, 'normal' | 'pre-wrap', string?]> = [
     ['between', 'ab cd\n\u00AD\nef gh', 'pre-wrap'],
     ['start', '\u00AD\nab cd', 'pre-wrap'],
     ['end', 'ab cd\n\u00AD', 'pre-wrap'],
@@ -170,13 +170,13 @@ export function followupTemplates(): Template[] {
     ['text-after', 'ab cd\n\u00ADef gh', 'pre-wrap'],
     ['line-separators', 'ab cd\u2028\u00AD\u2028ef gh', 'pre-wrap'],
     ['line-separators-normal', 'ab cd\u2028\u00AD\u2028ef gh', 'normal'],
-    ['line-separators-space', 'ab cd\u2028 \u2028ef gh', 'normal'],
+    ['line-separators-space', 'ab cd\u2028 \u2028ef gh', 'normal', 'a collapsible space'],
   ]
   const out: Template[] = []
   for (let i = 0; i < shapes.length; i++) {
-    const [name, text, whiteSpace] = shapes[i]!
+    const [name, text, whiteSpace, holds = 'a soft hyphen'] = shapes[i]!
     out.push({
-      family: `followups/soft-hyphen-line/${name}`, origin: `RESEARCH.md, Widths After A Line Break: a line holding only a soft hyphen, ${name}`,
+      family: `followups/soft-hyphen-line/${name}`, origin: `RESEARCH.md, Widths After A Line Break: a line holding only ${holds}, ${name}`,
       pageLang: 'en', paragraph: paragraph({ font: font('Arial', 16), lang: 'en', whiteSpace }, [text]), widths: [], grid: true,
     })
   }
