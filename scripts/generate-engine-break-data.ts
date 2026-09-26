@@ -430,7 +430,7 @@ function getGeckoClusterEnds(classes: readonly number[]): number[] {
     for (let b = nextRuleBoundary(iterator); b !== -1; b = nextRuleBoundary(iterator)) ends.push(b)
     const geckoEnds = getGeckoClusterEnds(classes)
     if (ends.length !== geckoEnds.length || ends.some((end, i) => end !== geckoEnds[i])) {
-      throw new Error(`Firefox's grapheme data ends clusters of ${JSON.stringify(text)} at ${geckoEnds}, Chrome's char.brk at ${ends}`)
+      throw new Error(`Firefox's grapheme data ends clusters of ${JSON.stringify(text)} at ${geckoEnds.join(',')}, Chrome's char.brk at ${ends.join(',')}`)
     }
   }
   const classes: number[] = []

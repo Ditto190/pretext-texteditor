@@ -23,6 +23,7 @@
 
 ### Fixed
 
+- In `white-space: pre-wrap`, a line holding only soft hyphens before a newline, at the start of the text or after another newline, now counts as a line, as browsers draw it, instead of disappearing. In Safari, in normal white space too, so does a line holding only soft hyphens or spaces between two line or paragraph separators, U+2028 or U+2029 (#349).
 - In Safari, on pages with a language, text in `serif`, `sans-serif`, `cursive`, `fantasy` or `monospace`, or falling back to one of them, now measures in the font Safari draws it with there, such as Apple SD Gothic Neo for `sans-serif` on a `ko` page and Menlo for `monospace` on an `en` page, instead of the font those names give a page without a language (#340).
 - In Chrome, CJK punctuation next to other punctuation or at a line end now takes the narrower width Chrome's `text-spacing-trim` gives it (#340).
 - In Chrome and Firefox, ideographic spaces (U+3000) at a line end now hang past it, as spaces do, instead of wrapping to the next line (#340).

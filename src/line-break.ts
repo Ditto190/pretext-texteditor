@@ -175,9 +175,11 @@ function getTerminalLetterSpacing(
 }
 
 // Mutates `cursor` to the next renderable line start. False when no line remains.
-// A chunk runs to a hard break or the end of the text. Chunks holding only source
-// that a line start consumes can occur consecutively: this normalizes through each
-// of them, while keeping actual empty hard-break chunks observable as empty lines.
+// A chunk runs to a hard break or the end of the text, and the hard break ends a
+// line however little the chunk holds: a chunk holding only its hard break, or only
+// source a line start consumes before it, such as soft hyphens, is an empty line,
+// which starts at its hard break. The rest of a chunk after a line that wrapped
+// inside it is no line of its own when a line start consumes all of it.
 export function normalizePreparedLineStart(
   prepared: PreparedLineBreakData,
   cursor: LineBreakCursor,
@@ -192,7 +194,7 @@ export function normalizePreparedLineStart(
   while (true) {
     const kind = segmentFlags[segmentIndex]! & KIND_BITS
     if (kind === HARD_BREAK) {
-      if (segmentIndex === 0 || (segmentFlags[segmentIndex - 1]! & KIND_BITS) === HARD_BREAK) {
+      if (atChunkStart) {
         cursor.segmentIndex = segmentIndex
         cursor.graphemeIndex = 0
         return true
@@ -472,11 +474,8 @@ function walkPreparedComplexLines(
     let returnsFromHyphen = false
 
     let lineWidth: number | null = null
-    if (
-      (segmentFlags[lineStartSegmentIndex]! & KIND_BITS) === HARD_BREAK &&
-      (lineStartSegmentIndex === 0 || (segmentFlags[lineStartSegmentIndex - 1]! & KIND_BITS) === HARD_BREAK)
-    ) {
-      // A chunk holding only its hard break is an empty line.
+    if ((segmentFlags[lineStartSegmentIndex]! & KIND_BITS) === HARD_BREAK) {
+      // A line that starts at a hard break is an empty chunk's (normalizePreparedLineStart).
       cursor.segmentIndex = lineStartSegmentIndex + 1
       cursor.graphemeIndex = 0
       lineWidth = 0
