@@ -30,6 +30,8 @@ import {
   getFontMeasurement,
   getSegmentMetrics,
   measureWithLetterSpacing,
+  readLetterSpacing,
+  setLocaleLanguage,
   textMayContainEmoji,
   type SegmentMetrics,
 } from './measurement.js'
@@ -677,7 +679,7 @@ function prepareInternal(
   options?: PrepareOptions,
 ): InternalPreparedText | PreparedTextWithSegments {
   const wordBreak = options?.wordBreak ?? 'normal'
-  const letterSpacing = options?.letterSpacing ?? 0
+  const letterSpacing = readLetterSpacing(options?.letterSpacing)
   // One page-language read: break rules and measurement both follow it.
   const documentLanguage = getDocumentLanguage()
   const engineProfile = getEngineProfile()
@@ -917,9 +919,11 @@ export function clearCache(): void {
   clearMeasurementCaches()
 }
 
-// Kept for compatibility. Line breaking follows the page language, which
-// preparation reads from `<html lang>`, so this only clears the caches. Removing
-// it or making it a language input is decided later (RESEARCH.md, Decisions Log).
-export function setLocale(_locale?: string): void {
+// Sets the language later preparation breaks and measures under in place of
+// `<html lang>`, which a worker doesn't have; an empty one is a page's without a
+// language. Without a locale, preparation reads `<html lang>` again. Prepared
+// handles keep theirs (RESEARCH.md, Decisions Log).
+export function setLocale(locale?: string): void {
+  setLocaleLanguage(locale)
   clearCache()
 }
