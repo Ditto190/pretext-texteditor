@@ -1380,6 +1380,28 @@ Firefox and Safari didn't move. With the loop apart, `getMarkContext()` takes 37
 bytes and is inlined again, and every Chrome row reads within noise: seen Arabic
 −0.2% and letter-spaced CJK +0.6% (#351).
 
+Rich-inline's line stepper keeps three checks that change no result: an early
+return the loop repeats at the end of every walk, a line-start test before
+testing whether a cursor sits at an item's end, and a skip for a step that
+doesn't advance, which never happens. Without the three, Chrome 154 measured the
+bench's rich stats 12% slower than main in both sessions, and Node 23's V8 10 to
+13% offline. Restoring only the early return gave nothing back; the line-start
+test, which saves three reads per item, gave back 2 to 6 points, and with the
+skip beside it all but 2 to 4%. Only all three read as main. Likewise the full
+walker still tests the engine's `unfitHyphenRetreat` beside the soft-hyphen
+contexts, which preparation makes only where the engine retreats: without the
+test, Chrome 154's `layout()` read 5 to 7% slower on letter-spaced CJK and 3 to
+5% slower on pre-wrap chunks, and its `walkLineRanges()` of pre-wrap chunks 3 to
+6% faster, in every session of four runs.
+
+`segmentAtLineBreaks()` starts the first segment before its loop, which then runs
+from the second unit. Run from the first unit, with nothing else changed, the loop
+made Chrome 154 prepare the bench's pre-wrap chunks 9% slower and its long
+breakable runs 10% slower in both sessions, and Node 23's V8 9 to 16% slower
+offline; Firefox read the long runs 3% slower. Reordering or replacing the loop's
+`i > 0` test, or seeding the arrays with an element, didn't help. Peeling the first
+unit read as main.
+
 `layout()` needs only a count. On simple text, `countPreparedLines()` keeps just
 the line width and whether the line has content, with no line ends, pending
 breaks, paint widths or visitor calls. It keeps the simple walker's order: a

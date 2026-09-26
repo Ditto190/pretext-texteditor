@@ -5,7 +5,6 @@ import {
 } from './layout.js'
 import {
   analyzeText,
-  getSharedWordSegmenter,
   isCollapsibleSpaceCode,
   removeSkippableSegmentBreaks,
   type AnalysisProfile,
@@ -22,7 +21,6 @@ import {
   getKindCode,
   isDiscretionaryLineEnd,
   KIND_BITS,
-  type LineBreakCursor,
   type PreparedLineBreakData,
   stepPreparedLineGeometry,
   UNBROKEN,
@@ -35,6 +33,10 @@ import { getDocumentLanguage, getEngineProfile, getFontMeasurement, getSegmentMe
 // - collapsed boundary whitespace across item boundaries
 // - atomic inline boxes like pills
 // - per-item extra horizontal chrome such as padding/borders
+// - break opportunities across item boundaries as the engine finds them: from the
+//   text the items join in Blink and Gecko, and in WebKit from each item's own text
+//   and the previous item's last two characters
+// - runs that continue across items without a break, which wrap together
 
 declare const preparedRichInlineBrand: unique symbol
 
@@ -164,12 +166,12 @@ function getCollapsedSpaceWidth(font: string, letterSpacing: number, documentLan
 }
 
 function measureWholeItem(prepared: PreparedTextWithSegments): number | null {
-  const end: LineBreakCursor = { segmentIndex: 0, graphemeIndex: 0 }
+  const end: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
   return stepPreparedLineGeometry(prepared, end, Number.POSITIVE_INFINITY)
 }
 
 function measureItemPrefix(prepared: PreparedTextWithSegments, end: LayoutCursor): number {
-  const cursor: LineBreakCursor = { segmentIndex: 0, graphemeIndex: 0 }
+  const cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
   return stepPreparedLineGeometry(prepared, cursor, Number.POSITIVE_INFINITY, end.segmentIndex, end.graphemeIndex) ?? 0
 }
 
@@ -231,7 +233,7 @@ function getItemBreakOffsets(portions: readonly JoinedPortion[], text: string, b
   for (let p = 0; p < portions.length; p++) {
     const portion = portions[p]!
     const end = p + 1 < portions.length ? portions[p + 1]!.start : text.length
-    if (p > 0 && getWebKitBreakBetweenItems(boundaryContexts[portions[p - 1]!.itemIndex]!, text.slice(portion.start, end), language, getSharedWordSegmenter)) {
+    if (p > 0 && getWebKitBreakBetweenItems(boundaryContexts[portions[p - 1]!.itemIndex]!, text.slice(portion.start, end), language)) {
       offsets.push(portion.start)
     }
     const { segmentFlags, segments } = portion.item.prepared
@@ -300,9 +302,9 @@ function stepItemToBreak(
   start: LayoutCursor,
   availableWidth: number,
   end: LayoutCursor,
-  lineEnd: LineBreakCursor,
+  lineEnd: LayoutCursor,
 ): number | null {
-  const cursor: LineBreakCursor = { segmentIndex: start.segmentIndex, graphemeIndex: start.graphemeIndex }
+  const cursor: LayoutCursor = { segmentIndex: start.segmentIndex, graphemeIndex: start.graphemeIndex }
   const width = stepPreparedLineGeometry(prepared, cursor, availableWidth, end.segmentIndex, end.graphemeIndex)
   if (width !== null) {
     lineEnd.segmentIndex = cursor.segmentIndex
@@ -320,13 +322,13 @@ function fillItemSegment(
   start: LayoutCursor,
   availableWidth: number,
   segmentIndex: number,
-  lineEnd: LineBreakCursor,
+  lineEnd: LayoutCursor,
 ): number | null {
   const data: PreparedLineBreakData = prepared
   const fitAdvances = data.breakableFitAdvances[segmentIndex]
   if (fitAdvances === null || fitAdvances === undefined || data.entryGeometry?.[segmentIndex] != null) return null
   const overflow: LayoutCursor = { segmentIndex, graphemeIndex: 0 }
-  const cursor: LineBreakCursor = { segmentIndex: 0, graphemeIndex: 0 }
+  const cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
   for (let g = 1; g < fitAdvances.length; g++) {
     cursor.segmentIndex = start.segmentIndex
     cursor.graphemeIndex = start.graphemeIndex
@@ -489,8 +491,9 @@ export function prepareRichInline(items: RichInlineItem[]): PreparedRichInline {
       item.font,
       letterSpacing === 0 ? undefined : { letterSpacing },
     )
-    // The flat walker can omit source controls at line start. Its result is
-    // a measurement observation, not the rich item's identity or source end.
+    // The flat walker consumes spaces and soft hyphens at a line start, so an
+    // item of only those has no whole width. Its result is a measurement
+    // observation, not the rich item's identity or source end.
     const wholeWidth = measureWholeItem(prepared)
     const establishesLine = wholeWidth !== null || prepared.kinds.includes('zero-width-break')
 
@@ -588,6 +591,9 @@ function collectWholeItem(
   })
 }
 
+// Three of its checks change no result: the early return, the line-start test before an
+// item's end, and the skip of a step that doesn't advance. Without them Chrome measured
+// rich stats 12% slower (RESEARCH.md, Keeping Work Bounded).
 function stepRichInlineLine(
   flow: InternalPreparedRichInline,
   maxWidth: number,
@@ -617,8 +623,8 @@ function stepRichInlineLine(
     }
 
     // Retain inactive source items in the original coordinate space without
-    // turning their mere presence into a line. Their prior layout behavior is
-    // unchanged; a following line can still expose their consumed source.
+    // turning their mere presence into a line. A following line can still
+    // expose their consumed source.
     if (!item.establishesLine) {
       collectWholeItem(collectFragment, itemIndex, item, 0, -1, 0)
       continue
@@ -671,7 +677,7 @@ function stepRichInlineLine(
     }
 
     const availableWidth = Math.max(1, remainingWidth - reservedWidth)
-    const lineEnd: LineBreakCursor = {
+    const lineEnd: LayoutCursor = {
       segmentIndex: cursor.segmentIndex,
       graphemeIndex: cursor.graphemeIndex,
     }
@@ -697,7 +703,7 @@ function stepRichInlineLine(
       const { prepared } = item
       if (!isDiscretionaryLineEnd(prepared.segmentFlags, lineEnd.segmentIndex, lineEnd.graphemeIndex)) break lineLoop
       const softHyphenIndex = lineEnd.segmentIndex - 1
-      const beforeHyphen: LineBreakCursor = { segmentIndex: cursor.segmentIndex, graphemeIndex: cursor.graphemeIndex }
+      const beforeHyphen: LayoutCursor = { segmentIndex: cursor.segmentIndex, graphemeIndex: cursor.graphemeIndex }
       const textWidth = stepPreparedLineGeometry(prepared, beforeHyphen, availableWidth, softHyphenIndex, 0)
       if (
         textWidth === null ||
