@@ -141,6 +141,12 @@ const markRunRe = /^\p{M}+$/u
 const nonspacingMarkRunRe = /^\p{Mn}+$/u
 const controlOrMarkRunRe = /^(?:[\p{Cc}\u2028\u2029]|\p{M}+)$/u
 const controlCharacterRe = /^[\p{Cc}\u2028\u2029]$/u
+// The fewest UTF-16 units of a long chain of mark runs that a run's context keeps after
+// the grapheme (getMarkContext): measured after the whole chain, a long chain prepared in
+// time that grows with the square of its length. Safari gives a run a width that depends
+// on how far it sits from the grapheme, up to 61 units in the chains measured
+// (RESEARCH.md), so a context that keeps fewer moves widths there.
+const MARK_CHAIN_CONTEXT_UNITS = 96
 
 function needsComplexTextPath(text: string): boolean {
   let previousIsEmoji = false
@@ -283,9 +289,16 @@ function measureAnalysis(
   // before it: that grapheme and what separates them. Without the separators, Canvas
   // can compose the marks with the grapheme or draw both in another font. A walk that
   // reaches the last run that asked takes that run's answer, so each segment is walked
-  // and each grapheme found once, however many runs share it.
+  // and each grapheme found once, however many runs share it. Once what separates them
+  // passes MARK_CHAIN_CONTEXT_UNITS, the context keeps the grapheme and the fewest of the
+  // chain's last runs, each with the separators before it, that hold at least that many
+  // units: in Chrome, Safari and Firefox, runs of 1 to 400 marks then measure as they do
+  // after the whole chain, to 0.002px, and without the grapheme some took 25px less
+  // (RESEARCH.md).
   let markRunIndex = -1
   let markBaseStart = -1 // where that run's grapheme starts in the normalized text, or -1
+  let markChainStart = -1 // the segment after that grapheme
+  let markChainKept = -1 // the first segment of the chain the context keeps
   function getMarkContext(analysisIndex: number): string | null {
     if (analysis.breaksBefore?.[analysisIndex] !== false || !markRunRe.test(analysis.texts[analysisIndex]!)) return null
     let baseStart = -1
@@ -299,12 +312,26 @@ function measureAnalysis(
         const ends = new Int32Array(text.length)
         const count = findGraphemeEnds(engineProfile.graphemeTable, text, 0, text.length, ends)
         baseStart = analysis.starts[k]! + (count > 1 ? ends[count - 2]! : 0)
+        markChainStart = markChainKept = k + 1
       }
       break
     }
     markRunIndex = analysisIndex
     markBaseStart = baseStart
-    return baseStart < 0 ? null : analysis.normalized.slice(baseStart, analysis.starts[analysisIndex]!)
+    if (baseStart < 0) return null
+    const start = analysis.starts[analysisIndex]!
+    return start - baseStart > MARK_CHAIN_CONTEXT_UNITS ? getLongMarkChainContext(baseStart, start) : analysis.normalized.slice(baseStart, start)
+  }
+  // Apart from getMarkContext(), which prepare() calls for every segment, so that V8
+  // still inlines that one there (RESEARCH.md, Keeping Work Bounded).
+  function getLongMarkChainContext(baseStart: number, start: number): string {
+    // The kept part starts after the grapheme or a run of marks, moves only forward and
+    // never holds fewer than MARK_CHAIN_CONTEXT_UNITS.
+    for (let k = markChainKept + 1; start - analysis.starts[k]! >= MARK_CHAIN_CONTEXT_UNITS; k++) {
+      if (markRunRe.test(analysis.texts[k - 1]!)) markChainKept = k
+    }
+    if (markChainKept === markChainStart) return analysis.normalized.slice(baseStart, start)
+    return analysis.normalized.slice(baseStart, analysis.starts[markChainStart]!) + analysis.normalized.slice(analysis.starts[markChainKept]!, start)
   }
 
   const widths: number[] = []

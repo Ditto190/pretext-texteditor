@@ -88,6 +88,14 @@ old-gate-c55afebd1de7d4ff breaks
 old-gate-c7fff6370e1470f6 breaks
 old-gate-dd9785b9f09ad6a5 breaks
 
+## Keycaps (U+20E3) after U+0001 in 24 px Georgia, at 24 px and wider: WebKit's page gives each 24.36 px and the chain's last 2.57 px, where its Canvas gives 24 px after the chain, so a line holds one keycap more or fewer (main too)
+catalog-286b0dc43de828bc count
+catalog-3fced650b6ca9448 breaks
+catalog-7cffe66fa7484a1b count
+catalog-9d5251eebb33ef36 count
+catalog-c87a1e216aa3a4ea count
+catalog-efc5ebc1693c3350 count
+
 ## Letter-spacing across scripts (Thai, Arabic, Khmer, CJK, digits and hyphens) and in rich runs, at 24 px and wider: WebKit spaces or breaks these where the library doesn't
 catalog-0cd616621690d7a0 count
 catalog-0e274d0bebe3851d count
@@ -445,6 +453,7 @@ catalog-2527014621408c29 count
 catalog-252954280525e75d count
 catalog-25c67362c0914152 breaks
 catalog-2600f6268b790af6 breaks
+catalog-26b1966ebf75f9cf count
 catalog-26bc8331dc555f51 breaks
 catalog-26d3dc4bae9da85f count
 catalog-26e40606a6998bce count
@@ -824,6 +833,7 @@ catalog-6c9b1efa73f6f466 count
 catalog-6cee6b2ed8d978cf count
 catalog-6dfdb2099afb0c00 count
 catalog-6e0152ace658eca1 count
+catalog-6e07faa176dcb30f count
 catalog-6e24579b573efbf8 count
 catalog-6e2f168511329f2d count
 catalog-6ed13275ea655a11 count
@@ -836,6 +846,7 @@ catalog-702c8317831350e5 count
 catalog-703b175310032cc3 count
 catalog-703ec7bd07db044d count
 catalog-7048acdb28d8bb4b count
+catalog-7090b5c3182b70ce count
 catalog-71247b06edd27703 count
 catalog-7165dbe0b98c9087 breaks
 catalog-71a60695fdfeae53 breaks
