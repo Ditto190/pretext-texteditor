@@ -42,7 +42,7 @@ import {
 
 // Page languages whose line-break rules differ in some engine. Every other
 // language, an empty or missing one, and no document read as root.
-export type BreakLanguage = 'root' | 'ja' | 'ko' | 'zh'
+type BreakLanguage = 'root' | 'ja' | 'ko' | 'zh'
 
 // The primary language subtag, ASCII case-insensitively, up to `-`, `_` or the
 // end. No allocation: preparation calls this once per text.
@@ -60,8 +60,8 @@ export function getBreakLanguage(tag: string | null): BreakLanguage {
 // The generated tables ship packed, in base64: the unpacked length, then runs of literal bytes,
 // each followed by a copy of earlier bytes (length - 4, then distance back), every count a
 // little-endian base-128 varint. A copy may reach back into a dictionary, another table's bytes.
-// Packing keeps the tables a page parses small; a page unpacks only its engine's tables and the
-// ones they pack against, once.
+// Packing keeps the tables a page parses small; a page unpacks only its engine's tables and, for
+// each, the tables it packs against.
 export function unpackTable(packed: string, dictionary: Uint8Array | null = null): Uint8Array {
   const input = atob(packed)
   let at = 0
@@ -106,7 +106,6 @@ const DONE = -1
 const START_STATE = 1 // rbbi.cpp:48
 const STOP_STATE = 0 // rbbi.cpp:51
 const ACCEPTING_UNCONDITIONAL = 1 // rbbidata.h:127
-const RBBI_BOF_REQUIRED = 2 // rbbidata.h:151
 const RBBI_8BITS_ROWS = 4 // rbbidata.h:152
 
 export type BreakRules = {
@@ -116,7 +115,6 @@ export type BreakRules = {
   rowWidth: number
   rows: Uint16Array
   lookAheadResultsSize: number
-  statusTable: Int32Array
   trieIndex: Uint16Array
   trieData: Uint16Array
   trieDataLength: number
@@ -130,8 +128,6 @@ function copyU16(bytes: Uint8Array, offset: number, count: number): Uint16Array 
   return out
 }
 
-// Compiled rules without the data package header: RBBIDataHeader (rbbidata.h:67-94),
-// checked as rbbidata.cpp:69-71 does, then the tables it points to.
 // A trie's data index past its fast range and below its high start: ucptrie_internalSmallIndex
 // (ucptrie.cpp:161-185) and ICU4X's internal_small_index (icu_collections 2.1.1
 // cptrie.rs:433-500), with SHIFT_1 14, SHIFT_2 9, SHIFT_3 4 and 5-bit masks.
@@ -158,14 +154,14 @@ export function getSmallTrieValue(index: Uint16Array, data: Uint8Array, highStar
   return data[getTrieDataIndex(index, 64, c)]!
 }
 
+// Compiled rules without the data package header: RBBIDataHeader (rbbidata.h:67-94),
+// checked as rbbidata.cpp:69-71 does, then the tables it points to.
 export function parseBreakRules(bytes: Uint8Array): BreakRules {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   if (view.getUint32(0, true) !== 0xb1a0 || bytes[4] !== 6) throw new Error('Expected ICU break rules, format 6')
   const catCount = view.getUint32(12, true)
   const table = view.getUint32(16, true)
   const trie = view.getUint32(32, true)
-  const statusOffset = view.getUint32(48, true)
-  const statusLength = view.getUint32(52, true)
 
   // RBBIStateTable, rbbidata.h:134-148: five uint32 fields, then rows of fAccepting,
   // fLookAhead, fTagsIdx and fNextState[catCount], 8 or 16 bits each (rbbidata.h:98-125).
@@ -200,11 +196,8 @@ export function parseBreakRules(bytes: Uint8Array): BreakRules {
     ? copyU16(bytes, dataStart, trieDataLength)
     : Uint16Array.from(bytes.subarray(dataStart, dataStart + trieDataLength))
 
-  const statusTable = new Int32Array(statusLength / 4) // rbbidata.cpp:133-134
-  new Uint8Array(statusTable.buffer).set(bytes.subarray(statusOffset, statusOffset + statusLength))
-
   return {
-    catCount, dictCategoriesStart, flags, rowWidth, rows, lookAheadResultsSize, statusTable,
+    catCount, dictCategoriesStart, flags, rowWidth, rows, lookAheadResultsSize,
     trieIndex, trieData, trieDataLength, trieHighStart,
   }
 }
@@ -219,7 +212,6 @@ export function getCategory(rules: BreakRules, c: number): number {
 }
 
 const RUN = 0
-const START = 1
 const END = 2
 
 // The state ICU's RuleBasedBreakIterator keeps over one text.
@@ -279,7 +271,6 @@ export function nextRuleBoundary(iterator: RuleBreakIterator): number {
   let row = state * width
   let mode = RUN
   let category = 0
-  if ((r.flags & RBBI_BOF_REQUIRED) !== 0) { category = 2; mode = START } // rbbi.cpp:823-826
 
   for (;;) {
     if (atEnd) { // rbbi.cpp:832-843
@@ -302,7 +293,7 @@ export function nextRuleBoundary(iterator: RuleBreakIterator): number {
 
     const accepting = rows[row]! // rbbi.cpp:880-896
     if (accepting === ACCEPTING_UNCONDITIONAL) {
-      if (mode !== START) result = pos
+      result = pos
     } else if (accepting > ACCEPTING_UNCONDITIONAL) {
       const lookAheadResult = matches[accepting]!
       if (lookAheadResult >= 0) {
@@ -326,8 +317,6 @@ export function nextRuleBoundary(iterator: RuleBreakIterator): number {
           if ((trail & 0xfc00) === 0xdc00) { pos++; c = ((c - 0xd800) << 10) + trail - 0xdc00 + 0x10000 }
         }
       }
-    } else if (mode === START) {
-      mode = RUN
     }
   }
 
@@ -750,13 +739,6 @@ function nextBreakableSpace(s: string, startPosition: number, punctuationBreaks:
   return s.length
 }
 
-// TU:398-422 with line-break auto (LineMode Default, TU:450-466) and BP.h:287-300. WebKit
-// stores a text holding a code unit above U+00FF in 16 bits, where keep-all also breaks
-// after punctuation.
-function findNextBreakablePosition(pairs: Uint8Array, f: Factory, startPosition: number, keepAll: boolean, sixteenBit: boolean): number {
-  return keepAll ? nextBreakableSpace(f.text, startPosition, sixteenBit) : nextBreakablePosition(pairs, f, startPosition)
-}
-
 // ubrk_open(UBRK_LINE, locale) in libicucore (TBIICU.h:63-67): line_normal.brk for ja and
 // ko, line_cj.brk for zh and line.brk otherwise, plus the locale's quotation remap
 // (apple-brkiter.cpp:458-473, apple-rbbi.cpp:406-487), looked up with ICU's parent fallback
@@ -811,6 +793,8 @@ export function getWebKitLineBreaks(
   const f = createFactory(source, getWebKitLineIterator(language), getWordSegmenter)
   const length = source.length
   const breaks = new Uint8Array(length + 1)
+  // WebKit stores a text holding a code unit above U+00FF in 16 bits, where keep-all also
+  // breaks after punctuation.
   let sixteenBit = false
   for (let i = 0; keepAll && i < length && !sixteenBit; i++) sixteenBit = source.charCodeAt(i) > 0xff
   let previousKind = -1
@@ -831,11 +815,12 @@ export function getWebKitLineBreaks(
         if (c !== SPACE && c !== TAB && (preserveNewlines || c !== LF)) break
       }
       if (end === position) {
-        // handleNonWhitespace, IIB:1012-1038, with moveToNextBreakablePosition (IIB:75-87).
+        // handleNonWhitespace, IIB:1012-1038, with moveToNextBreakablePosition (IIB:75-87),
+        // TU:398-422 with line-break auto (LineMode Default, TU:450-466) and BP.h:287-300.
         kind = TEXT
         end = length
         for (let p = position; p < length; p++) {
-          const next = findNextBreakablePosition(pairs, f, p, keepAll, sixteenBit)
+          const next = keepAll ? nextBreakableSpace(source, p, sixteenBit) : nextBreakablePosition(pairs, f, p)
           if (next !== position) { end = next; break }
         }
       }

@@ -34,7 +34,7 @@ export type Segmentation = {
 
 // `spaceSources` holds, in the WebKit profile where normal white space collapsed, the source
 // unit each normalized unit starts from, such as the TAB or LF a space came from. Null otherwise.
-export type TextAnalysis = { source: string; normalized: string; spaceSources: Uint16Array | null } & Segmentation
+export type TextAnalysis = { normalized: string; spaceSources: Uint16Array | null } & Segmentation
 
 export type AnalysisProfile = {
   lineBreakScan: 'blink' | 'webkit' | 'gecko'
@@ -305,7 +305,6 @@ export function analyzeText(
   const normalized = preserve ? normalizeWhitespacePreWrap(text) : collapseWhitespaceNormal(source)
   if (normalized.length === 0) {
     return {
-      source: text,
       normalized,
       spaceSources: null,
       texts: [],
@@ -329,7 +328,6 @@ export function analyzeText(
     breaks = source === normalized ? sourceBreaks : mapSourceLineBreaks(source, normalized.length, sourceBreaks, whiteSpace, spaceSources)
   }
   return {
-    source: text,
     normalized,
     spaceSources,
     ...segmentAtLineBreaks(normalized, breaks, whiteSpace, profile.lineBreakScan),

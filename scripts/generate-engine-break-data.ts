@@ -188,7 +188,7 @@ function sameRules(a: BreakRules, b: BreakRules): boolean {
   }
   return a.catCount === b.catCount && a.dictCategoriesStart === b.dictCategoriesStart && a.flags === b.flags &&
     a.rowWidth === b.rowWidth && a.lookAheadResultsSize === b.lookAheadResultsSize && a.trieDataLength === b.trieDataLength &&
-    a.trieHighStart === b.trieHighStart && same(a.rows, b.rows) && same(a.statusTable, b.statusTable) &&
+    a.trieHighStart === b.trieHighStart && same(a.rows, b.rows) &&
     same(a.trieIndex, b.trieIndex) && same(a.trieData, b.trieData)
 }
 
@@ -219,6 +219,7 @@ const lineTableBytes: Uint8Array[] = []
 const lineTablesPacked: Record<string, [string | null, string]> = {}
 for (let t = 0; t < lineTableSources.length; t++) {
   const bytes = readCompactBreakRules(lineTableSources[t]![1])
+  if ((parseBreakRules(bytes).flags & 2) !== 0) throw new Error(`${lineTableSources[t]![0]} has start-of-text rules, which src/line-breaks.ts doesn't read`)
   lineTableBytes.push(bytes)
   let entry: [string | null, string] = [null, packTable(bytes)]
   for (let r = 0; r < t; r++) {

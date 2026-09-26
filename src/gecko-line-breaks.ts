@@ -62,7 +62,7 @@ function codePointFlag(pattern: RegExp): (cp: number) => boolean {
 
 const isMark = codePointFlag(/^\p{M}$/u)
 const isPunctuation = codePointFlag(/^\p{P}$/u)
-export const isDefaultIgnorable = codePointFlag(/^\p{Default_Ignorable_Code_Point}$/u)
+const isDefaultIgnorable = codePointFlag(/^\p{Default_Ignorable_Code_Point}$/u)
 const isEmoji = codePointFlag(/^\p{Emoji}$/u)
 const isHangul = codePointFlag(/^\p{sc=Hangul}$/u)
 
@@ -122,12 +122,12 @@ function isEastAsianWidthFHWExcludingEmoji(cp: number): boolean {
 }
 
 // nsUnicharUtils.cpp:500-504
-export function isSegmentBreakSkipChar(cp: number): boolean {
+function isSegmentBreakSkipChar(cp: number): boolean {
   return isEastAsianWidthFHWExcludingEmoji(cp) && !isHangul(cp) && cp !== 0x20a9
 }
 
 // nsUnicharUtils.cpp:506-527, with UnicodeProperties.h:187-199
-export function isEastAsianPunctuation(cp: number): boolean {
+function isEastAsianPunctuation(cp: number): boolean {
   return getEastAsianWidth(cp) !== 0 && ((isPunctuation(cp) && cp !== 0x20a9) || cp === 0xff5e || cp === 0x3000)
 }
 

@@ -38,7 +38,6 @@ import {
 import {
   countPreparedLines,
   getKindCode,
-  measurePreparedLineGeometry,
   normalizePreparedLineStart,
   RETURNABLE,
   SPACED,
@@ -357,7 +356,7 @@ function measureAnalysis(
   // line, in text holding a code unit above U+00FF (InlineContentBreaker.cpp:124-158,
   // 222-233), by its scan's line-start table. Blink and Gecko end the line after the
   // first grapheme.
-  const keepsLineStartPunctuation = engineProfile.lineBreakScan === 'webkit' && /[\u0100-\uFFFF]/.test(analysis.source)
+  const keepsLineStartPunctuation = engineProfile.lineBreakScan === 'webkit' && /[\u0100-\uFFFF]/.test(analysis.normalized)
   const segments = includeSegments ? [] as string[] : null
   const retreatsFromUnfitHyphen = engineProfile.unfitHyphenRetreat !== 'none'
   let discretionaryHyphenContexts: number[] | null = null
@@ -693,12 +692,19 @@ function prepareInternal(
 // same PreparedText can be laid out at any maxWidth and lineHeight via layout().
 //
 // Steps:
-//   1. Normalize collapsible whitespace (CSS white-space: normal behavior)
+//   1. Normalize white space as white-space: normal or pre-wrap does
 //   2. Find break opportunities with the engine's own line-break scan
 //   3. Split the text into segments between them ("better." as one unit)
-//   4. Measure each segment via canvas measureText, cache by (segment, font)
-//   5. Pre-measure graphemes of long words (for overflow-wrap: break-word)
-//   6. Correct emoji canvas inflation (auto-detected per font size)
+//   4. Measure each segment via canvas measureText, cache by (segment, font).
+//      A run of combining marks that glue or a control separates from its grapheme
+//      measures after that grapheme, and WebKit measures a word with the space after it
+//   5. Measure where each text segment of two or more graphemes can break under
+//      overflow-wrap: break-word: by graphemes, pairs or prefixes, per engine
+//   6. Correct emoji canvas inflation (probed once per font)
+//   7. Record what changes at a line's edges: Blink's halts of CJK punctuation,
+//      U+3000 hangs, how much narrower a soft hyphen's neighbors measure joined,
+//      fresh-line widths inside segments with invisible characters, and the
+//      characters WebKit keeps after an overflowing first one
 export function prepare(text: string, font: string, options?: PrepareOptions): PreparedText {
   return prepareInternal(text, font, false, options) as PreparedText
 }
@@ -715,13 +721,9 @@ function getInternalPrepared(prepared: PreparedText): InternalPreparedText {
 
 // Layout prepared text at a given max width and caller-provided lineHeight.
 // Pure arithmetic on cached widths — no canvas calls, no DOM reads, no string
-// operations, and no per-line allocations.
-// ~0.0002ms per text block. Call on every resize.
-//
-// Line breaking rules (matching CSS white-space: normal + overflow-wrap: break-word):
-//   - Break before any non-space segment that would overflow the line
-//   - Trailing whitespace hangs past the line edge (doesn't trigger breaks)
-//   - Segments wider than maxWidth are broken at grapheme boundaries
+// operations, and no per-line allocations. Call on every resize. Lines break
+// where the engine's page breaks them, under the CSS that README.md's Caveats
+// list.
 export function layout(prepared: PreparedText, maxWidth: number, lineHeight: number): LayoutResult {
   // The resize hot path counts the same lines as `layoutWithLines()` without
   // building line ranges or text.
@@ -825,7 +827,9 @@ export function measureLineStats(
   prepared: PreparedTextWithSegments,
   maxWidth: number,
 ): LineStats {
-  return measurePreparedLineGeometry(getInternalPrepared(prepared), maxWidth)
+  const stats = { lineCount: 0, maxLineWidth: 0 }
+  walkPreparedLinesRaw(getInternalPrepared(prepared), maxWidth, undefined, stats)
+  return stats
 }
 
 // Intrinsic-width helper for rich/userland layout work. This asks "how wide is

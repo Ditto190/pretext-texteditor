@@ -23,7 +23,11 @@ export type SegmentMetrics = {
 }
 
 export type EngineProfile = {
-  entryFitBasis: 'fresh' | 'original' | 'disabled' // original whole minus consumed prefixes
+  // How a line that starts inside a segment holding a default-ignorable code point
+  // admits the segment's tail (src/entry-geometry.ts): by the tail's own measured start
+  // ('fresh', desktop Blink), by the whole segment's width minus the consumed prefixes
+  // ('original', desktop Gecko), or not at all ('disabled').
+  entryFitBasis: 'fresh' | 'original' | 'disabled'
   // Where preparation finds break opportunities: each engine's own scan. Blink and WebKit
   // scan the text with their pair tables and ICU line rules (src/line-breaks.ts), Gecko
   // with nsLineBreaker over ICU4X's rules (src/gecko-line-breaks.ts), and engines Pretext
@@ -133,10 +137,11 @@ export type FontMeasurement = {
 const fontMeasurements = new Map<string, FontMeasurement>()
 let cachedEngineProfile: EngineProfile | null = null
 
-// Safari's prefix-fit policy is useful for ordinary word-sized runs, but letting
-// it measure every growing prefix of a giant segment recreates a pathological
-// superlinear prepare-time path. Past this size, switch to the cheaper
-// pair-context model and keep the public behavior linear.
+// Prefix fits, which preparation picks by engine, width and letter spacing
+// (pushMeasuredTextSegment in src/layout.ts), measure every growing prefix of a
+// segment. That suits word-sized runs, but a giant segment would prepare in time
+// that grows with the square of its length. Past this size, the cheaper
+// pair-context model keeps preparation linear.
 const MAX_PREFIX_FIT_GRAPHEMES = 96
 
 // Graphemes drawn from the emoji font: those holding an emoji-presentation
