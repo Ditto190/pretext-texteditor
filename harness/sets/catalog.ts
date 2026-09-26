@@ -204,10 +204,11 @@ export function classMatrixTemplates(): Template[] {
   return out
 }
 
-// A line holding only soft hyphens, which a hard break ends (ENGINE_FOLLOWUPS.md): between lines of text, at the
-// paragraph start and end, as a run, twice over, beside a combining mark or a preserved space, between CRLFs, and
-// before text; and between two U+2028, which WebKit takes as hard breaks in normal white space too. Two words on each
-// side give the search widths where the lines around it change.
+// A line holding only soft hyphens, which a hard break ends (RESEARCH.md, Widths After A Line Break): between lines of
+// text, at the paragraph start and end, as a run, twice over, beside a combining mark or a preserved space, between
+// CRLFs, and before text; and between two U+2028, which WebKit takes as hard breaks in normal white space too, where a
+// line holding only a collapsible space is one as well. Two words on each side give the search widths where the lines
+// around it change.
 export function followupTemplates(): Template[] {
   const shapes: ReadonlyArray<readonly [string, string, 'normal' | 'pre-wrap']> = [
     ['between', 'ab cd\n\u00AD\nef gh', 'pre-wrap'],
@@ -223,12 +224,13 @@ export function followupTemplates(): Template[] {
     ['text-after', 'ab cd\n\u00ADef gh', 'pre-wrap'],
     ['line-separators', 'ab cd\u2028\u00AD\u2028ef gh', 'pre-wrap'],
     ['line-separators-normal', 'ab cd\u2028\u00AD\u2028ef gh', 'normal'],
+    ['line-separators-space', 'ab cd\u2028 \u2028ef gh', 'normal'],
   ]
   const out: Template[] = []
   for (let i = 0; i < shapes.length; i++) {
     const [name, text, whiteSpace] = shapes[i]!
     out.push({
-      family: `followups/soft-hyphen-line/${name}`, origin: `ENGINE_FOLLOWUPS.md: a line holding only a soft hyphen, ${name}`,
+      family: `followups/soft-hyphen-line/${name}`, origin: `RESEARCH.md, Widths After A Line Break: a line holding only a soft hyphen, ${name}`,
       pageLang: 'en', paragraph: paragraph({ font: font('Arial', 16), lang: 'en', whiteSpace }, [text]), widths: [], grid: true,
     })
   }

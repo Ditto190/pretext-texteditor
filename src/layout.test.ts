@@ -2539,6 +2539,16 @@ describe('prepare invariants', () => {
         expect(collectStreamedLines(prepared, 1000)).toEqual(result.lines)
         expect(layout(prepare(text, FONT), 1000, LINE_HEIGHT).lineCount).toBe(2)
       }
+      // Collapsible spaces or a soft hyphen between two of them are an empty line, as in Safari.
+      const emptyLineTexts = ['aaa\u2028 \u2028bbb', 'aaa\u2029  \u2029bbb', 'aaa\u2028\u00AD\u2028bbb']
+      for (let i = 0; i < emptyLineTexts.length; i++) {
+        const text = emptyLineTexts[i]!
+        const prepared = prepareWithSegments(text, FONT)
+        const result = layoutWithLines(prepared, 1000, LINE_HEIGHT)
+        expect(result.lines.map(line => line.text)).toEqual(['aaa', '', 'bbb'])
+        expect(collectStreamedLines(prepared, 1000)).toEqual(result.lines)
+        expect(layout(prepare(text, FONT), 1000, LINE_HEIGHT).lineCount).toBe(3)
+      }
     } finally {
       profile.lineBreakScan = previous
     }

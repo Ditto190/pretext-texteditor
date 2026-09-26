@@ -1130,6 +1130,7 @@ catalog-a4b0d483b0f7bcb9 count
 catalog-a515a745d43c5a15 count
 catalog-a54dbc20c9c34bc8 count
 catalog-a592a40d7605b3fe count
+catalog-a5b06f52d17bb3e2 count
 catalog-a5c0f66596d3fa0e count
 catalog-a5e463976737b72f count
 catalog-a5e594cbe29e3c94 count
@@ -1221,7 +1222,6 @@ catalog-b78719413d6e6497 count
 catalog-b7b6b525f1199bf7 count
 catalog-b7ffde88f2efa783 breaks
 catalog-b8112aec4aa87b3f count
-catalog-b89e7e82fdaa3ca5 count
 catalog-b8ab2961f66db8ec count
 catalog-b8f0f5e942fe82a0 count
 catalog-b9040ef4ba1c3a43 count
@@ -3325,8 +3325,8 @@ sample-da2e5a0e849969a1 breaks
 sample-db62d90b64149427 breaks
 
 ## Soft hyphens alone after the last line feed of a pre-wrap paragraph: WebKit gives them a line of their own, the library none (main before #340 too; ENGINE_FOLLOWUPS.md)
+catalog-1a998e612e9484af count
 catalog-2b41de9231a38d2c count
-catalog-66f629c3f9199aa8 count
 catalog-72db93461df86981 count
 catalog-e12579ca01f5be5f count
 catalog-ff75b2be4ff8b7a5 count
