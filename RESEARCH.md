@@ -1000,6 +1000,36 @@ box widths followed 1/60px rounding in a narrow sweep, but copying that rounding
 into line fitting regressed unrelated cases: box resolution does not establish
 the browser's text-fit rule.
 
+A span around each character is no witness of WebKit's breaks. WebKit breaks
+inside an inline box from that box's text and reads only the previous box's last
+two characters at a boundary, so the spans move breaks the text node doesn't
+have. Rechecked in Safari 27.0 on 1,336 of the harness's pre-wrap and URL-query
+cases (September 25), a span per grapheme laid 157 of them out at another height
+and gave 118 others another line start at the same height, mostly narrower than
+24px and at `?`, `=`, tabs and soft hyphens. The harness's Range reading, one
+code point at a time on the text node, is the one webkit-host's recordings and
+the WebKit scan agree with there, so Safari 26's extractor caveat for pre-wrap
+and URL queries was dropped with the span probes. Spans change Thai, Lao, Khmer
+and Myanmar breaks in every browser too: read them with Range. And take source
+offsets from prepared segments and grapheme cursors, never from
+`line.text.length`, whose text can hold a hyphen the source doesn't.
+
+One copy of the library can run slower than another copy of the same code for a
+whole document. In the bench's calibration of HEAD against itself (September 26,
+three sessions in each browser), Firefox's base copy took about twice as long as
+the other two to lay out kept CJK handles at widths used before in one session,
+and Safari's took 15-21% longer on keep-all brackets in two. The candidate and
+the control moved together there, so the control's band covers such a document,
+and a verdict needs every session, so one document can't carry one. The noise
+floors therefore take the largest deviation either copy held in one direction in
+all three sessions, 1-6% by row; floors taken from one copy made 0 and 1 false
+calls in 141 entries on the other. The largest deviation in any session, 2-51% by
+row, would have hidden four of the slowdowns the bench was checked against
+(217c84b8 against 6d1d2106): pre-wrap layout and walk at 1.05 of base's time in
+Chrome and 1.18-1.25 in Firefox, and letter-spaced CJK and control layouts at 1.12
+and 1.20 in Safari. With the floors it calls every one of them slower in all three
+browsers, and seen CJK faster.
+
 ## Rich Inline Boundaries
 
 Rich items retain source identity even when they measure zero. Filtering them
@@ -1282,7 +1312,7 @@ It returns no levels and assumes a left-to-right paragraph.
 ## Corpus Lessons
 
 Short examples catch regressions; long text reveals accumulated differences.
-Current counts belong in the `corpora/*-step10.json` snapshots, not here.
+Current counts are the census and book sets' in `bun harness check`, not here.
 
 - **Application text:** books miss URLs, numeric expressions, emoji sequences,
   non-breaking spaces and discretionary breaks.
@@ -1397,12 +1427,12 @@ without library code showed the same split, and four extra Canvas calls per
 prepare restored the drop. Fresh text never reaches those hits. Compare submitted
 Canvas text and first cold prepares, and treat a warm-only change there as a
 cache phase until installed Safari shows it. Installed Safari 27 shows it on the
-benchmark page's Thai prose: main submitted 2,982 strings, 142 times 21, and the
-measurement part of its repeated cold prepares took 4ms in 5 of 12 page runs and
-about 15ms in the rest, while the WebKit scan's segments submit 2,978 and stayed
-near 18ms in 11 of 12. Timed around `measureText` in a foreground page, a first
-cold prepare of that text spends 20ms in Canvas with main and 15ms with the scan,
-and both fall under 1ms once the cache holds the strings.
+old benchmark page's Thai prose: main submitted 2,982 strings, 142 times 21, and
+the measurement part of its repeated cold prepares took 4ms in 5 of 12 page runs
+and about 15ms in the rest, while the WebKit scan's segments submit 2,978 and
+stayed near 18ms in 11 of 12. Timed around `measureText` in a foreground page, a
+first cold prepare of that text spends 20ms in Canvas with main and 15ms with
+the scan, and both fall under 1ms once the cache holds the strings.
 
 ## Decisions Log
 
@@ -1433,7 +1463,8 @@ reason still holds, and record the new decision here with its date.
   as Firefox's script itemizer does. It was rejected on 2026-09-16 for parity with
   Firefox's break oracle and approved under the relaxed stance: no suite or corpus
   text moves, only mixed-script strings with stray marks, and it removed 189 runtime
-  lines. Firefox 156 sides with the splits on those strings (VALIDATION.md).
+  lines. Firefox 156 sides with the splits on those strings
+  (`tests/wrapping/VALIDATION.md` at 6fadbe5).
 - **2026-09-24: there is no `glue` kind.** Runs of only no-break characters (NBSP,
   U+2007, U+202F, word joiner, U+FEFF) are text, so they take emergency breaks where
   browsers do; the scans already decide where they break, so the kind was only a
@@ -1474,3 +1505,21 @@ reason still holds, and record the new decision here with its date.
 - **2026-09-24: the engine tables land before the new test harness**, judged by
   main's installed gate, the real-text sets and an attribution of every lost row.
   The harness replaces `tests/wrapping` and its snapshots in its own change.
+- **2026-09-25: a prepared handle needn't survive a JSON round trip.** Its
+  per-segment flags are a `Uint8Array`, which `JSON.stringify()` turns into an
+  object without a `length`, so the line walkers never finish on a JSON copy.
+  `structuredClone()` and `postMessage()` copies work, README calls the handle
+  opaque, and the offline invariants (`harness/invariants.ts`) copy handles with
+  `structuredClone()`. Cursors and ranges are plain JSON and resume the same from
+  a JSON copy.
+- **2026-09-25: the old wrapping suite, its snapshots and its diagnostic tools
+  are gone.** Browser-accuracy claims rest on the harness's recordings and
+  accepted lists. main's catalog, rich and oracle cases were taken once and stay
+  frozen, since their generator went with the suite. The font and Arabic joining
+  probes measure browsers, not `src/`, so they still run from 6fadbe5, a commit
+  from before their removal. Speed rests on same-document ratios from
+  `bun harness bench` in PR descriptions, with nothing timed checked in. The
+  benchmark page and `benchmarks/*.json` went once the bench's noise floors were
+  calibrated and it called a known change: 217c84b8's `src/` against 6d1d2106's
+  reads slower on letter-spaced CJK, soft hyphen, control and pre-wrap layout
+  and faster on seen CJK in all three browsers (Reading Browser Output).

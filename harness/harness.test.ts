@@ -1,5 +1,6 @@
 // Planted defects: each test plants one fault the harness exists to catch and checks that it is caught. The test name
 // says what an app developer would see if the fault went unseen.
+import './watchdog.ts'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -47,7 +48,7 @@ function layOut(text: string, starts: number[]): { recording: Recording; nodeRec
 function predicted(text: string, starts: number[]): Prediction {
   const lines = []
   for (let i = 0; i < starts.length; i++) lines.push({ start: starts[i]!, end: starts[i + 1] ?? text.length, width: 0 })
-  return { lines, prepareCalls: 0, lineCalls: 0, disagreement: null }
+  return { lines, prepareCalls: 0, prepareUnits: 0, lineCalls: 0, disagreement: null }
 }
 
 const TEXT = 'The quick brown fox jumps over the lazy dog'
@@ -101,7 +102,7 @@ describe('the pass rule', () => {
     for (const browser of ['firefox', 'webkit-host', 'safari'] as const) {
       expect(recordedLines('a\u00ADb\u000b', nodeRects, 48, offset => points[offset]!, browser).map(line => [line.first, line.last])).toEqual([[0, 1], [3, 3]])
     }
-    const main: Prediction = { lines: [{ start: 0, end: 3, width: 17.796875 }, { start: 3, end: 4, width: 4.4453125 }], prepareCalls: 6, lineCalls: 0, disagreement: null }
+    const main: Prediction = { lines: [{ start: 0, end: 3, width: 17.796875 }, { start: 3, end: 4, width: 4.4453125 }], prepareCalls: 6, prepareUnits: 12, lineCalls: 0, disagreement: null }
     expect(score({ lines, height: 96 }, main).status).toBe('breaks')
   })
 

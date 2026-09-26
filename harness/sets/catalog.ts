@@ -1,72 +1,18 @@
-// The behaviour catalog's templates, before widths.ts cuts them. Five sources:
-// - main's adversarial families, taken from its own generator (tests/wrapping/cases.ts) so nothing is retyped. main
-//   measures some widths with the browser's Canvas; run with two made-up measures, a width that stays put is main's own
-//   and one that moves was measured, and a template with measured widths is searched from the coarse grid instead.
-//   main's real text (the accuracy grid, the corpus sweeps, two Myanmar corpus paragraphs) and its mode oracles are left
-//   to the real-usage sample and oracles.ndjson; its same-font inline items go to the rich set;
+// The behaviour catalog's templates, before widths.ts cuts them. Four sources:
 // - the per-engine rebuild's rule families (data/rule-families.ndjson), the flat ones within what the library takes;
 // - filed reports whose reporter measured the width with their own Canvas;
 // - a matrix of every UAX #14 line-break class between the scripts apps mix, under the CSS settings the library takes,
 //   each pair of values of two axes in at least one template;
 // - shapes ENGINE_FOLLOWUPS.md names, with their neighbours, each neighbour a family of its own, so the cover keeps a
 //   change of each.
+// main's adversarial families were taken once from the old harness's generator, which is gone: their cases,
+// `catalog/main/*` and `rich/main/*`, stay in the case files as they were cut, and `make.ts cut` keeps them.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { generateCases } from '../../tests/wrapping/cases.ts'
 import { SYSTEM_UI_FONT } from '../score.ts'
 import type { Paragraph } from '../types.ts'
-import { font, lineBreakTable, paragraph, parseFont, span } from './build.ts'
+import { font, lineBreakTable, paragraph, parseFont } from './build.ts'
 import { templateKey, type Template } from './widths.ts'
-
-type WrappingCase = ReturnType<typeof generateCases>[number]
-
-const REAL_TEXT = /^maintained\/(accuracy|corpus)$/
-// Two whole Myanmar corpus paragraphs (1,666 and 2,707 units) main keeps from a corpus analysis: real text, left to the
-// sample like the corpus sweeps. At every width where their lines change they would be most of WebKit's search.
-const CORPUS_ANALYSIS = /\/corpus-analysis\//
-const ORACLE = /^maintained\/(pre-wrap|keep-all|symbols|letter-spacing|discretionary)\//
-
-function fromMain(c: WrappingCase): { template: Omit<Template, 'widths' | 'grid'>; rich: boolean } {
-  const f = parseFont(c.font)
-  const pageLang = c.context?.lang ?? 'en'
-  const rich = c.nativeItems === true && c.parts !== undefined
-  const parts = rich ? c.parts!.map(part => span(part, f, { letterSpacing: c.letterSpacing })) : [c.text]
-  const p = paragraph({ font: f, lang: c.lang ?? pageLang, lineHeight: c.lineHeight, whiteSpace: c.whiteSpace, wordBreak: c.wordBreak, letterSpacing: c.letterSpacing, direction: c.direction }, parts)
-  return { template: { family: `main/${c.family.replace(/U\+[0-9A-F]{4,6}/g, 'U+control')}`, origin: `tests/wrapping/cases.ts ${c.family} (${c.origins[0] ?? ''})`, pageLang, paragraph: p }, rich }
-}
-
-export function mainTemplates(): { catalog: Template[]; rich: Template[] } {
-  const measures = [
-    (text: string, _font: string, letterSpacing: number): number => text.length * (7.31 + letterSpacing) + 0.37,
-    (text: string, _font: string, letterSpacing: number): number => text.length * (9.13 + letterSpacing) + 0.53,
-  ]
-  const byKey = new Map<string, { template: Omit<Template, 'widths' | 'grid'>; rich: boolean; widths: [Set<number>, Set<number>] }>()
-  for (let m = 0; m < measures.length; m++) {
-    for (const browser of ['chrome', 'safari', 'firefox'] as const) {
-      const cases = generateCases(measures[m]!, { schedule: 'full', browser })
-      for (let i = 0; i < cases.length; i++) {
-        const c = cases[i]!
-        if (REAL_TEXT.test(c.family) || c.origins.some(origin => ORACLE.test(origin) || CORPUS_ANALYSIS.test(origin))) continue
-        const converted = fromMain(c)
-        const key = templateKey({ ...converted.template, widths: [], grid: false })
-        let entry = byKey.get(key)
-        if (entry === undefined) byKey.set(key, entry = { ...converted, widths: [new Set(), new Set()] })
-        entry.widths[m]!.add(c.width)
-      }
-    }
-  }
-  const catalog: Template[] = []
-  const rich: Template[] = []
-  for (const entry of byKey.values()) {
-    const [a, b] = entry.widths
-    const own: number[] = []
-    for (const width of a) if (b.has(width)) own.push(width)
-    // A width main measured moved between the two runs: the template is searched from the coarse grid too.
-    const template = { ...entry.template, widths: own, grid: own.length < a.size || own.length < b.size }
-    ;(entry.rich ? rich : catalog).push(template)
-  }
-  return { catalog, rich }
-}
 
 export function ruleFamilyTemplates(): Template[] {
   const out: Template[] = []
@@ -237,13 +183,13 @@ export function followupTemplates(): Template[] {
   return out
 }
 
-export function catalogTemplates(): { catalog: Template[]; rich: Template[] } {
-  const main = mainTemplates()
+export function catalogTemplates(): Template[] {
   const catalog: Template[] = []
   const seen = new Set<string>()
   // The order decides which template shows a line break first, which the cover keeps (widths.ts): filed reports, the
-  // rebuild's rule families, main's families, the class matrix, then the follow-ups' shapes.
-  const lists = [reportedTemplates(), ruleFamilyTemplates(), main.catalog, classMatrixTemplates(), followupTemplates()]
+  // rebuild's rule families, the class matrix, then the follow-ups' shapes. main's families came before the class matrix
+  // when they were cut.
+  const lists = [reportedTemplates(), ruleFamilyTemplates(), classMatrixTemplates(), followupTemplates()]
   for (let l = 0; l < lists.length; l++) {
     for (let i = 0; i < lists[l]!.length; i++) {
       const t = lists[l]![i]!
@@ -253,5 +199,5 @@ export function catalogTemplates(): { catalog: Template[]; rich: Template[] } {
       catalog.push({ ...t, family: `catalog/${t.family}` })
     }
   }
-  return { catalog, rich: main.rich }
+  return catalog
 }
