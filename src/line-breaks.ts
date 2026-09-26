@@ -760,9 +760,9 @@ const SOFT_LINE_BREAK = 2
 // Where a line may start in a text node's source: flags[i] = 1 for 0 < i < source.length.
 // These are the soft wrap opportunities between the items InlineItemsBuilder::build
 // makes (IIB:122-130), as the soft wrap index loop finds them (IFU:456-510): every item
-// boundary that isn't next to a forced break. A FORCED_BREAK after a U+2028 or U+2029 that
-// starts an item. One that ICU's fast-forward passed stays inside
-// a text item and doesn't.
+// boundary that isn't next to a forced break. A U+2028 or U+2029 that starts an item
+// forces a break after it, marked FORCED_BREAK; one that ICU's fast-forward passed stays
+// inside a text item and doesn't.
 export function getWebKitLineBreaks(
   source: string,
   preserveNewlines: boolean,

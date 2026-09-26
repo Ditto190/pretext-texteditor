@@ -151,8 +151,9 @@ function withoutDataHeader(bytes: Uint8Array): Uint8Array {
   return bytes.subarray(headerSize)
 }
 
-// The RBBIDataHeader (rbbidata.h:67-94), forward state table, trie and status table,
-// without the reverse table and rule source, which the iterator never reads.
+// The RBBIDataHeader (rbbidata.h:67-94), forward state table and trie that parseBreakRules()
+// reads for markRuleBoundaries(), plus the status table, which nothing reads but which is
+// kept so the packed data stays byte-identical. The reverse table and rule source are dropped.
 function compactBreakRules(bytes: Uint8Array): Uint8Array {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const u32 = (offset: number) => view.getUint32(offset, true)
