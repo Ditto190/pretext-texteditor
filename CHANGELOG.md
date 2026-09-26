@@ -24,6 +24,7 @@
 
 ### Fixed
 
+- `materializeLineRange()` and `materializeRichInlineLineRange()`, given a range that ends past its text, such as one kept from a longer text that was since prepared again, now build the text up to its end. Before, each missing segment added `undefined` to the line's text, and a range ending at segment `Infinity` ran until memory ran out (#353).
 - `prepare()` no longer takes time that grows with the square of the length of a long chain of combining marks separated by invisible controls, or in Safari by soft hyphens. In Safari, a letter followed by 1,000 soft hyphens, each with a mark, took about 3.4 s to prepare and now takes about 2 ms; in Firefox, a letter followed by 4,000 control characters, each with a mark, took about 1.7 s and now takes about 3 ms (#351).
 - In `white-space: pre-wrap`, a line holding only soft hyphens before a newline, at the start of the text or after another newline, now counts as a line, as browsers draw it, instead of disappearing. In Safari, in normal white space too, so does a line holding only soft hyphens or spaces between two line or paragraph separators, U+2028 or U+2029 (#349).
 - In Safari, on pages with a language, text in `serif`, `sans-serif`, `cursive`, `fantasy` or `monospace`, or falling back to one of them, now measures in the font Safari draws it with there, such as Apple SD Gothic Neo for `sans-serif` on a `ko` page and Menlo for `monospace` on an `en` page, instead of the font those names give a page without a language (#340).

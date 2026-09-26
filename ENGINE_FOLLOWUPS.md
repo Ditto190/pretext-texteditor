@@ -7,7 +7,6 @@ Open engine work: decisions for the maintainer, known gaps and harness debt.
 - Decide on other Canvas font settings (#107), including whether a kerning-enabled Canvas is viable: Chromium layout kerns across spaces, ZWSP and soft hyphens, but default Canvas doesn't report that kerning. README says Pretext assumes default font kerning; #199 and #216 stay open in case Safari's OffscreenCanvas ever follows `fontKerning`.
 - Decide whether `prepareRichInline()` supports `whiteSpace: 'pre-wrap'` (#173, #193). Accepting it needs a native styled-inline pre-wrap oracle.
 - Revisit what rich-text editing needs from Pretext: source offsets through whitespace normalization (#90) and caret positions (#198), and whether bidi selection and copy/paste behavior stay outside this package. Do a pass over the open demo and showcase issues (#94, #99, #150, #167).
-- Decide what `materializeLineRange()` and `materializeRichInlineLineRange()` do with a range whose end is past its text, such as one kept from a text that was since prepared again: the line-text builder reads it unchecked, so each missing segment adds `undefined` to the line's text, and a very large end index builds text until memory runs out. The harness checks every range against its text before building it (`harness/predict.ts`).
 
 ## Line breaking
 
