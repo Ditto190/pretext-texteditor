@@ -15,7 +15,7 @@
 // before its text is built, since builds before #353, which --lib can run, build the text of a range that ends at
 // segment Infinity without end. The offline invariants (invariants.ts) call the same agreement checks.
 import {
-  layout, layoutNextLine, layoutNextLineRange, layoutWithLines, materializeLineRange, measureLineStats, prepare, prepareWithSegments, setLocale,
+  layout, layoutNextLine, layoutNextLineRange, layoutWithLines, materializeLineRange, measureLineStats, prepare, prepareWithSegments,
   walkLineRanges, type LayoutCursor, type LayoutLineRange, type PrepareOptions, type PreparedTextWithSegments,
 } from '../src/layout.ts'
 import {
@@ -288,17 +288,10 @@ export function richItems(runs: readonly TextRun[]): RichInlineItem[] {
   return items
 }
 
-let locale: string | null = null
-
 export function predict(c: Case): Prediction {
   const problem = unsupported(c)
   if (problem !== null) return { unsupported: problem }
   const p = c.paragraph
-  // An app sets the locale when its content language changes; setLocale() also clears the library's caches.
-  if (locale !== p.lang) {
-    locale = p.lang
-    setLocale(p.lang === '' ? undefined : p.lang)
-  }
   const whiteSpace = p.whiteSpace === 'pre-wrap' ? 'pre-wrap' : 'normal'
   const runs = p.runs
   const lines: PredictedLine[] = []
