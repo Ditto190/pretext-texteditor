@@ -23,7 +23,7 @@
 
 ### Fixed
 
-- `prepare()` no longer takes time that grows with the square of the length of a long chain of combining marks separated by invisible controls, or in Safari by soft hyphens. In Safari, a letter followed by 1,000 soft hyphens, each with a mark, took about 6 s to prepare and now takes 30 ms; in Firefox, 4,000 control characters, each with a mark, took 2.3 s and now take 34 ms.
+- `prepare()` no longer takes time that grows with the square of the length of a long chain of combining marks separated by invisible controls, or in Safari by soft hyphens. In Safari, a word followed by 1,000 soft hyphens, each with a mark, took 3.5 to 6 s to prepare and now takes 16 to 30 ms; in Firefox, 4,000 control characters, each with a mark, took 1.3 to 2.3 s and now take 19 to 34 ms.
 - In Safari, on pages with a language, text in `serif`, `sans-serif`, `cursive`, `fantasy` or `monospace`, or falling back to one of them, now measures in the font Safari draws it with there, such as Apple SD Gothic Neo for `sans-serif` on a `ko` page and Menlo for `monospace` on an `en` page, instead of the font those names give a page without a language (#340).
 - In Chrome, CJK punctuation next to other punctuation or at a line end now takes the narrower width Chrome's `text-spacing-trim` gives it (#340).
 - In Chrome and Firefox, ideographic spaces (U+3000) at a line end now hang past it, as spaces do, instead of wrapping to the next line (#340).

@@ -1,4 +1,4 @@
-// The behaviour catalog's templates, before widths.ts cuts them. Four sources:
+// The behaviour catalog's templates, before widths.ts cuts them. Five sources:
 // - main's adversarial families, taken from its own generator (tests/wrapping/cases.ts) so nothing is retyped. main
 //   measures some widths with the browser's Canvas; run with two made-up measures, a width that stays put is main's own
 //   and one that moves was measured, and a template with measured widths is searched from the coarse grid instead.
@@ -7,7 +7,9 @@
 // - the per-engine rebuild's rule families (data/rule-families.ndjson), the flat ones within what the library takes;
 // - filed reports whose reporter measured the width with their own Canvas;
 // - a matrix of every UAX #14 line-break class between the scripts apps mix, under the CSS settings the library takes,
-//   each pair of values of two axes in at least one template.
+//   each pair of values of two axes in at least one template;
+// - chains of combining-mark runs longer than the part of the chain a run's context keeps, each shape a family of its own,
+//   so the cover keeps a change of each.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { generateCases } from '../../tests/wrapping/cases.ts'
@@ -202,13 +204,41 @@ export function classMatrixTemplates(): Template[] {
   return out
 }
 
+// Runs of combining marks chained to one grapheme through soft hyphens or U+0001, past the 96 UTF-16 units after which a
+// run's context leaves out the chain's first runs (MARK_CHAIN_CONTEXT_UNITS in src/layout.ts): runs of 100 and 200 marks,
+// whose widths Safari gives by their place after the grapheme, a separator and one mark repeated, two chains in one
+// paragraph, a long run before such pairs, and Arabic vowel marks and keycaps after U+0001, which take no advance when
+// measured without the grapheme.
+export function markChainTemplates(): Template[] {
+  const pairs = (separator: string, marks: string, count: number): string => (separator + marks).repeat(count)
+  const shapes: ReadonlyArray<readonly [string, string, string, number]> = [
+    ['long-runs', `ab \u0915${pairs('\u00AD', '\u0323'.repeat(100), 4)} cd ef`, 'Arial', 16],
+    ['long-runs-times', `ab \u0915${pairs('\u00AD', '\u0301'.repeat(200), 3)} cd ef`, 'Times New Roman', 16],
+    ['pairs', `ab \u0915${pairs('\u00AD', '\u0323', 80)} cd ef`, 'Arial', 16],
+    ['control-pairs', `ab x${pairs('\u0001', '\u0301', 80)} cd ef`, 'Arial', 16],
+    ['two-chains', `ab \u0915${pairs('\u00AD', '\u0323', 60)} cd \u0915${pairs('\u00AD', '\u0323', 60)} ef`, 'Arial', 16],
+    ['long-run-then-pairs', `ab \u0915\u00AD${'\u0323'.repeat(150)}${pairs('\u00AD', '\u0323', 50)} cd ef`, 'Times New Roman', 16],
+    ['arabic-control', `ab \u0627${pairs('\u0001', '\u064E'.repeat(100), 3)} cd ef`, 'Arial', 16],
+    ['keycap-control', `ab 1${pairs('\u0001', '\u20E3', 60)} cd ef`, 'Georgia', 24],
+  ]
+  const out: Template[] = []
+  for (let i = 0; i < shapes.length; i++) {
+    const [name, text, family, size] = shapes[i]!
+    out.push({
+      family: `mark-chains/${name}`, origin: `a chain of mark runs past MARK_CHAIN_CONTEXT_UNITS (src/layout.ts): ${name}`,
+      pageLang: 'en', paragraph: paragraph({ font: font(family, size), lang: 'en' }, [text]), widths: [], grid: true,
+    })
+  }
+  return out
+}
+
 export function catalogTemplates(): { catalog: Template[]; rich: Template[] } {
   const main = mainTemplates()
   const catalog: Template[] = []
   const seen = new Set<string>()
   // The order decides which template shows a line break first, which the cover keeps (widths.ts): filed reports, the
-  // rebuild's rule families, main's families, then the class matrix.
-  const lists = [reportedTemplates(), ruleFamilyTemplates(), main.catalog, classMatrixTemplates()]
+  // rebuild's rule families, main's families, the class matrix, then the mark chains.
+  const lists = [reportedTemplates(), ruleFamilyTemplates(), main.catalog, classMatrixTemplates(), markChainTemplates()]
   for (let l = 0; l < lists.length; l++) {
     for (let i = 0; i < lists[l]!.length; i++) {
       const t = lists[l]![i]!

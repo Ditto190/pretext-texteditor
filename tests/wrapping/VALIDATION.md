@@ -19,92 +19,146 @@ the baseline pin are unchanged, so no runtime benchmark was needed.
 
 ## Mark chains measured in linear time
 
-This runtime change starts from main `d7fb2ab` (#345). A run of combining marks
-after zero-width glue or a control was measured after the grapheme before it and
-the whole chain of separators and runs between them, so a long chain on one
-grapheme prepared in time that grows with the square of its length. Past 96 UTF-16
-units of that chain, a run is now measured after the grapheme and only the chain's
-last runs, each with the separators before it (`MAX_MARK_CHAIN_UNITS` in
-`src/layout.ts`).
+This runtime change starts from main `d7fb2ab` (#345) and was checked again on main
+`48980bb` (#347). A run of combining marks after zero-width glue or a control was
+measured after the grapheme before it and the whole chain of separators and runs
+between them, so a long chain on one grapheme prepared in time that grows with the
+square of its length. Once that chain passes 96 UTF-16 units, a run is now measured
+after the grapheme and the fewest of the chain's last runs, each with the separators
+before it, that hold at least 96 units (`MARK_CHAIN_CONTEXT_UNITS` in
+`src/layout.ts`), so the kept part holds fewer than 96 units besides its first pair.
+The first version of this change kept at most the last 96 units instead, which left
+only the separator after a run of 95 marks or more; the checks below show what that
+cost.
 
-No harness case or fuzz-built text reaches the bound. Offline under Bun, in the
-Blink, WebKit, Gecko, unknown-engine, Android and iOS profiles, main and this
+No harness case of main's or fuzz-built text reaches the bound. Offline under Bun,
+in the Blink, WebKit, Gecko, unknown-engine, Android and iOS profiles, main and this
 change give the same prepared data and results from every line and rich-inline API,
-compared as for the grapheme tables below, over every harness case (63,390 plain
+compared as for the grapheme tables below, over main's harness cases (63,390 plain
 and 4,178 rich, at the case's width and at 1 and 100,000px, 1px left out for the
-books in the iOS profile), 40,000 plain and 8,000 rich fuzz-built texts and 20,000 plain and 4,000 rich
-texts of mark runs chained through glue and controls, with the same `measureText()`
-calls in the same order (1,076,344, 1,523,887, 1,133,604, 1,067,004, 1,070,603 and
-1,526,117 for the harness cases). Copies with the bound at 2 and 8 units change the
-calls for 641 and 149 WebKit-profile harness cases and for chain fuzz; at 24 and 48
-units nothing changes, so no tested chain reaches 24 units. `bun harness equal
-origin/main` finds none of 41,621 Chrome 154, 43,149 webkit-host and 42,792 Firefox
-156.0.1 predictions different, with the same `measureText()` calls (399,809,
-680,756 and 442,113), and a page that runs both libraries over 16,382 plain and
-1,036 rich harness cases, 5,000 fuzz-built and 5,000 chain texts finds nothing
-different in any browser, with the same calls in the same order (926,016 in Chrome,
-968,854 in webkit-host and 891,403 in Firefox). `bun harness check` and `gate` are
-green in Chrome and webkit-host. Firefox's can't run: its pinned 156.0 copy updated
-itself to 156.0.1 on September 25, so the recordings no longer match its environment.
+books in the iOS profile), 40,000 plain and 8,000 rich fuzz-built texts and 20,000
+plain and 4,000 rich texts of mark runs chained through glue and controls, with the
+same `measureText()` calls in the same order (1,078,819, 1,526,117, 1,135,837,
+1,069,461, 1,073,066 and 1,526,117 for the harness cases). Copies of the first
+version with the bound at 2 and 8 units change the calls for 641 and 149
+WebKit-profile harness cases and for chain fuzz; at 24 and 48 units nothing changes,
+so no such chain reaches 24 units. Long runs get an offline check of their own:
+4,000 texts of one or two chains of up to 30 pairs, each a soft hyphen, WJ, ZWJ,
+ZWNJ, BOM, U+0001 or NEL and a run of 1 to 400 units of one of 13 marks, in mixed
+white-space, word-break, letter-spacing and language settings, compared with main to
+1e-6px and line by line. With a stand-in Canvas under which a mark 61 or more units
+after its base takes no advance, as Safari measures chains, this change gives main's
+widths and lines in all six profiles, while the first version moved the widths of
+241 to 442 texts, by up to 234px in a text, and the lines of nearly every one of
+them; with a stand-in that doesn't depend on place, neither differs.
 
-Whether a run beyond the bound measures as it does after the whole chain was
-checked in each browser on 10,560 chains of 30 to 190 pairs: every pairing of 8
-graphemes (`x`, `e`, `W`, क, ا, 字, ก and 👍), 5 separators (U+0001, U+0002,
-U+001F, NEL and a soft hyphen) and 10 mark runs repeated 70 times, and 40 chains of
-random pairs, in each of 24 fonts, 7 of them web fonts. Against main's widths,
-segment by segment, with a second copy of main as the control, which differed
-nowhere:
+In the browsers, `bun harness equal origin/main` finds none of 41,684 Chrome 154,
+43,194 webkit-host and 42,836 Firefox 156.0.1 predictions different. These include
+the catalog's new mark chains below, where this change makes fewer `measureText()`
+calls, since the kept part of a repeated pair's chain repeats: 401,876, 684,036 and
+443,778 against main's 402,438, 685,114 and 444,274. A page that runs both libraries
+over 16,382 plain and 1,036 rich harness cases, 6,000 fuzz-built and 6,250 chain
+texts finds nothing different in any browser, with the same calls in the same order
+(1,069,958 in Chrome, 1,108,722 in webkit-host and 1,029,738 in Firefox). `bun
+harness check` and `gate` are green in all three, with the new cases' failures,
+main's as well, on the accepted lists (below).
+
+Whether a run beyond the bound measures as it does after the whole chain was checked
+in each browser on 10,560 chains of 30 to 190 pairs of one- and two-code-point runs:
+every pairing of 8 graphemes (`x`, `e`, `W`, क, ا, 字, ก and 👍), 5 separators
+(U+0001, U+0002, U+001F, NEL and a soft hyphen) and 10 mark runs repeated 70 times,
+and 40 chains of random pairs, in each of 24 fonts, 7 of them web fonts; and on
+2,400 chains of long runs: `क`, `x`, `a` or ا, then 6 pairs of a soft hyphen or
+U+0001 and 1 to 400 of U+0323, U+0301, U+064E or U+20E3, in 5 fonts. Against main's
+widths, segment by segment, with a second copy of main as the control, which
+differed nowhere:
 
 | | Chrome 154 | Safari 27 (webkit-host) | Firefox 156.0.1 |
 | --- | ---: | ---: | ---: |
-| Largest difference, this change | 0.00037px | 0.00049px | 0.00024px |
+| Largest difference, short runs | 0.00037px | 0.00049px | 0.00024px |
+| Largest difference, long runs | 0.0020px | 0.0020px | 0.00073px |
+| Long-run chains off by more than 0.01px, first version | 90 | 108 | 0 |
+| Largest long-run difference, first version | 10.7px | 7.1px | 0.0011px |
 | Chains off by more than 0.01px without the grapheme in the context | 135 | 0 | 1,671 |
 | Largest difference without the grapheme | 16px | 0.00049px | 25px |
 | Furthest a repeated run's width depends on its place, in units after the grapheme | 3 | 61 | 1 |
 
-In Chrome and Firefox, main's own widths of one repeated run drift along a chain by
-as much as this change moves them, 0.00037 and 0.00024px, so the differences look
-like rounding. Without the grapheme, a keycap after U+0001 took no advance in
-Firefox where it takes 25px in 24px Georgia, and Arabic vowel marks after U+0001
-none in Chrome where they take 6.7px in 16px Arial. Safari gives a run a width that
-depends on how far it sits from the grapheme, up to 61 units: after `क`, soft hyphens
-and U+0323 in 16px Georgia take 5.2px for the first mark, 1.6px for the next 29 and
-none after, which a bound under 61 units would get wrong. On 900 paragraphs that
-hold such chains (50 to 320 pairs, 12 fonts, 3 to 1,000px, a quarter in pre-wrap and
-a sixth letter-spaced), no browser breaks a line elsewhere than main; the widths of
-476 Chrome, 393 webkit-host and 60 Firefox predictions move by at most 0.011px,
-and preparing them takes 115,736, 152,988 and 40,818 `measureText()` calls
-against main's 174,320, 228,956 and 119,466.
+In Chrome and Firefox, main's own widths of one repeated short run drift along a
+chain by as much as this change moves them, 0.00037 and 0.00024px, so the
+differences look like rounding. Without the grapheme, a keycap after U+0001 took no
+advance in Firefox where it takes 25px in 24px Georgia, and Arabic vowel marks after
+U+0001 none in Chrome where they take 6.7px in 16px Arial. Safari gives a run a
+width that depends on how far it sits from the grapheme, up to 61 units: after `क`,
+soft hyphens and U+0323 in 16px Georgia take 5.2px for the first mark, 1.6px for the
+next 29 and none after, which a context shorter than 61 units gets wrong. The first
+version's context was that short after a run of 95 marks or more: in Safari its soft
+hyphens followed by U+0323 or U+0301 took up to 7.1px a segment and 35.6px a text
+more than after the whole chain, where main's sum is the width Safari lays out, and
+in Chrome Arabic vowel marks after U+0001 took up to 10.7px a segment more. On 1,120
+paragraphs and widths holding such chains (`hello`, then `क` or `x` with 4 pairs of
+a soft hyphen and 100 or 200 of U+0323 or U+0301, in 4 fonts at 60 to 400px), the
+first version gained a line on 58 in webkit-host where main and Safari agree; this
+change breaks every line where main does in all three browsers. On 900 paragraphs
+with short-run chains (50 to 320 pairs, 12 fonts, 3 to 1,000px, a quarter in
+pre-wrap and a sixth letter-spaced), neither version breaks a line elsewhere than
+main in any browser; this change moves the widths of 472 Chrome, 388 webkit-host and
+55 Firefox predictions by at most 0.011px, and prepares them with 116,270, 153,680
+and 41,524 `measureText()` calls against main's 174,320, 228,956 and 119,466.
 
-`prepareWithSegments()` of `x` × 20,000k and 2,000k pairs of U+0001 and U+0301 (a
-soft hyphen in place of U+0001 for Safari's soft hyphens) offline, and of `x` ×
-20,000k and 500k pairs in the browsers, which keeps main under 2GB, in ms, median
-of 3 offline and 5 in the browsers, interleaved with a second copy of main:
+The catalog (harness/README.md) holds 8 templates of such chains
+(`markChainTemplates()` in `harness/sets/catalog.ts`): runs of 100 and 200 marks
+after soft hyphens, 80 pairs of a soft hyphen or U+0001 and one mark, two chains in
+one paragraph, a long run before such pairs, and Arabic vowel marks and keycaps
+after U+0001. Cut as the rest of the catalog, they add 118 cases, 63 recorded in
+Chrome, 44 in Firefox and 45 in webkit-host. Main and this change fail the same 12
+in Chrome and 9 in webkit-host, all keycaps, Arabic vowel marks or one mark repeated
+after U+0001: 15 narrower than 24px, and 6 in webkit-host at 33 to 48px, where
+Safari's page gives each keycap after U+0001 in 24px Georgia 24.36px and the chain's
+last one 2.57px while its Canvas gives 24px; they are on the accepted lists. The
+first version fails 12 more in webkit-host, runs of 100 to 200 marks under 24px.
 
-| Size | Blink profile, main | now | WebKit profile, soft hyphens, main | now | Chrome, U+0001, main | now | Safari, U+0001, main | now | Firefox, U+0001, main | now |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| ×1 | 54 | 3.2 | 55 | 4.0 | 3.5 | 1.5 | 53 | 5 | 37 | 5 |
-| ×2 | 222 | 6.3 | 231 | 10.2 | 4.3 | 2.1 | 172 | 6 | 155 | 10 |
-| ×4 | 827 | 13.3 | 875 | 13.3 | 7.3 | 4.1 | 676 | 11 | 758 | 22 |
-| ×8 | 3,289 | 19.4 | 4,064 | 38.2 | 29.6 | 6.4 | 2,359 | 22 | 2,309 | 34 |
+`prepareWithSegments()` time in ms, median of 3 offline and of 5 in the browsers (3
+for long runs and for Safari's soft hyphens), main against this change, interleaved
+with a second copy of main: Chrome's two copies of main differed by up to 2.1 times
+at these few milliseconds, the others' by at most 10%. Offline: `x` × 20,000 × k and
+2,000 × k pairs of U+0001 and U+0301 in the Blink profile, a soft hyphen in place of
+U+0001 in the WebKit profile, and 200 × k pairs of U+0001 and 100 U+0301. In the
+browsers, which keeps main under 2GB: `x` × 20,000 × k and 500 × k pairs of U+0001
+and U+0301, 100 × k pairs of U+0001 and 100 U+0301, and in Safari 125 × k pairs of a
+soft hyphen and U+0301 and 20 × k pairs of a soft hyphen and 100 U+0301:
+
+| Text | ×1 | ×2 | ×4 | ×8 |
+| --- | ---: | ---: | ---: | ---: |
+| Blink profile, U+0001 | 41 → 2.7 | 139 → 4.2 | 570 → 7.5 | 2,240 → 12.2 |
+| WebKit profile, soft hyphens | 42 → 3.2 | 142 → 6.3 | 545 → 10.1 | 2,314 → 17.2 |
+| Blink profile, runs of 100 marks | 21 → 2.9 | 79 → 4.6 | 284 → 9.1 | 1,130 → 14.8 |
+| Chrome, U+0001 | 3.2 → 2.4 | 3.5 → 2.8 | 7.9 → 4.1 | 20 → 6.7 |
+| Chrome, runs of 100 marks | 3.6 → 3.3 | 5.4 → 4.1 | 16.5 → 7.3 | 23.9 → 12.2 |
+| Safari, U+0001 | 41 → 4 | 152 → 5 | 533 → 9 | 2,105 → 18 |
+| Safari, runs of 100 marks | 19 → 5 | 64 → 6 | 227 → 9 | 882 → 19 |
+| Safari, soft hyphens | 17 → 5 | 77 → 5 | 488 → 9 | 3,450 → 18 |
+| Safari, soft hyphens and runs of 100 marks | 138 → 3 | 1,033 → 5 | 8,069 → 9 | 16,593 → 17 |
+| Firefox, U+0001 | 43 → 6 | 126 → 7 | 541 → 17 | 1,507 → 24 |
+| Firefox, runs of 100 marks | 172 → 7 | 436 → 7 | 1,823 → 14 | 7,149 → 26 |
 
 With each pair's separator and marks drawn afresh, so that no context repeats and
-the cache doesn't help, this change took 22, 66, 90 and 186ms offline in the Blink
-profile against main's 219, 732, 2,549 and 9,937ms. Main measures a chain after
-every run; this change measures each distinct context once, so a repeated pair costs
-about 100 calls however long the chain. Safari measures soft hyphens and marks
-slower still: with 125k pairs, main took 29, 147, 1,026 and 5,744ms in webkit-host
-and this change 8, 10, 18 and 30ms, and at 4,000 pairs one of main's prepares took
-200s.
+the cache doesn't help, this change took 4.6, 8, 17 and 35ms offline in the Blink
+profile against main's 34, 138, 502 and 2,057ms, 32, 63, 125 and 249ms in Safari
+against main's 164, 605, 2,469 and 9,648ms, and 3.1 to 21ms in Chrome against 4.8 to
+158ms. Main measures a chain after every run; this change measures each distinct
+context once, so a repeated pair costs about 100 calls however long the chain. `x`
+with 4,000 U+0301, then 4,000 pairs of a control and a mark, still submits 33
+million units to Canvas offline, half of main's 64 million, since every context
+holds the whole grapheme.
 
 Timed in one foreground document of installed Chrome 154, Safari 27.0 and Firefox
-156.0.1 under the exclusive lock, main, a second copy of main and this change
-interleaved over 31 rounds, on 24,000 units each of chat messages, English text,
-letter-spaced chat and text with one to four soft hyphens or controls, each followed
-by marks, after a third of its words: new text, text seen before, `layout()` and a
-fresh instance's first `prepare()` all took 0.98 to 1.06 of main's median time, where
-the second copy of main took 0.95 to 1.04, and every batch made the same
-`measureText()` calls as main.
+156.0.1 under the exclusive lock, in two sessions, main, a second copy of main and
+this change interleaved over 31 rounds, on 24,000 units each of chat messages,
+English text, letter-spaced chat and text with one to four soft hyphens or controls,
+each followed by marks, after a third of its words: new text, text seen before,
+`layout()` and a fresh instance's first `prepare()` all took 0.96 to 1.06 of main's
+median time, where the second copy of main took 0.94 to 1.04, and every batch made
+the same `measureText()` calls as main.
 
 ## Grapheme clusters from the engines' character rules
 

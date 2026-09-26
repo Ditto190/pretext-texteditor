@@ -141,11 +141,12 @@ const markRunRe = /^\p{M}+$/u
 const nonspacingMarkRunRe = /^\p{Mn}+$/u
 const controlOrMarkRunRe = /^(?:[\p{Cc}\u2028\u2029]|\p{M}+)$/u
 const controlCharacterRe = /^[\p{Cc}\u2028\u2029]$/u
-// The most UTF-16 units of a chain of mark runs that a run's context keeps after the
-// grapheme (getMarkContext). Measured after the whole chain, a long chain prepared in
-// time that grows with the square of its length. Safari's width for a run depends on
-// up to 61 units of the chain before it (VALIDATION.md).
-const MAX_MARK_CHAIN_UNITS = 96
+// The fewest UTF-16 units of a long chain of mark runs that a run's context keeps after
+// the grapheme (getMarkContext): measured after the whole chain, a long chain prepared in
+// time that grows with the square of its length. Safari gives a run a width that depends
+// on how far it sits from the grapheme, up to 61 units in the chains measured
+// (VALIDATION.md), so a context that keeps fewer moves widths there.
+const MARK_CHAIN_CONTEXT_UNITS = 96
 
 function needsComplexTextPath(text: string): boolean {
   let previousIsEmoji = false
@@ -289,10 +290,11 @@ function measureAnalysis(
   // can compose the marks with the grapheme or draw both in another font. A walk that
   // reaches the last run that asked takes that run's answer, so each segment is walked
   // and each grapheme found once, however many runs share it. Once what separates them
-  // passes MAX_MARK_CHAIN_UNITS, the context leaves out the chain's first runs, each with
-  // the separators before it, but keeps the grapheme: in Chrome, Safari and Firefox the
-  // runs then measure within 0.0005px of their widths after the whole chain, and without
-  // the grapheme some took 25px less (VALIDATION.md).
+  // passes MARK_CHAIN_CONTEXT_UNITS, the context keeps the grapheme and the fewest of the
+  // chain's last runs, each with the separators before it, that hold at least that many
+  // units: in Chrome, Safari and Firefox, runs of 1 to 400 marks then measure as they do
+  // after the whole chain, to 0.002px, and without the grapheme some took 25px less
+  // (VALIDATION.md).
   let markRunIndex = -1
   let markBaseStart = -1 // where that run's grapheme starts in the normalized text, or -1
   let markChainStart = -1 // the segment after that grapheme
@@ -318,8 +320,9 @@ function measureAnalysis(
     markBaseStart = baseStart
     if (baseStart < 0) return null
     const start = analysis.starts[analysisIndex]!
-    // The kept part starts after a run of marks and moves only forward.
-    for (let k = markChainKept + 1; k < analysisIndex && start - analysis.starts[markChainKept]! > MAX_MARK_CHAIN_UNITS; k++) {
+    // The kept part starts after the grapheme or a run of marks, moves only forward and
+    // never holds fewer than MARK_CHAIN_CONTEXT_UNITS.
+    for (let k = markChainKept + 1; start - analysis.starts[k]! >= MARK_CHAIN_CONTEXT_UNITS; k++) {
       if (markRunRe.test(analysis.texts[k - 1]!)) markChainKept = k
     }
     if (markChainKept === markChainStart) return analysis.normalized.slice(baseStart, start)

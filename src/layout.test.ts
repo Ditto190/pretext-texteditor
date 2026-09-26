@@ -1144,27 +1144,61 @@ describe('boundary-policy regressions', () => {
     }
   })
 
-  test('a long chain of mark runs is measured after its grapheme and only the chain\'s last runs', () => {
+  test('a long chain of mark runs is measured after its grapheme and the fewest last runs holding 96 units', () => {
     const measureText = Object.getOwnPropertyDescriptor(TestCanvasRenderingContext2D.prototype, 'measureText')!
+    const measured = new Set<string>()
     let longest = 0
     Object.defineProperty(TestCanvasRenderingContext2D.prototype, 'measureText', {
       ...measureText,
       value(this: TestCanvasRenderingContext2D, text: string) {
+        measured.add(text)
         longest = Math.max(longest, text.length)
         return { width: measureWidth(text, this.font) }
       },
     })
+    // Chains of a grapheme and runs of U+0301, each after U+0001, and a space between chains.
+    const shapes: Array<{ chains: Array<[string, number[]]>; longest: number }> = [
+      { chains: [['x', Array(40).fill(1)]], longest: 81 },
+      { chains: [['x', Array(400).fill(1)]], longest: 99 },
+      { chains: [['x', [94, 95, 96, 97, 200, 1, 1, 1]]], longest: 300 },
+      { chains: [['x', [300, ...Array(60).fill(1)]]], longest: 398 },
+      { chains: [['x', Array(60).fill(1)], ['y', Array(60).fill(1)]], longest: 99 },
+    ]
     try {
-      for (const [pairs, measured] of [[40, 81], [400, 97]] as const) {
-        const text = 'x' + '\u0001́'.repeat(pairs)
-        clearCache()
-        longest = 0
-        const prepared = prepareWithSegments(text, FONT)
-        // Under 96 UTF-16 units the whole chain is the context; past them `x` and the chain's last 95 units.
-        expect(longest).toBe(measured)
-        for (let i = 2; i < prepared.segments.length; i += 2) {
-          expect(prepared.widths[i]).toBeCloseTo(measureWidth(text.slice(0, i + 1), FONT) - measureWidth(text.slice(0, i), FONT), 9)
+      for (let s = 0; s < shapes.length; s++) {
+        const { chains } = shapes[s]!
+        const contexts: string[] = []
+        const parts: string[] = []
+        for (let c = 0; c < chains.length; c++) {
+          const [grapheme, runs] = chains[c]!
+          const pairs = runs.map(n => '\u0001' + '́'.repeat(n))
+          parts.push(grapheme + pairs.join(''))
+          for (let r = 0; r < runs.length; r++) {
+            // The whole chain before the run, or the fewest last runs, each with its U+0001, that hold 96 units.
+            let tail = pairs.slice(0, r).join('') + '\u0001'
+            for (let first = r - 1; first > 0; first--) {
+              const kept = pairs.slice(first, r).join('') + '\u0001'
+              if (kept.length >= 96) {
+                tail = kept
+                break
+              }
+            }
+            contexts.push(grapheme + tail)
+          }
         }
+        clearCache()
+        measured.clear()
+        longest = 0
+        const prepared = prepareWithSegments(parts.join(' '), FONT)
+        let run = 0
+        for (let i = 0; i < prepared.segments.length; i++) {
+          if (!/^́+$/.test(prepared.segments[i]!)) continue
+          const context = contexts[run++]!
+          expect(measured.has(context)).toBe(true)
+          expect(prepared.widths[i]).toBeCloseTo(measureWidth(context + prepared.segments[i], FONT) - measureWidth(context, FONT), 9)
+        }
+        expect(run).toBe(contexts.length)
+        expect(longest).toBe(shapes[s]!.longest)
       }
     } finally {
       Object.defineProperty(TestCanvasRenderingContext2D.prototype, 'measureText', measureText)
