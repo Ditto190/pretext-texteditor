@@ -176,7 +176,7 @@ export async function runJob<T extends Recording | Prediction>(job: Job): Promis
   }, 1000)
   const settled = Date.now() + (job.browser === 'firefox' ? FIREFOX_SETTLE_MS : 0)
   try {
-    session = await launch(job.browser, base + docUrl(0), id, tabUrl => tabUrl.startsWith(`${base}/doc?job=${id}`))
+    session = await launch(job.browser, base + docUrl(0), id, tabUrl => tabUrl.startsWith(`${base}/doc?job=${id}`), finish)
     await finished
   } finally {
     clearInterval(watchdog)
