@@ -7,14 +7,15 @@ import { join, resolve } from 'node:path'
 
 const ROOT = resolve(import.meta.dir, '../..')
 
-// A src/ directory as it is, or a git ref's src/, unpacked once into .artifacts/harness-trees/<sha>.
+// A src/ directory as it is, or a git ref's build unpacked once into .artifacts/harness-builds/<sha>: its src/, and the
+// harness's top-level files, whose page.ts predicts with it (run.ts).
 export function srcOf(refOrDir: string): string {
   if (existsSync(join(refOrDir, 'layout.ts'))) return resolve(refOrDir)
   const sha = execFileSync('git', ['rev-parse', refOrDir], { cwd: ROOT, encoding: 'utf8' }).trim()
-  const dir = join(ROOT, '.artifacts/harness-trees', sha)
+  const dir = join(ROOT, '.artifacts/harness-builds', sha)
   if (!existsSync(join(dir, 'src/layout.ts'))) {
     mkdirSync(dir, { recursive: true })
-    execFileSync('sh', ['-c', `git archive ${sha} src | tar -x -C "${dir}"`], { cwd: ROOT })
+    execFileSync('sh', ['-c', `git archive ${sha} src $(git ls-tree --name-only ${sha} harness/ | grep '\\.ts$') | tar -x -C "${dir}"`], { cwd: ROOT })
   }
   return join(dir, 'src')
 }

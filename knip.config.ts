@@ -11,10 +11,12 @@ const config: KnipConfig = {
     'scripts/**/*.ts',
     // Browser pages and demos — each `pages/**/*.ts` is the target of a `<script type="module" src="…">` in a sibling `.html`
     'pages/**/*.ts',
-    // The page the harness's runner bundles, the case-set maker, and the invariants its test runs in child processes.
+    // The page the harness's runner bundles, the case-set maker, and the invariants and offline equal it runs in child
+    // processes.
     'harness/page.ts',
     'harness/sets/make.ts',
     'harness/invariants.ts',
+    'harness/offline-equal.ts',
     // The bench's page, bundled by its runner.
     'harness/bench/page.ts',
   ],
