@@ -2086,6 +2086,19 @@ describe('prepare invariants', () => {
     }
   })
 
+  test('engines Pretext doesn\'t recognize take Blink\'s whole profile', () => {
+    // The engine profile is computed once per process, so each user agent runs in a child process.
+    const measurementUrl = new URL('./measurement.ts', import.meta.url).href
+    const profileOf = (userAgent: string): unknown => JSON.parse(runInChild(`
+      Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { userAgent: ${JSON.stringify(userAgent)} } })
+      const { getEngineProfile } = await import(${JSON.stringify(measurementUrl)})
+      console.log(JSON.stringify(getEngineProfile()))
+    `))
+    const system = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)'
+    // A desktop web view without a Blink token, and Chrome on the same system.
+    expect(profileOf(`${system} Safari/537.36`)).toEqual(profileOf(`${system} Chrome/153.0.0.0 Safari/537.36`))
+  })
+
   test('Chromium breaks after closing brackets before CJK text, not after a closing quote before Hangul', () => {
     // Fullwidth closing brackets are UAX #14 CL, and Chromium breaks between CL and ID.
     for (const close of ['\u300D', '\u300F', '\u3011', '\u300B', '\u3009', '\u3015', '\uFF09']) {
@@ -2533,14 +2546,54 @@ describe('prepare invariants', () => {
     expect(layout(latin, 200, LINE_HEIGHT)).toEqual({ lineCount: 1, height: LINE_HEIGHT })
   })
 
-  test('setLocale() only clears the caches, so the page language still picks the break rules', () => {
-    // Kept for compatibility, a documented decision (RESEARCH.md, Decisions Log). Chrome's
-    // zh table would make the curly quotes brackets here.
+  test('setLocale() gives later prepares the language a worker lacks, in place of <html lang>', () => {
+    // Like Chrome's and Firefox's, this context resolves fonts under its own lang.
+    const contexts: Array<{ lang: string }> = []
+    class LanguageContext {
+      font = ''
+      lang = 'inherit'
+
+      measureText(text: string): { width: number } {
+        return { width: measureWidth(text, this.font) * (this.lang === 'ja' ? 0.75 : 1) }
+      }
+    }
+    Reflect.set(globalThis, 'OffscreenCanvas', class {
+      getContext(): LanguageContext {
+        const context = new LanguageContext()
+        contexts.push(context)
+        return context
+      }
+    })
+    // Chrome's zh line table makes the curly quotes brackets here.
     const text = '中文“abc”中文'
-    const segments = prepareWithSegments(text, FONT).segments
-    for (const locale of ['zh', 'zh-Hant', 'ja']) {
-      setLocale(locale)
-      expect(prepareWithSegments(text, FONT).segments).toEqual(segments)
+    try {
+      // No document, as in a worker.
+      const root = prepareWithSegments(text, FONT)
+      const width = measureNaturalWidth(root)
+      setLocale('zh')
+      const zh = prepareWithSegments(text, FONT).segments
+      expect(zh).not.toEqual(root.segments)
+      setLocale('ja')
+      const ja = prepareWithSegments(text, FONT)
+      expect({ segments: ja.segments, lang: contexts.at(-1)!.lang }).toEqual({ segments: root.segments, lang: 'ja' })
+      expect(measureNaturalWidth(ja)).toBeCloseTo(width * 0.75, 10)
+      // An empty locale is a page's without a language, which Blink lays out under its default locale.
+      setLocale('')
+      prepare(text, FONT)
+      expect(contexts.at(-1)!.lang).toBe(new Intl.DateTimeFormat().resolvedOptions().locale)
+      // Without a locale, preparation reads <html lang> again.
+      Reflect.set(globalThis, 'document', { documentElement: { lang: 'zh' } })
+      setLocale()
+      expect(prepareWithSegments(text, FONT).segments).toEqual(zh)
+      expect(contexts.at(-1)!.lang).toBe('zh')
+      // A locale takes the place of <html lang> on a page too.
+      setLocale('ja')
+      expect({ segments: prepareWithSegments(text, FONT).segments, lang: contexts.at(-1)!.lang }).toEqual({ segments: root.segments, lang: 'ja' })
+      expect(measureNaturalWidth(root)).toBe(width)
+    } finally {
+      setLocale()
+      Reflect.set(globalThis, 'OffscreenCanvas', TestOffscreenCanvas)
+      Reflect.deleteProperty(globalThis, 'document')
     }
   })
 
@@ -3089,6 +3142,15 @@ describe('layout invariants', () => {
     const zero = prepareWithSegments('Hello World', FONT, { letterSpacing: 0 })
     expect(zero.widths).toEqual(base.widths)
     expect(zero.breakableFitAdvances).toEqual(base.breakableFitAdvances)
+  })
+
+  test('a letterSpacing that isn\'t finite throws at preparation', () => {
+    for (const letterSpacing of [NaN, Infinity, -Infinity]) {
+      expect(() => prepare('Hello', FONT, { letterSpacing })).toThrow(RangeError)
+      expect(() => prepareWithSegments('Hello', FONT, { letterSpacing })).toThrow(RangeError)
+      // A blank item is never prepared on its own.
+      expect(() => prepareRichInline([{ text: ' ', font: FONT, letterSpacing }, { text: 'Hello', font: FONT }])).toThrow(RangeError)
+    }
   })
 
   test('letterSpacing trims the gap before hanging collapsible spaces', () => {
@@ -4252,5 +4314,5 @@ test('the Chromium profile measures a page without a language under Intl\'s defa
     console.log(JSON.stringify({ rows, intl: new Intl.DateTimeFormat().resolvedOptions().locale }))
   `
   const { rows, intl } = JSON.parse(runInChild(script)) as { rows: Record<string, string[]>; intl: string }
-  expect(rows).toEqual({ '': [intl], en: ['inherit'] })
+  expect(rows).toEqual({ '': [intl], en: ['en'] })
 })

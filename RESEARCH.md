@@ -1562,7 +1562,7 @@ reason still holds, and record the new decision here with its date.
   follows the page language, and no locale changes the word boundaries Pretext reads
   in Thai, Lao, Khmer and Myanmar text, under 20 locales in V8 and JavaScriptCore.
   Removing it, or making it a language input for Safari's families or an element's
-  own `lang`, waits for the end of the project.
+  own `lang`, waits for the end of the project. Replaced on 2026-09-26, below.
 - **2026-09-24: Pretext finds grapheme clusters itself, fixed to Unicode 17.**
   Emergency breaks, letter spacing, emoji correction, line text and the Gecko scan's
   clusters come from Chrome 153's and libicucore 78.1's ICU character rules
@@ -1610,3 +1610,18 @@ reason still holds, and record the new decision here with its date.
   calibrated and it called a known change: 217c84b8's `src/` against 6d1d2106's
   reads slower on letter-spaced CJK, soft hyphen, control and pre-wrap layout
   and faster on seen CJK in all three browsers (Reading Browser Output).
+- **2026-09-26: `setLocale()` sets the language again**, the one preparation reads
+  in place of `<html lang>` for its break rules and measurement context, since it is
+  the only way to give a worker the page's language: a worker has no `<html lang>`.
+  An empty locale is a page's without a language, and `setLocale()` without one reads
+  `<html lang>` again. It still clears the caches, and prepared handles keep what
+  they have. A context with a `lang`, as in Chrome and Firefox, takes the language,
+  since it would follow the page's otherwise; `bun harness equal` moved no case in
+  either. An element's own `lang` still waits for the end of the project.
+- **2026-09-26: engines Pretext doesn't recognize take Blink's whole profile**, as
+  the docs already said. Three fields had differed: the discretionary hyphen took its
+  own letter spacing, a line whose hyphen didn't fit kept it, and on a desktop system
+  a line starting inside a segment holding a default-ignorable code point had no
+  entry geometry, where desktop Chrome fits the segment's rest by its fresh width.
+  Only unrecognized user agents move, such as Samsung TV web views, and the third
+  only on desktop ones.
