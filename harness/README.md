@@ -8,8 +8,8 @@ the per-engine rebuild's without inline structure.
 bun harness record [--only-new]         # the browser's layout of every case, sorted and shuffled, in fresh short documents
 bun harness check [--accept="<reason>"]  # predict every pinned case and score it; about a minute
 bun harness gate [--sample=1000]         # check, plus reverse-order predictions, a fresh re-recording and attribution
-bun harness equal <ref>                  # whether <ref>'s src/ predicts the same lines on every case, and each set's
-                                         # measureText calls and submitted units here and there
+bun harness equal <ref>                  # whether <ref>'s build predicts what this tree's does on every case, and each
+                                         # set's measureText calls and submitted units here and there (Equal)
 bun harness bench <base> [--sessions=3]  # <base>'s src/ timed against this tree's in the same documents (Bench)
 bun harness repin <chrome|firefox|safari> [--write]
                                          # after a browser update: the drift a new build brings (Browsers)
@@ -20,7 +20,8 @@ bun harness explain --text=<text> --width=<px> [--font=] [--lang=] [--white-spac
 
 Every command takes `--browser=chrome|firefox|webkit-host|safari` (several with commas; default Chrome, Firefox and
 webkit-host side by side, Chrome for `explain`, which takes one, and for `bench` the browsers under Bench),
-`--cases=<file.ndjson>` in place of `harness/cases/*.ndjson`, and `--lib=<dir>` to predict with another build's `src/`.
+`--cases=<file.ndjson>` in place of `harness/cases/*.ndjson`, and `--lib=<dir>` to predict with another build: a `src/`
+directory and the adapter beside it in `../harness`, or this tree's adapter where it has none.
 `record` and `gate` draw with `--seed=<n>`, 20260924 by default, so a gate's result doesn't depend on the clock.
 `bun test harness` runs the offline tests.
 
@@ -38,12 +39,14 @@ webkit-host side by side, Chrome for `explain`, which takes one, and for `bench`
   the walk blocks, whatever the browser did, and so does a case whose line APIs call `measureText` after preparing.
   Every case is checked this way, page history and cases with nothing visible too, since it needs no recording. Calls
   while preparing are printed per 1,000 units. The text APIs build line text with one shared builder, so they are
-  compared only with each other; `src/layout.test.ts` checks that builder against the source.
+  compared only with each other, and as a hash between builds by `equal`; `src/layout.test.ts` checks that builder
+  against the source.
 - **What the pass rule can't see:** the hyphen a browser draws where a line breaks at a soft hyphen. The soft hyphen's
   box is visible there, but also where no hyphen is drawn: with a combining mark after it, and in WebKit at the end of a
   paragraph or before a line feed. The recordings keep no glyphs to tell these apart, and a rule over the boxes found
   93-358 mismatches per browser for the library as #340 left it, most of them narrower than 24 px and some of them the recording's. So
-  line text that leaves out the hyphen at a soft-hyphen line end passes here, and is left to `src/layout.test.ts`.
+  line text that leaves out the hyphen at a soft-hyphen line end passes here, and is left to `src/layout.test.ts`;
+  `equal` shows it changing between builds.
 - **Lines come from rect positions:** text box rects grouped by vertical centre, never height divided by line height.
 - **A visible character** is a code point whose positive-size Range rects all sit on one line. Chrome also reports a
   soft hyphen's box for the code point next to it; that copy is left out.
@@ -97,6 +100,17 @@ The gate adds three checks:
   agree but differ from the check's depend on what was predicted before. A lone prediction can't tell the library's
   caches from the browser's Canvas state, so neither is called a library defect: the browser's go on the varying list
   with a reason. Otherwise the failure is a true loss, printed with its family, width band and first differing line.
+
+## Equal
+
+`bun harness equal <ref>` predicts every case in each browser with this tree's build and with `<ref>`'s, a git ref or a
+`src/` directory. A build is its `src/` and the adapter that predicts with it: a ref's `harness/*.ts`, unpacked with its
+`src/` into `.artifacts/harness-builds/<sha>`, or this tree's adapter for a ref from before the harness (096ae30e). So a
+change to the adapter shows as well as one to the library. A case differs when its lines, their widths or their text
+move, or its line APIs disagree otherwise or make other Canvas calls after preparing. A case that varies between runs
+(`harness/varying`) is listed apart, not counted. It prints each case file's measureText calls and submitted units, here
+against there, and exits 1 on a difference. Line text goes out as a hash, which adapters before it send none of; texts
+are then not compared, and it says so.
 
 ## Offline invariants
 
@@ -204,6 +218,8 @@ job's browser (Browsers):
 | `watchdog.ts`: past 1 GB (bun test 2 GB), a parent that is gone, or 30 s without a timer | A library under test whose walker runs away inside it fills the machine's memory from a process no test waits for any more, or hangs `bun test` |
 | A job's browser killed past 4 GB, and every open browser killed when the process exits | A page that allocates without end fills the machine's memory: Firefox's content process grew 1.35 GB a second, and Chrome's renderer stopped only at its 4.4 GB heap limit; Ctrl-C left 9 Chrome and 11 Firefox processes running |
 | `equal`'s calls and submitted units per set, here against there | Preparing a set gets slower with the same lines, unseen until someone times it |
+| `equal`: each build's own adapter, its line text, disagreements and Canvas calls after preparing | A change to the adapter shows no difference, and neither do a line text every text API gets wrong alike, such as a hyphen left out at a soft hyphen, or a new disagreement |
+| `equal`: cases that vary between runs listed apart | main against itself differs, on Chrome's system-ui label |
 | Bench: base, candidate and a control copy of base in each document, in a shuffled order | A change's speed reads from sessions that drifted apart by 5-19%, so a slower row goes unseen or noise reads as a change |
 | Bench: new text read forward, never prepared twice | Browser and library caches make new text look as fast as seen text |
 | A case without a recording blocks | A generator change that renames ids unpins cases silently |

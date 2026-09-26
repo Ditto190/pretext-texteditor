@@ -8,7 +8,8 @@
 // same case too, and the first way one disagrees with the walk is kept: layout() on prepare()'s handle (the resize path,
 // with its own line counter), measureLineStats, layoutNextLineRange, layoutNextLine, layoutWithLines and
 // materializeLineRange; for rich cases measureRichInlineStats, layoutNextRichInlineLineRange and
-// materializeRichInlineLineRange, whose fragments' text is checked against their items' own text. measureText calls are
+// materializeRichInlineLineRange, whose fragments' text is checked against their items' own text. The lines' text (the
+// fragments' for a rich case) goes out as a hash, for `equal` to compare builds by. measureText calls are
 // counted apart while preparing and while the line APIs run. A walk that goes past a line per source unit, plus one,
 // fails its case instead of stalling the page, and so does a range or a rich fragment that names no place in its text,
 // before its text is built, since builds before #353, which --lib can run, build the text of a range that ends at
@@ -148,6 +149,12 @@ function countCalls(proto: { measureText: (this: unknown, text: string) => TextM
 }
 countCalls(typeof CanvasRenderingContext2D === 'undefined' ? undefined : CanvasRenderingContext2D.prototype)
 countCalls(typeof OffscreenCanvasRenderingContext2D === 'undefined' ? undefined : OffscreenCanvasRenderingContext2D.prototype)
+
+// A 32-bit FNV-1a hash of line texts, each ended by a unit no text holds.
+function hashText(hash: number, text: string): number {
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619)
+  return Math.imul(hash ^ 0x10000, 16777619)
+}
 
 // The line APIs' widths are sums of the same advances in other orders.
 function sameWidth(a: number, b: number): boolean {
@@ -296,6 +303,7 @@ export function predict(c: Case): Prediction {
   const runs = p.runs
   const lines: PredictedLine[] = []
   let disagreement: string | null
+  let textHash = 0x811c9dc5
   calls.prepare = 0
   calls.lines = 0
   calls.units = 0
@@ -314,6 +322,8 @@ export function predict(c: Case): Prediction {
       const walked: LayoutLineRange[] = []
       const walkedCount = walkLineRanges(prepared, p.width, line => { if (walked.push(line) > steps) throw new Error(`walkLineRanges gives more than ${steps} lines`) })
       disagreement = plainDisagreement(LIBRARY, prepared, layout(fast, p.width, p.lineHeight), walked, walkedCount, p.width, p.lineHeight, steps)
+      // Every text API gave this text when none disagrees.
+      for (let i = 0; i < walked.length && disagreement === null; i++) textHash = hashText(textHash, materializeLineRange(prepared, walked[i]!).text)
       counting = null
       const range = sourceRanges(source, prepared, whiteSpace)
       for (let i = 0; i < walked.length; i++) lines.push({ ...range(walked[i]!.start, walked[i]!.end), width: walked[i]!.width })
@@ -338,6 +348,7 @@ export function predict(c: Case): Prediction {
           const f = fragments[k]!
           const text = materializeLineRange(handles[f.itemIndex]!, { start: f.start, end: f.end, width: 0 }).text
           if (f.text !== text) disagreement ??= `materializeRichInlineLineRange line ${i} fragment ${k} is ${JSON.stringify(f.text)}; its item's text there ${JSON.stringify(text)}`
+          textHash = hashText(textHash, f.text)
         }
       }
       const maps: Array<ReturnType<typeof sourceRanges> | undefined> = []
@@ -367,5 +378,5 @@ export function predict(c: Case): Prediction {
   } finally {
     counting = null
   }
-  return { lines, prepareCalls: calls.prepare, prepareUnits: calls.units, lineCalls: calls.lines, disagreement }
+  return { lines, textHash: textHash >>> 0, prepareCalls: calls.prepare, prepareUnits: calls.units, lineCalls: calls.lines, disagreement }
 }

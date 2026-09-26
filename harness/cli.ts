@@ -4,8 +4,9 @@
 //   check [--accept=<why>]   predict every pinned case in the browser and score it against the recordings
 //   gate [--sample=N]        check, plus a prediction in reverse order, N cases recorded again, and attribution
 // record and gate draw with --seed=S (default 20260924).
-//   equal <ref>              whether this tree's src/ and <ref>'s predict the same lines for every case, and each set's
-//                            measureText calls and submitted units here and there
+//   equal <ref>              whether this tree's build (src/ and the adapter) and <ref>'s predict the same lines, widths
+//                            and line text for every case, with the same line APIs' disagreements and Canvas calls after
+//                            preparing, and each set's measureText calls and submitted units here and there
 //   bench <base> [--sessions=3] [--rows=new,...] [--background]   <base>'s src/ timed against --lib's (bench/run.ts)
 //   repin <chrome|firefox|safari> [--write]   after a browser update: pin the installed Chrome or Firefox, record every
 //                            case into a scratch copy of the recordings, and print what changed and whether the browser's
@@ -14,12 +15,12 @@
 //   explain --text=<text> [--width=320] [--font="16px Arial"] [--lang=en] [--white-space=pre-wrap] [--word-break=keep-all]
 //           [--letter-spacing=<px>]  the same for a paragraph with no recording, or for the one case of a --cases file:
 //                            recorded alone in a fresh document, never kept
-// --lib=<dir> predicts with another build's src/ directory. Default browsers: chrome, firefox and webkit-host, side by side;
-// explain takes one, chrome by default.
+// --lib=<dir> predicts with another build: a src/ directory and the adapter beside it in ../harness, this tree's where it
+// has none. Default browsers: chrome, firefox and webkit-host, side by side; explain takes one, chrome by default.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import {
-  accept, attribute, checkBlocks, freshRecordings, gateBlocks, gateSample, headline, judge, observable, outsideClaims, pinning, predictionChange, reverseOrder, SAMPLED, score,
+  accept, attribute, buildChange, checkBlocks, freshRecordings, gateBlocks, gateSample, headline, judge, observable, outsideClaims, pinning, reverseOrder, SAMPLED, score,
   SEED, shown, shrinkWrapShort, widthBand, type Outcome,
 } from './score.ts'
 import { bench, ROWS } from './bench/run.ts'
@@ -410,25 +411,36 @@ export async function drift(browser: BrowserKind, cases: Case[], o: Options, wri
 
 // ---- equal and explain ----
 
-async function equal(browser: BrowserKind, cases: Case[], setOf: Map<string, string>, ref: string, lib: string): Promise<boolean> {
+// Whether <ref>'s build, its src/ with the adapter beside it (run.ts), predicts what this tree's does on every case: the
+// same lines and widths, line text, disagreement between the line APIs and Canvas calls after preparing (buildChange).
+// A case that varies between runs (harness/varying) is listed apart. Then each case file's measureText calls and the
+// units submitted to them, here against there.
+export async function equal(browser: BrowserKind, cases: Case[], setOf: Map<string, string>, ref: string, o: Options, io: Io): Promise<boolean> {
   const list = cases.filter(c => applies(c, browser))
-  const mine = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib })
-  const theirs = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib: srcOf(ref) })
-  const differ = list.filter(c => predictionChange(mine.results.get(c.id)!, theirs.results.get(c.id)!) !== 'same')
-  // Per case file, measureText calls and the units submitted to them, here and there.
+  const mine = await io.run<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib: o.lib })
+  const theirs = await io.run<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib: srcOf(ref) })
+  const varying = readVarying(varyingPath(io.root, browser))
+  const differ: string[] = []
+  const varies: string[] = []
+  let unhashed = false
   const sets = new Map<string, number[]>()
   for (let i = 0; i < list.length; i++) {
-    const set = setOf.get(list[i]!.id)!
-    const counts = sets.get(set) ?? [0, 0, 0, 0]
-    sets.set(set, counts)
-    const a = mine.results.get(list[i]!.id)!
-    const b = theirs.results.get(list[i]!.id)!
+    const c = list[i]!
+    const a = mine.results.get(c.id)!
+    const b = theirs.results.get(c.id)!
+    const change = buildChange(a, b)
+    if (change !== null) (varying.get(c.id)?.kind === 'runs' ? varies : differ).push(`${c.id}  ${c.family}  ${change}`)
+    const counts = sets.get(setOf.get(c.id)!) ?? [0, 0, 0, 0]
+    sets.set(setOf.get(c.id)!, counts)
     if ('lines' in a) { counts[0]! += a.prepareCalls + a.lineCalls; counts[2]! += a.prepareUnits }
-    if ('lines' in b) { counts[1]! += b.prepareCalls + b.lineCalls; counts[3]! += b.prepareUnits }
+    if ('lines' in b) { counts[1]! += b.prepareCalls + b.lineCalls; counts[3]! += b.prepareUnits; unhashed ||= b.textHash === undefined }
   }
-  console.log(`${browser}: ${differ.length} of ${list.length} predictions differ from ${ref}; measureText calls and units submitted to them, here against there:`)
-  for (const [set, [a, b, ua, ub]] of [...sets].sort((x, y) => (x[0] < y[0] ? -1 : 1))) console.log(`  ${set}: calls ${a} / ${b}, units ${ua} / ${ub}`)
-  for (let i = 0; i < differ.length && i < 20; i++) console.log(`  ${differ[i]!.id}  ${differ[i]!.family}`)
+  const out = [`${browser}: ${differ.length} of ${list.length} predictions differ from ${ref}; measureText calls and units submitted to them, here against there:`]
+  for (const [set, [a, b, ua, ub]] of [...sets].sort((x, y) => (x[0] < y[0] ? -1 : 1))) out.push(`  ${set}: calls ${a} / ${b}, units ${ua} / ${ub}`)
+  if (unhashed) out.push(`  line text not compared: ${ref}'s adapter sends no hash of it`)
+  for (let i = 0; i < differ.length && i < 20; i++) out.push(`  ${differ[i]}`)
+  if (varies.length > 0) out.push(`  and ${varies.length} that vary between runs (harness/varying), not counted: ${varies.slice(0, 10).join('; ')}`)
+  io.log(out.join('\n'))
   return differ.length > 0
 }
 
@@ -514,7 +526,7 @@ async function main(): Promise<number> {
     }
     case 'equal': {
       if (positional[1] === undefined) throw new Error('equal needs a git ref')
-      const differ = await Promise.all(browsers.map(b => equal(b, cases, sets, positional[1]!, o.lib)))
+      const differ = await Promise.all(browsers.map(b => equal(b, cases, sets, positional[1]!, o, io)))
       return differ.some(Boolean) ? 1 : 0
     }
     case 'bench': {

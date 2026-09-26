@@ -6,11 +6,11 @@ import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fontsKey, keyOf, type Environment } from './browsers.ts'
 import { icuEntries, rustByteStrings } from './break-data.ts'
-import { check, drift, gate, parseArgs, record, type Io, type Options } from './cli.ts'
+import { check, drift, equal, gate, parseArgs, record, type Io, type Options } from './cli.ts'
 import { groupLines, recordedLines, scanLineEnds, searchLineEnds, type RectsAt } from './observe.ts'
-import { documents, type Job } from './run.ts'
+import { bundle, documents, LIB, type Job } from './run.ts'
 import {
-  accept, attribute, checkBlocks, freshRecordings, gateBlocks, gateSample, headline, judge, libraryFaults, pinning, predictionChange, reverseOrder, score, SEED,
+  accept, attribute, buildChange, checkBlocks, freshRecordings, gateBlocks, gateSample, headline, judge, libraryFaults, pinning, predictionChange, reverseOrder, score, SEED,
   type Outcome, type Verdict,
 } from './score.ts'
 import {
@@ -49,7 +49,7 @@ function layOut(text: string, starts: number[]): { recording: Recording; nodeRec
 function predicted(text: string, starts: number[]): Prediction {
   const lines = []
   for (let i = 0; i < starts.length; i++) lines.push({ start: starts[i]!, end: starts[i + 1] ?? text.length, width: 0 })
-  return { lines, prepareCalls: 0, prepareUnits: 0, lineCalls: 0, disagreement: null }
+  return { lines, textHash: 0, prepareCalls: 0, prepareUnits: 0, lineCalls: 0, disagreement: null }
 }
 
 const TEXT = 'The quick brown fox jumps over the lazy dog'
@@ -103,7 +103,7 @@ describe('the pass rule', () => {
     for (const browser of ['firefox', 'webkit-host', 'safari'] as const) {
       expect(recordedLines('a\u00ADb\u000b', nodeRects, 48, offset => points[offset]!, browser).map(line => [line.first, line.last])).toEqual([[0, 1], [3, 3]])
     }
-    const main: Prediction = { lines: [{ start: 0, end: 3, width: 17.796875 }, { start: 3, end: 4, width: 4.4453125 }], prepareCalls: 6, prepareUnits: 12, lineCalls: 0, disagreement: null }
+    const main: Prediction = { lines: [{ start: 0, end: 3, width: 17.796875 }, { start: 3, end: 4, width: 4.4453125 }], textHash: 0, prepareCalls: 6, prepareUnits: 12, lineCalls: 0, disagreement: null }
     expect(score({ lines, height: 96 }, main).status).toBe('breaks')
   })
 
@@ -621,6 +621,23 @@ describe('the commands, with a stand-in browser', () => {
     await drift('chrome', list, options, false, again, scratch)
     expect(again.printed()).toContain('chrome drift against harness/recordings (same environment): 0 cases laid out otherwise, 0 new page history, 0 newly recorded, 0 no longer recorded')
   })
+
+  test('equal counts a moved line, other line text, another disagreement and another Canvas call after preparing as a difference, and lists a case that varies between runs apart: a change to src/ or the adapter would show nothing, or main against itself differ', async () => {
+    const root = folder('equal', {}, { varying: '## system-ui\nlabel runs\n' })
+    // This tree's build is "here"; the ref, a src/ directory, predicts `right` for every case.
+    const here: Record<string, Prediction> = {
+      line: wrong, text: { ...right, textHash: 1 } as Prediction, disagrees: { ...right, disagreement: 'measureLineStats gives 3 lines' } as Prediction,
+      measures: { ...right, lineCalls: 2 } as Prediction, label: wrong,
+    }
+    const io = browser(root, (c, job) => (job.lib === 'here' ? here[c.id] ?? right : right))
+    const list = cases(['same', ...Object.keys(here)])
+    expect(await equal('chrome', list, new Map(list.map(c => [c.id, 'smoke'])), LIB, { ...options, lib: 'here' }, io)).toBe(true)
+    expect(io.printed()).toContain(`chrome: 4 of 6 predictions differ from ${LIB}`)
+    for (const line of ['line  test  lines', 'text  test  text', 'disagrees  test  disagreement', 'measures  test  Canvas calls after preparing']) expect(io.printed()).toContain(`\n  ${line}`)
+    expect(io.printed()).toContain('  and 1 that vary between runs (harness/varying), not counted: label  test  lines')
+    const same = browser(root, () => right)
+    expect(await equal('chrome', list, new Map(list.map(c => [c.id, 'smoke'])), LIB, { ...options, lib: 'here' }, same)).toBe(false)
+  })
 })
 
 describe('the browser\'s break data', () => {
@@ -656,6 +673,18 @@ describe('the documents a job lays out', () => {
     const ids = (docs: Case[][]): string[][] => docs.map(doc => doc.map(c => c.id))
     expect(ids(documents('firefox', cases, 2))).toEqual([['a', 'b'], ['ko'], ['text']])
     expect(ids(documents('chrome', cases, 2))).toEqual([['a', 'text'], ['b'], ['ko']])
+  })
+
+  test('a build\'s own adapter is bundled with its src/, and this tree\'s with a src/ that has none beside it: equal would run this tree\'s adapter against itself and show no change to it', async () => {
+    const dir = join(import.meta.dir, '../.artifacts/harness-test-builds')
+    for (const build of ['own', 'bare']) cpSync(join(import.meta.dir, '../src'), join(dir, build, 'src'), { recursive: true, dereference: true })
+    mkdirSync(join(dir, 'own/harness'), { recursive: true })
+    writeFileSync(join(dir, 'own/src/build.ts'), 'export const build = \'the own build\'\n')
+    writeFileSync(join(dir, 'own/harness/page.ts'), 'import { build } from \'../src/build.ts\'\nconsole.log(`${build}\'s adapter`)\n')
+    expect(await bundle(join(dir, 'own/src'))).toContain('the own build')
+    writeFileSync(join(dir, 'bare/src/layout.ts'), `${readFileSync(join(dir, 'bare/src/layout.ts'), 'utf8')}\nconsole.log('the bare build')\n`)
+    const bare = await bundle(join(dir, 'bare/src'))
+    expect([bare.includes('the bare build'), bare.includes('harness done')]).toEqual([true, true])
   })
 })
 
@@ -759,6 +788,15 @@ describe('the library through the adapter', () => {
     const wrong = dropped.predict(c)
     if (!('lines' in wrong)) throw new Error('unreachable')
     expect(wrong.disagreement).toStartWith('layoutNextLine line 0')
+  })
+
+  test('line text the builder every text API shares gets wrong changes the prediction\'s text hash, which equal compares: a build that paints no hyphen where a line breaks at a soft hyphen would equal main', async () => {
+    const c = paragraph('Supercali\u00ADfragilistic', 100)
+    const right = adapter.predict(c)
+    const hyphenless = await planted('line-text-hyphen', 'line-text.ts', /\? text \+ '-' : text/, '? text : text')
+    const wrong = hyphenless.predict(c)
+    expect([disagreement(right), disagreement(wrong)]).toEqual([null, null])
+    expect([predictionChange(wrong, right), buildChange(wrong, right)]).toEqual(['same', 'text'])
   })
 
   test('a Canvas call per line in the walker blocks: every window resize would measure text again', async () => {
