@@ -11,8 +11,8 @@
 // materializeRichInlineLineRange, whose fragments' text is checked against their items' own text. measureText calls are
 // counted apart while preparing and while the line APIs run. A walk that goes past a line per source unit, plus one,
 // fails its case instead of stalling the page, and so does a range or a rich fragment that names no place in its text,
-// before a text builder would build its text without end. The offline invariants (invariants.ts) call the same
-// agreement checks.
+// before its text is built, since builds before #CLAMPPR, which --lib can run, build the text of a range that ends at
+// segment Infinity without end. The offline invariants (invariants.ts) call the same agreement checks.
 import {
   layout, layoutNextLine, layoutNextLineRange, layoutWithLines, materializeLineRange, measureLineStats, prepare, prepareWithSegments, setLocale,
   walkLineRanges, type LayoutCursor, type LayoutLineRange, type PrepareOptions, type PreparedTextWithSegments,
@@ -166,8 +166,9 @@ function showRange(line: { start: LayoutCursor; end: LayoutCursor; width: number
   return `${showCursor(line.start)}-${showCursor(line.end)} width ${line.width}`
 }
 
-// Whether a cursor names a place in a text of `segments` segments. The text builders given a range that ends elsewhere,
-// such as at segment Infinity, would build its text without end, so the checks test each range before building its text.
+// Whether a cursor names a place in a text of `segments` segments. The checks test each range before building its text:
+// the text builders of builds before #CLAMPPR, given a range that ends elsewhere, such as at segment Infinity, build its
+// text without end.
 function inText(c: LayoutCursor, segments: number): boolean {
   return Number.isInteger(c.segmentIndex) && Number.isInteger(c.graphemeIndex) && c.graphemeIndex >= 0
     && c.segmentIndex >= 0 && (c.segmentIndex < segments || c.segmentIndex === segments && c.graphemeIndex === 0)

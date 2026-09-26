@@ -318,6 +318,37 @@ describe('shared public contracts', () => {
     expect(measureLineStats(prepared, 60).maxLineWidth).toBe(hello)
   })
 
+  test('a range kept from a longer text builds only the text a shorter one prepared since holds', () => {
+    // An app that keeps line ranges across an edit can pass one past the end of
+    // the text it prepared again.
+    const before = prepareWithSegments('alpha beta gamma', FONT)
+    const after = prepareWithSegments('alpha', FONT)
+    const richBefore = prepareRichInline([{ text: 'alpha beta', font: FONT }, { text: 'gamma', font: FONT }])
+    const richAfter = prepareRichInline([{ text: 'alpha', font: FONT }, { text: 'gamma', font: FONT }])
+    for (const width of [measureWidth('alpha beta', FONT), 1]) {
+      const texts: string[] = []
+      walkLineRanges(before, width, range => texts.push(materializeLineRange(after, range).text))
+      expect(texts.join('|')).toBe(width === 1 ? 'a|l|p|h|a' + '|'.repeat(9) : 'alpha|')
+      const fragments: string[] = []
+      walkRichInlineLineRanges(richBefore, width, range => {
+        for (const fragment of materializeRichInlineLineRange(richAfter, range).fragments) fragments.push(fragment.text)
+      })
+      expect(fragments.join('|')).toBe(width === 1 ? 'a|l|p|h|a' + '|'.repeat(4) + '|g|a|m|m|a' : 'alpha||gamma')
+    }
+  })
+
+  test('a range that ends at segment Infinity builds its text to the end', () => {
+    const prepared = prepareWithSegments('alpha beta', FONT)
+    const rich = prepareRichInline([{ text: 'alpha beta', font: FONT }])
+    const richRange = layoutNextRichInlineLineRange(rich, Infinity)!
+    for (const graphemeIndex of [0, 2]) {
+      const end = { segmentIndex: Infinity, graphemeIndex }
+      expect(materializeLineRange(prepared, { width: 0, start: { segmentIndex: 0, graphemeIndex: 0 }, end }).text).toBe('alpha beta')
+      const fragments = richRange.fragments.map(fragment => ({ ...fragment, end }))
+      expect(materializeRichInlineLineRange(rich, { ...richRange, fragments }).fragments.map(fragment => fragment.text)).toEqual(['alpha beta'])
+    }
+  })
+
   test('numeric layout APIs do not measure text after preparation', () => {
     const text = 'foo trans­atlantic 世界\n\tbar'
     const options = { whiteSpace: 'pre-wrap' } as const
