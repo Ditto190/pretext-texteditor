@@ -157,9 +157,12 @@ order shuffled with a seed the run prints. Costs are per 1,000 UTF-16 units, and
   browser's verdicts from one session are hypotheses. Then the costliest entry per row, the fresh pages and each bundle's
   minified and gzipped size. Raw samples go to `.artifacts/harness-bench/`; nothing timed is checked in, and the bench
   never blocks.
-- **Floors:** each row's floor is the largest control deviation a calibration of HEAD against itself found, kept in
-  `bench/report.ts` with the date, builds, machine and device pixel ratio it came from; calibrate again after a
-  browser pin bump or on another machine. A row without one prints as uncalibrated.
+- **Floors:** each row's floor comes from a calibration of HEAD against itself: the largest deviation from base that
+  the candidate or the control held in one direction in all three sessions, the only kind a verdict can call, rounded
+  up to a whole percent. A single document can run one copy of the same code 15-50% slower, which the control's band
+  or the other sessions absorb (`RESEARCH.md`, Reading Browser Output). The floors are kept in `bench/report.ts` with
+  the date, builds, machine and device pixel ratio they came from; calibrate again after a browser pin bump or on
+  another machine. A row without one prints as uncalibrated.
 
 What each piece catches, as an app developer would see it. `bun test harness` plants each fault, running the commands
 with a stand-in browser. Three pieces run only in a real browser and aren't planted: the Firefox hold, the page

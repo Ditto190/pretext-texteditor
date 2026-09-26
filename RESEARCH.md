@@ -1002,6 +1002,22 @@ and Myanmar breaks in every browser too: read them with Range. And take source
 offsets from prepared segments and grapheme cursors, never from
 `line.text.length`, whose text can hold a hyphen the source doesn't.
 
+One copy of the library can run slower than another copy of the same code for a
+whole document. In the bench's calibration of HEAD against itself (September 26,
+three sessions in each browser), Firefox's base copy took about twice as long as
+the other two to lay out kept CJK handles at widths used before in one session,
+and Safari's took 15-21% longer on keep-all brackets in two. The candidate and
+the control moved together there, so the control's band covers such a document,
+and a verdict needs every session, so one document can't carry one. The noise
+floors therefore take the largest deviation either copy held in one direction in
+all three sessions, 1-6% by row; floors taken from one copy made 0 and 1 false
+calls in 141 entries on the other. The largest deviation in any session, 2-51% by
+row, would have hidden four of the slowdowns the bench was checked against
+(217c84b8 against 6d1d2106): pre-wrap layout and walk at 1.05 of base's time in
+Chrome and 1.18-1.25 in Firefox, and letter-spaced CJK and control layouts at 1.12
+and 1.20 in Safari. With the floors it calls every one of them slower in all three
+browsers, and seen CJK faster.
+
 ## Rich Inline Boundaries
 
 Rich items retain source identity even when they measure zero. Filtering them
