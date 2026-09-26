@@ -1144,6 +1144,34 @@ describe('boundary-policy regressions', () => {
     }
   })
 
+  test('a long chain of mark runs is measured after its grapheme and only the chain\'s last runs', () => {
+    const measureText = Object.getOwnPropertyDescriptor(TestCanvasRenderingContext2D.prototype, 'measureText')!
+    let longest = 0
+    Object.defineProperty(TestCanvasRenderingContext2D.prototype, 'measureText', {
+      ...measureText,
+      value(this: TestCanvasRenderingContext2D, text: string) {
+        longest = Math.max(longest, text.length)
+        return { width: measureWidth(text, this.font) }
+      },
+    })
+    try {
+      for (const [pairs, measured] of [[40, 81], [400, 97]] as const) {
+        const text = 'x' + '\u0001́'.repeat(pairs)
+        clearCache()
+        longest = 0
+        const prepared = prepareWithSegments(text, FONT)
+        // Under 96 UTF-16 units the whole chain is the context; past them `x` and the chain's last 95 units.
+        expect(longest).toBe(measured)
+        for (let i = 2; i < prepared.segments.length; i += 2) {
+          expect(prepared.widths[i]).toBeCloseTo(measureWidth(text.slice(0, i + 1), FONT) - measureWidth(text.slice(0, i), FONT), 9)
+        }
+      }
+    } finally {
+      Object.defineProperty(TestCanvasRenderingContext2D.prototype, 'measureText', measureText)
+      clearCache()
+    }
+  })
+
   test('a rich item keeps its collapsed leading whitespace as WebKit break context', () => {
     const profile = getEngineProfile()
     const previous = profile.lineBreakScan

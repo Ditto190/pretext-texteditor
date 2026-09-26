@@ -138,7 +138,14 @@ any segment boundary instead gave `a`, U+00AD, WJ, `b` at 0px a line holding onl
 soft hyphen, and the second installed gate lost 9,068 line-count passes that way.
 Combining marks after zero-width glue or a control shape after the grapheme before
 them and what separates them, so they're measured as that source with the marks, minus
-the source, and take no letter spacing of their own. Measured alone, U+0301 took 2.97px
+the source, and take no letter spacing of their own. Past 96 UTF-16 units of what separates
+them, a run is measured after the grapheme and only the chain's last runs, each with the
+separators before it, since measuring every run after the whole chain was quadratic: in
+Chrome 154, Safari 27 and Firefox 156 each run of 10,560 such chains in 24 fonts then
+measured within 0.0005px of its width after the whole chain, while leaving out the
+grapheme too took up to 25px off a run. Safari's width for a run depends on how far it
+sits from the grapheme, up to 61 units, so a much smaller bound would move widths there
+(VALIDATION.md). Measured alone, U+0301 took 2.97px
 in 16px Arial. Measured on the grapheme without the glue, Canvas composed the pair or drew
 it in another font: `a` with U+0323 in 16px Amiri took 2.22px more than `a`, where
 Chrome paints `a`, U+00AD, U+0301, U+00AD, U+0323, `b` as wide as `ab`. WebKit's
@@ -1305,6 +1312,7 @@ history audit found these traps; the commits retain the implementation details:
 | Measuring every growing Canvas prefix | `fcf9c62` |
 | Searching hard-break chunks from the beginning for every streamed line | `2c52171` |
 | Retrying whitespace/font-size suffix regexes; restarting preferred-hyphen searches | [#221](https://github.com/chenglou/pretext/pull/221) |
+| Measuring each run of a chain of combining marks after the whole chain before it | `MAX_MARK_CHAIN_UNITS` in `src/layout.ts` (VALIDATION.md) |
 
 The regex failures involved *internal* whitespace followed by content and long
 digit runs without `px`, not just long trailing whitespace or valid font strings.
