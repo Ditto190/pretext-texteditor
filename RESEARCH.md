@@ -150,7 +150,7 @@ after the whole chain. In Chrome 154, Safari 27 and Firefox 156.0.1, runs measur
 this way within 0.0005px of their widths after the whole chain over 10,560 chains of
 one- and two-code-point runs in 24 fonts, and within 0.002px over 2,400 chains of six
 runs of 1 to 400 marks in 5 fonts, while leaving out the grapheme too took up to 25px
-off a run (#MCLPR). Measured alone, U+0301 took 2.97px
+off a run (#351). Measured alone, U+0301 took 2.97px
 in 16px Arial. Measured on the grapheme without the glue, Canvas composed the pair or drew
 it in another font: `a` with U+0323 in 16px Amiri took 2.22px more than `a`, where
 Chrome paints `a`, U+00AD, U+0301, U+00AD, U+0323, `b` as wide as `ab`. WebKit's
@@ -1359,7 +1359,7 @@ history audit found these traps; the commits retain the implementation details:
 | Measuring every growing Canvas prefix | `fcf9c62` |
 | Searching hard-break chunks from the beginning for every streamed line | `2c52171` |
 | Retrying whitespace/font-size suffix regexes; restarting preferred-hyphen searches | [#221](https://github.com/chenglou/pretext/pull/221) |
-| Measuring each run of a chain of combining marks after the whole chain before it | `MARK_CHAIN_CONTEXT_UNITS` in `src/layout.ts` (#MCLPR) |
+| Measuring each run of a chain of combining marks after the whole chain before it | `MARK_CHAIN_CONTEXT_UNITS` in `src/layout.ts` (#351) |
 
 The regex failures involved *internal* whitespace followed by content and long
 digit runs without `px`, not just long trailing whitespace or valid font strings.
@@ -1378,7 +1378,7 @@ and Chrome 154's `prepare()` took 0.4 to 2.6% more time than main on most bench
 rows in every session, 1.8% on seen Arabic and 2.6% on letter-spaced CJK, while
 Firefox and Safari didn't move. With the loop apart, `getMarkContext()` takes 376
 bytes and is inlined again, and every Chrome row reads within noise: seen Arabic
-−0.2% and letter-spaced CJK +0.6% (#MCLPR).
+−0.2% and letter-spaced CJK +0.6% (#351).
 
 `layout()` needs only a count. On simple text, `countPreparedLines()` keeps just
 the line width and whether the line has content, with no line ends, pending
