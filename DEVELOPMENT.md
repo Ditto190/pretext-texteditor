@@ -25,8 +25,12 @@ judged, the case sets and the pinned browsers.
   `harness/accepted/<browser>.txt` doesn't list under a written reason blocks, and `--accept="<reason>"` lists the new ones
 - `bun harness gate` — `check`, plus predictions in reverse order, a fresh recording of 1,000 cases and the attribution
   of new failures
-- `bun harness record --only-new` — record new cases; after a browser or OS update, `bun harness record` records every
-  case again
+- `bun harness repin chrome` (also `firefox`, `safari`) — the first thing to run when you come back to the project: pin
+  the installed Chrome or Firefox as a copy named by its version (Safari can't be pinned, so webkit-host and installed
+  Safari are recorded as the system has them), record every case into a scratch copy of the recordings, and print the
+  cases the new build lays out otherwise, the page history it changes and whether its break data is still
+  `scripts/engine-data`'s; `--write` replaces the recordings and the pin, for a commit of its own
+- `bun harness record --only-new` — record new cases; `bun harness record` records every case again
 - `bun harness bench main` — time `main`'s `src/` against this tree's in the same documents, in pinned Chrome and
   Firefox and installed Safari in the foreground, 3 sessions, about 4-5 minutes per browser; `--rows=new,worst` narrows
   it while iterating, and `--background` runs the background browsers, whose results are hypotheses
@@ -35,6 +39,10 @@ judged, the case sets and the pinned browsers.
   --width=120.5 --font='16px Arial'` (also `--lang=`, `--white-space=pre-wrap`, `--word-break=keep-all`,
   `--letter-spacing=`) or `--cases=<file of one case>` records that paragraph alone in a fresh document first, in any
   of the four browsers, and keeps nothing
+
+Background harness jobs may run side by side, each in its own instance of a pinned browser or webkit-host, while free
+plus inactive memory stays above about 30%. Installed Safari takes one job at a time, and the bench runs alone in the
+foreground.
 
 ### Packaging And Release
 
@@ -46,7 +54,7 @@ judged, the case sets and the pinned browsers.
 
 ### Grapheme Check
 
-- `bun scripts/grapheme-check/build.ts`, then `bun scripts/grapheme-check/run.ts --browser=chrome` — compare `src/graphemes.ts` with the browser's own `Intl.Segmenter` on every code point in contexts that tell the grapheme classes apart, the harness's case texts with their prepared segments, and random strings, under the table the engine profile takes and the other one; also `firefox` and `webkit-host`, in the harness's background browsers, one job per browser at a time. `ENGINE=webkit bun scripts/grapheme-check/offline.ts` runs it under Bun. Node can't load `src/` directly, so bundle it with `bun build --target=node scripts/grapheme-check/offline.ts --outfile=.artifacts/grapheme-check/offline.mjs` and run `ENGINE=blink node .artifacts/grapheme-check/offline.mjs`.
+- `bun scripts/grapheme-check/build.ts`, then `bun scripts/grapheme-check/run.ts --browser=chrome` — compare `src/graphemes.ts` with the browser's own `Intl.Segmenter` on every code point in contexts that tell the grapheme classes apart, the harness's case texts with their prepared segments, and random strings, under the table the engine profile takes and the other one; also `firefox` and `webkit-host`, in the harness's background browsers, side by side like other background harness jobs. `ENGINE=webkit bun scripts/grapheme-check/offline.ts` runs it under Bun. Node can't load `src/` directly, so bundle it with `bun build --target=node scripts/grapheme-check/offline.ts --outfile=.artifacts/grapheme-check/offline.mjs` and run `ENGINE=blink node .artifacts/grapheme-check/offline.mjs`.
 
 ### Benchmarking
 

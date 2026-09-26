@@ -11,6 +11,8 @@ bun harness gate [--sample=1000]         # check, plus reverse-order predictions
 bun harness equal <ref>                  # whether <ref>'s src/ predicts the same lines on every case, and each set's
                                          # measureText calls and submitted units here and there
 bun harness bench <base> [--sessions=3]  # <base>'s src/ timed against this tree's in the same documents (Bench)
+bun harness repin <chrome|firefox|safari> [--write]
+                                         # after a browser update: the drift a new build brings (Browsers)
 bun harness explain <id>                 # one case's recorded lines against the predicted ones
 bun harness explain --text=<text> --width=<px> [--font=] [--lang=] [--white-space=] [--word-break=] [--letter-spacing=]
                                          # the same for a paragraph, recorded alone in a fresh document and not kept
@@ -90,11 +92,11 @@ The gate adds three checks:
   recordings missed, which the gate moves to the page-history list, as `record` would, for the next check not to pin,
   and off the accepted list. Commit the changed files. Ranked by id, a case leaving the pinned set changes the sample by
   one case.
-- **Attribution:** each new failure is recorded alone (page history if that differs) and predicted alone twice. Two lone
-  predictions that differ vary between runs; lone predictions that agree but differ from the check's depend on what was
-  predicted before. A lone prediction can't tell the library's caches from the browser's Canvas state, so neither is
-  called a library defect: the browser's go on the varying list with a reason. Otherwise the failure is a true loss,
-  printed with its family, width band and first differing line.
+- **Attribution:** each new failure is recorded alone (page history if that differs, or if the fresh recording just
+  moved it there) and predicted alone twice. Two lone predictions that differ vary between runs; lone predictions that
+  agree but differ from the check's depend on what was predicted before. A lone prediction can't tell the library's
+  caches from the browser's Canvas state, so neither is called a library defect: the browser's go on the varying list
+  with a reason. Otherwise the failure is a true loss, printed with its family, width band and first differing line.
 
 ## Offline invariants
 
@@ -180,6 +182,8 @@ job's browser (Browsers):
 | Lines from rect positions | Fractional line boxes read as a wrong count, as Safari 27's did in the old harness (`tests/wrapping`, since removed) |
 | Line-start search | Long paragraphs would take minutes per browser; a wrong search would hide or invent a book's wrong line |
 | Environment key | A browser or OS update reads as library regressions or fixes |
+| `repin`: the page-history list kept under a new build | A pin bump pins page history its two orders missed, and check blocks on it: 33 cases when Firefox went to 156.0.1 |
+| `repin`: the browser's break data against `scripts/engine-data` | A browser update changes its line or grapheme rules while the tables stay as they were |
 | Page-history list, kept across recordings of one environment | Cases that lay out differently after other cases block changes at random; one recording's two sorted orders found 11 of WebKit's 87 |
 | Firefox's first document held until 15 s after launch | Emoji beside Arial lay out differently for Firefox's first 12 s: 91 cases, and the gate's fresh recording, would block at random |
 | Firefox's U+FE0E cases laid out after every other, never pinned | The gate's fresh recording blocked at random on 7-9 emoji cases beside Arial, laid out after a text-presentation emoji |
@@ -275,14 +279,27 @@ other, so one the library doesn't model goes on the accepted list with a reason 
 
 ## Browsers
 
-Chrome and Firefox are pinned copies in `~/github/browser-engines/apps` (`HARNESS_APPS`), named in `browsers.ts`: make one
-with `ditto` from `/Applications` and bump the version there. A Firefox copy also gets the `DisableAppUpdate` policy in
-its bundle before its first launch (`browsers.ts`), since Firefox updates the bundle it runs from under any profile but
-the harness's. Chrome gets its own profile, an en-US interface and one background window opened through the DevTools
-protocol; Firefox launches through LaunchServices, which macOS 27 needs.
+Chrome and Firefox are pinned copies in `~/github/browser-engines/apps` (`HARNESS_APPS`), named in `browsers.ts`. A
+Firefox copy also gets the `DisableAppUpdate` policy in its bundle before its first launch (`browsers.ts`), since Firefox
+updates the bundle it runs from under any profile but the harness's. Chrome gets its own profile, an en-US interface and
+one background window opened through the DevTools protocol; Firefox launches through LaunchServices, which macOS 27 needs.
 For about 12 s after it starts, Firefox changes fonts under a page (`PLATFORM_BUGS.md`, the late family names), so every
 Firefox job holds its first document until 15 s after launch. WebKit runs as webkit-host (`webkit-host/build.sh`), the
 system WebKit.framework that installed Safari runs, in a window below every other. Nothing takes focus.
+
+The installed browsers are likely a version newer each time the project is picked up again, so `bun harness repin
+<browser>` comes first. For Chrome and Firefox it copies the installed app as a pinned copy named by its version, as the
+rebuild's `rebuild/lab/pin-browser.sh` makes one: a clone that must hash as the installed tree does, the policy for
+Firefox, and the tree hash beside it, its paths sorted under `LC_ALL=C`. It then records every case with that copy into a
+copy of the recordings in `.artifacts/harness-repin`. Safari can't be pinned, so `repin safari` records webkit-host and
+installed Safari's sample as the system has them. It prints the cases laid out otherwise than the checked-in
+recordings, the new page history and the cases newly recorded or gone, and whether the browser's break data is still
+the bytes of `scripts/engine-data`: Chrome's `line_normal.brk`, `line_normal_cj.brk` and `char.brk` in its
+`icudtl.dat`, the system ICU's four tables for Safari, and for Firefox the byte arrays of the Gecko line, grapheme and
+Bidi_Class data in XUL. A new environment starts the page-history list empty and two orders find few of Firefox's, so a
+case that was page history stays so. `--write` then replaces the recordings, takes the cases now page history off the
+accepted list and bumps the pin in `browsers.ts`. Commit that on its own, and calibrate the bench floors again after a
+pin bump.
 
 While a job runs, the harness sums the memory footprint of its browser's processes every 100 ms: the one it launched,
 their descendants, and webkit-host's web content process, which launchd starts and the host names on its stdout
@@ -295,5 +312,5 @@ as they start through LaunchServices, outside its process group.
 
 Installed Safari opens a window of its own, only while another app is frontmost, and hands the focus back if it takes it;
 the window must stay uncovered while a job runs. It is recorded on a sample drawn from every set,
-`bun harness record --browser=safari --sample=2000 --seed=20260924`, which webkit-host matched on every case but WebKit's
-page history.
+`bun harness record --browser=safari --sample=2000 --seed=20260924`, which replaces the sample recorded before and
+which webkit-host matched on every case but WebKit's page history.

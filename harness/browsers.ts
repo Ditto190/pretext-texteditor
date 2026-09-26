@@ -1,8 +1,8 @@
 // The browsers a job runs in, and the environment key a recording is kept under.
 //
 // Chrome and Firefox are pinned: private copies of the installed apps, so an update of /Applications can't change the
-// build under a recording. Make one with `ditto "/Applications/Google Chrome.app" "<apps>/Google Chrome <version>.app"`
-// and bump the version here. Firefox updates the bundle it runs from under any profile but the harness's: macOS
+// build under a recording. `bun harness repin chrome|firefox` makes one (pinInstalled) and, with --write, bumps the
+// version here. Firefox updates the bundle it runs from under any profile but the harness's: macOS
 // reopened the 156.0 copy at login after a crash, under the default profile, and Firefox updated it to 156.0.1. A
 // release build takes the update policy only from its bundle or the system, so a Firefox copy also gets
 // Contents/Resources/distribution/policies.json holding {"policies": {"DisableAppUpdate": true}} before its first
@@ -12,13 +12,15 @@
 // and Safari come to the front.
 import { dlopen, FFIType } from 'bun:ffi'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import type { BrowserKind, PageEnv } from './types.ts'
 
 const APPS = process.env['HARNESS_APPS'] ?? join(homedir(), 'github/browser-engines/apps')
 export const PINNED = { chrome: 'Google Chrome 154.0.8037.57', firefox: 'Firefox 156.0.1' } as const
+// The copies this process runs: PINNED, unless `repin` pointed one at a new copy.
+export const pins: Record<keyof typeof PINNED, string> = { ...PINNED }
 const ROOT = resolve(import.meta.dir, '..')
 const PROFILES = join(ROOT, '.artifacts/harness-profiles')
 export const WEBKIT_HOST = join(ROOT, '.artifacts/webkit-host/webkit-host')
@@ -28,10 +30,10 @@ function command(file: string, args: string[]): string {
   return execFileSync(file, args, { encoding: 'utf8', timeout: 60_000 }).trim()
 }
 
-function appPath(browser: BrowserKind): string {
+export function appPath(browser: BrowserKind): string {
   switch (browser) {
-    case 'chrome': return join(APPS, `${PINNED.chrome}.app`)
-    case 'firefox': return join(APPS, `${PINNED.firefox}.app`)
+    case 'chrome': return join(APPS, `${pins.chrome}.app`)
+    case 'firefox': return join(APPS, `${pins.firefox}.app`)
     case 'webkit-host':
     case 'safari': return '/Applications/Safari.app'
   }
@@ -39,6 +41,49 @@ function appPath(browser: BrowserKind): string {
 
 function bundleVersion(bundle: string, key = 'CFBundleShortVersionString'): string {
   return command('plutil', ['-extract', key, 'raw', '-o', '-', bundle])
+}
+
+const POLICY_FILE = 'Contents/Resources/distribution/policies.json'
+const POLICY = '{"policies": {"DisableAppUpdate": true}}\n'
+
+// A tree's hash as rebuild/lab/pin-browser.sh takes it: every file's path and sha256 and every link's target, the paths
+// sorted bytewise (LC_ALL=C; under a UTF-8 locale the same tree hashes otherwise), leaving out the file `skip` names.
+function treeHash(dir: string, skip = ''): string {
+  const script = 'set -o pipefail; cd "$1" && { find . -type f ! -path "./$2" -print0 | sort -z | xargs -0 shasum -a 256; '
+    + 'find . -type l -print0 | sort -z | while IFS= read -r -d "" link; do printf "link %s -> %s\\n" "$link" "$(readlink "$link")"; done; } | shasum -a 256 | cut -d" " -f1'
+  return execFileSync('bash', ['-c', script, 'tree-hash', dir, skip], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' }, timeout: 600_000 }).trim()
+}
+
+// The installed app as a pinned copy named by its version, made as pin-browser.sh makes one: ditto clones the files on
+// APFS, the copy must hash as the installed tree does, a Firefox copy gets the update policy before its first launch,
+// and the copy's tree hash goes beside it. Returns the copy's name.
+export function pinInstalled(browser: keyof typeof PINNED): string {
+  const label = browser === 'chrome' ? 'Google Chrome' : 'Firefox'
+  const installed = `/Applications/${label}.app`
+  const name = `${label} ${bundleVersion(join(installed, 'Contents/Info.plist'))}`
+  const copy = join(APPS, `${name}.app`)
+  mkdirSync(APPS, { recursive: true })
+  if (!existsSync(copy)) execFileSync('ditto', [installed, copy], { timeout: 600_000 })
+  const want = treeHash(installed)
+  let hash = treeHash(copy, POLICY_FILE)
+  if (hash !== want) throw new Error(`${copy} (${hash}) differs from ${installed} (${want})`)
+  if (browser === 'firefox') {
+    if (!existsSync(join(copy, POLICY_FILE)) || readFileSync(join(copy, POLICY_FILE), 'utf8') !== POLICY) {
+      mkdirSync(dirname(join(copy, POLICY_FILE)), { recursive: true })
+      writeFileSync(join(copy, POLICY_FILE), POLICY)
+    }
+    hash = treeHash(copy)
+  }
+  writeFileSync(`${copy}.tree-sha256`, `${hash}\n`)
+  return name
+}
+
+// `repin --write`: PINNED in this file names the copy.
+export function writePin(browser: keyof typeof PINNED, name: string): void {
+  const text = readFileSync(import.meta.path, 'utf8')
+  const next = text.replace(`${browser}: '${PINNED[browser]}'`, `${browser}: '${name}'`)
+  if (next === text) throw new Error(`No ${browser} pin in ${import.meta.path}`)
+  writeFileSync(import.meta.path, next)
 }
 
 // What a recording depends on besides the case: the browser build (and WebKit's, for the browsers that run the system
