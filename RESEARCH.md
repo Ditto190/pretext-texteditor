@@ -1415,12 +1415,12 @@ without library code showed the same split, and four extra Canvas calls per
 prepare restored the drop. Fresh text never reaches those hits. Compare submitted
 Canvas text and first cold prepares, and treat a warm-only change there as a
 cache phase until installed Safari shows it. Installed Safari 27 shows it on the
-benchmark page's Thai prose: main submitted 2,982 strings, 142 times 21, and the
-measurement part of its repeated cold prepares took 4ms in 5 of 12 page runs and
-about 15ms in the rest, while the WebKit scan's segments submit 2,978 and stayed
-near 18ms in 11 of 12. Timed around `measureText` in a foreground page, a first
-cold prepare of that text spends 20ms in Canvas with main and 15ms with the scan,
-and both fall under 1ms once the cache holds the strings.
+old benchmark page's Thai prose: main submitted 2,982 strings, 142 times 21, and
+the measurement part of its repeated cold prepares took 4ms in 5 of 12 page runs
+and about 15ms in the rest, while the WebKit scan's segments submit 2,978 and
+stayed near 18ms in 11 of 12. Timed around `measureText` in a foreground page, a
+first cold prepare of that text spends 20ms in Canvas with main and 15ms with
+the scan, and both fall under 1ms once the cache holds the strings.
 
 ## Decisions Log
 
@@ -1505,7 +1505,9 @@ reason still holds, and record the new decision here with its date.
   accepted lists. main's catalog, rich and oracle cases were taken once and stay
   frozen, since their generator went with the suite. The font and Arabic joining
   probes measure browsers, not `src/`, so they still run from 6fadbe5, a commit
-  from before their removal. Speed is to rest on same-document ratios from
-  `bun harness bench` in PR descriptions, with nothing timed checked in; the
-  benchmark page and `benchmarks/*.json` stay until the bench's noise floors are
-  calibrated and it calls a known change.
+  from before their removal. Speed rests on same-document ratios from
+  `bun harness bench` in PR descriptions, with nothing timed checked in. The
+  benchmark page and `benchmarks/*.json` went once the bench's noise floors were
+  calibrated and it called a known change: 217c84b8's `src/` against 6d1d2106's
+  reads slower on letter-spaced CJK, soft hyphen, control and pre-wrap layout
+  and faster on seen CJK in all three browsers (Reading Browser Output).

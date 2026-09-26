@@ -44,7 +44,6 @@
     "!src/test-data.ts"
   ],
   "scripts": {
-    "benchmark-check": "bun run scripts/benchmark-check.ts",
     "build:package": "rm -rf dist && tsc -p tsconfig.build.json",
     "check": "tsc && oxlint --type-aware src harness && knip && bun run scripts/generate-engine-break-data.ts --check && bun run scripts/generate-webkit-generic-families.ts --check",
     "generate:engine-break-data": "bun run scripts/generate-engine-break-data.ts",

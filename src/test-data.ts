@@ -1,7 +1,7 @@
 // Short chat-like texts in Latin, Arabic, Hebrew, CJK, Korean, Thai, emoji,
 // mixed directions and edge cases (empty, whitespace, newlines, long words). The
-// harness's rich set splits them into styled runs (harness/sets/rich.ts), the
-// bench's worst-case shapes are made from them, and the benchmark page reads them.
+// harness's rich set splits them into styled runs (harness/sets/rich.ts), and the
+// bench's worst-case shapes are made from them.
 
 export const TEXTS = [
   // Latin
