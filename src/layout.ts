@@ -323,7 +323,12 @@ function measureAnalysis(
     return start - baseStart > MARK_CHAIN_CONTEXT_UNITS ? getLongMarkChainContext(baseStart, start) : analysis.normalized.slice(baseStart, start)
   }
   // Apart from getMarkContext(), which prepare() calls for every segment, so that V8
-  // still inlines that one there (RESEARCH.md, Keeping Work Bounded).
+  // still inlines that one there (RESEARCH.md, Keeping Work Bounded). V8 inlines a
+  // function only while its bytecode stays under about 460 bytes, whether or not the
+  // source is minified: with this loop inside, getMarkContext() took 519 bytes and
+  // Chrome 154's prepare() ran 1-3% slower; without it, 376 (Node 23, V8 12.9). Before
+  // growing getMarkContext(), check it with node --print-bytecode and
+  // --trace-turbo-inlining, and bench Chrome's prepare() rows against main.
   function getLongMarkChainContext(baseStart: number, start: number): string {
     // The kept part starts after the grapheme or a run of marks, moves only forward and
     // never holds fewer than MARK_CHAIN_CONTEXT_UNITS.
