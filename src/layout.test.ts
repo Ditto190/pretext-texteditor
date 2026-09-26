@@ -2365,6 +2365,16 @@ describe('prepare invariants', () => {
         expect(collectStreamedLines(prepared, 1000)).toEqual(result.lines)
         expect(layout(prepare(text, FONT), 1000, LINE_HEIGHT).lineCount).toBe(2)
       }
+      // Collapsible spaces or a soft hyphen between two of them are an empty line, as in Safari.
+      const emptyLineTexts = ['aaa\u2028 \u2028bbb', 'aaa\u2029  \u2029bbb', 'aaa\u2028\u00AD\u2028bbb']
+      for (let i = 0; i < emptyLineTexts.length; i++) {
+        const text = emptyLineTexts[i]!
+        const prepared = prepareWithSegments(text, FONT)
+        const result = layoutWithLines(prepared, 1000, LINE_HEIGHT)
+        expect(result.lines.map(line => line.text)).toEqual(['aaa', '', 'bbb'])
+        expect(collectStreamedLines(prepared, 1000)).toEqual(result.lines)
+        expect(layout(prepare(text, FONT), 1000, LINE_HEIGHT).lineCount).toBe(3)
+      }
     } finally {
       profile.lineBreakScan = previous
     }
@@ -3416,11 +3426,13 @@ describe('layout invariants', () => {
     expect(collectStreamedLines(mixed, 200)).toEqual(mixedLines.lines)
   })
 
-  test('consecutive consumed-only chunks retain the visible tail and real empty lines', () => {
+  test('consecutive chunks of a soft hyphen or ZWSP each hold a line and keep the visible tail', () => {
     for (const control of ['\u00AD', '\u200B']) for (const prefix of ['', 'a\n']) for (const emptyLine of ['', '\n']) {
       const prepared = prepareWithSegments(prefix + control + '\n' + control + '\n' + emptyLine + 'b', FONT, { whiteSpace: 'pre-wrap' })
-      // A hard-break chunk that starts with ZWSP retains that source as a line.
-      const retained = control === '\u200B' ? [control, control] : []
+      // A hard break ends a line, as in Chrome, Safari and Firefox: a chunk that starts
+      // with ZWSP retains that source as a line, and one holding only a soft hyphen,
+      // which a line start consumes, is an empty line.
+      const retained = control === '\u200B' ? [control, control] : ['', '']
       const expected = [...(prefix ? ['a'] : []), ...retained, ...(emptyLine ? [''] : []), 'b']
       const batch = layoutWithLines(prepared, 100, LINE_HEIGHT)
       expect(batch.lines.map(line => line.text)).toEqual(expected)

@@ -776,6 +776,18 @@ counts, so no rule inside `layout()` can repair the Arabic case; it needs
 contextual widths during preparation. An Arabic-letter guard across SHY, deleting
 raw CR and treating CR as a zero-width break each lost other native successes.
 
+Pretext consumes a soft hyphen at a paragraph or hard-break start (Firefox drops
+it too; Chrome and Safari keep it, ENGINE_FOLLOWUPS.md), but the hard break after
+it ends a line in all three browsers: `a`, LF, soft hyphen, LF, `b` in pre-wrap
+paints three lines in each, the second with nothing visible, as do two soft
+hyphens there and two such chunks in a row. Pretext used to drop a chunk that a
+line start consumed whole, its hard break included; the line start now takes a
+hard break that ends a chunk holding nothing else as an empty line. The same goes
+for collapsible spaces between two U+2028 or U+2029, which Safari takes as hard
+breaks in normal white space too and gives an empty line. At the end of the text,
+with no hard break after it, the soft hyphens Chrome and Safari keep still take a
+line, where Firefox and Pretext give none (ENGINE_FOLLOWUPS.md).
+
 Keep the original source through analysis:
 normalization can erase distinctions needed here. Chrome's normal-mode FORM FEED
 followed by ZWSP occupies two lines at width 1 but one at width 100, even though

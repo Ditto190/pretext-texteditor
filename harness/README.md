@@ -237,7 +237,7 @@ origins, `sets/data/engine-facts.json`, the `rich.ts` header and five accepted-l
 | File | Cases | What it holds | Reported as |
 |---|---:|---|---|
 | `sample.ndjson` | 11,901 | The real-usage sample: 10,000 draws by `sets/weights.json`, plus the draws that bring 21 rare groups to 300 each, weighted back to their real share | The headline |
-| `catalog.ndjson` | 37,511 (18,101-19,514 per browser) | main's adversarial families (taken once), the rebuild's rule families, filed reports whose reporter measured the width, and every UAX #14 line-break class between the scripts apps mix, pairwise over the CSS settings the library takes | Behaviours modelled |
+| `catalog.ndjson` | 37,704 (18,190-19,599 per browser) | main's adversarial families (taken once), the rebuild's rule families, filed reports whose reporter measured the width, every UAX #14 line-break class between the scripts apps mix, pairwise over the CSS settings the library takes, and the shapes `ENGINE_FOLLOWUPS.md` names, with their neighbours | Behaviours modelled |
 | `facts.ndjson` | 10,018 (4,820-4,929) | The 28 engine facts `src/layout.test.ts` checks on plain text with a fake Canvas, in a browser | Behaviours modelled |
 | `rich.ndjson` | 3,334 (1,617-1,636) | Rich-inline paragraphs: styled runs, span edges, atomic chips and padded code spans, main's inline items (taken once), #120, #171, #177, #323 and main's engine facts about rich items | Behaviours modelled |
 | `census.ndjson` | 4,386 | The rebuild's census of real text (census-20260919): paragraphs of the 18 corpora at six widths, less the 300 in the smoke set | Pinned cases |
