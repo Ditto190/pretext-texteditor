@@ -47,11 +47,10 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 import {
-  createRuleBreakIterator,
   getBreakLanguage,
   getCategory,
   getSmallTrieValue,
-  nextRuleBoundary,
+  markRuleBoundaries,
   parseBreakRules,
   unpackTable,
   type BreakRules,
@@ -424,14 +423,13 @@ function getGeckoClusterEnds(classes: readonly number[]): number[] {
   return ends
 }
 {
-  const iterator = createRuleBreakIterator(chromiumChar)
   const check = (classes: readonly number[]) => {
     let text = ''
     for (let i = 0; i < classes.length; i++) text += String.fromCodePoint(classRepresentatives[classes[i]!]!)
-    iterator.text = text
-    iterator.position = 0
+    const flags = new Uint8Array(text.length + 1)
+    markRuleBoundaries(chromiumChar, text, flags)
     const ends: number[] = []
-    for (let b = nextRuleBoundary(iterator); b !== -1; b = nextRuleBoundary(iterator)) ends.push(b)
+    for (let b = 1; b <= text.length; b++) if (flags[b] === 1) ends.push(b)
     const geckoEnds = getGeckoClusterEnds(classes)
     if (ends.length !== geckoEnds.length || ends.some((end, i) => end !== geckoEnds[i])) {
       throw new Error(`Firefox's grapheme data ends clusters of ${JSON.stringify(text)} at ${geckoEnds.join(',')}, Chrome's char.brk at ${ends.join(',')}`)

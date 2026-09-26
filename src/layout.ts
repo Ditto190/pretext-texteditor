@@ -9,9 +9,9 @@ import { observeSegmentEntries, type SegmentEntryGeometry } from './entry-geomet
 import { getHanKerningTrims, textMayHanKern, type HanKerningTrims } from './han-kerning.js'
 import { findGraphemeEnds } from './graphemes.js'
 import type { CharTable } from './generated/engine-break-data.js'
+import { clearWordSegmenter } from './line-breaks.js'
 import {
   analyzeText,
-  clearAnalysisCaches,
   type SegmentBreakKind,
   type TextAnalysis,
   type WhiteSpaceMode,
@@ -919,7 +919,7 @@ export function layoutWithLines(prepared: PreparedTextWithSegments, maxWidth: nu
 }
 
 export function clearCache(): void {
-  clearAnalysisCaches()
+  clearWordSegmenter()
   clearMeasurementCaches()
 }
 

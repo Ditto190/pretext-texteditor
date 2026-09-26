@@ -1394,6 +1394,14 @@ test, Chrome 154's `layout()` read 5 to 7% slower on letter-spaced CJK and 3 to
 5% slower on pre-wrap chunks, and its `walkLineRanges()` of pre-wrap chunks 3 to
 6% faster, in every session of four runs.
 
+`segmentAtLineBreaks()` starts the first segment before its loop, which then runs
+from the second unit. Run from the first unit, with nothing else changed, the loop
+made Chrome 154 prepare the bench's pre-wrap chunks 9% slower and its long
+breakable runs 10% slower in both sessions, and Node 23's V8 9 to 16% slower
+offline; Firefox read the long runs 3% slower. Reordering or replacing the loop's
+`i > 0` test, or seeding the arrays with an element, didn't help. Peeling the first
+unit read as main.
+
 `layout()` needs only a count. On simple text, `countPreparedLines()` keeps just
 the line width and whether the line has content, with no line ends, pending
 breaks, paint widths or visitor calls. It keeps the simple walker's order: a
