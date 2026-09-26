@@ -16,7 +16,11 @@ if (!existsSync(join(pageDir, 'check.js'))) throw new Error('Run bun scripts/gra
 
 const requestId = randomUUID()
 let resolveReport: (text: string) => void = () => {}
-const report = new Promise<string>(resolve => { resolveReport = resolve })
+let failReport: (error: Error) => void = () => {}
+const report = new Promise<string>((resolve, reject) => {
+  resolveReport = resolve
+  failReport = reject
+})
 const server = Bun.serve({
   port: 0,
   hostname: '127.0.0.1',
@@ -36,7 +40,8 @@ const server = Bun.serve({
 })
 const query = new URLSearchParams({ requestId, fuzz: flag('fuzz') ?? '200000' })
 const base = `http://127.0.0.1:${server.port}`
-const session = await launch(browser, `${base}/index.html?${query}`, requestId, tabUrl => tabUrl.startsWith(base))
+// Chrome takes 4.6 GB for this page, past the 4 GB a harness job gets.
+const session = await launch(browser, `${base}/index.html?${query}`, requestId, tabUrl => tabUrl.startsWith(base), failReport, false, 6144)
 try {
   const text = await Promise.race([report, Bun.sleep(60 * 60_000).then(() => { throw new Error(`${browser}: no report in an hour`) })])
   const parsed = JSON.parse(text) as { status: string; message?: string }

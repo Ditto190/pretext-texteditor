@@ -181,7 +181,8 @@ async function session(browser: BrowserKind, docs: Planned[], bundles: Record<st
     if (Date.now() - lastActivity > 300_000) finish(new Error(`${browser}: no page activity for 5 minutes, at ${docs[n]?.id}`))
   }, 1000)
   try {
-    s = await launch(browser, base + docUrl(0), id, tabUrl => tabUrl.startsWith(base), foreground)
+    // Chrome's documents take up to 3.6 GB, near the 4 GB a harness job gets.
+    s = await launch(browser, base + docUrl(0), id, tabUrl => tabUrl.startsWith(base), finish, foreground, 6144)
     await finished
   } finally {
     clearInterval(watchdog)

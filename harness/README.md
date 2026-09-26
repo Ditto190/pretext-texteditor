@@ -162,8 +162,9 @@ order shuffled with a seed the run prints. Costs are per 1,000 UTF-16 units, and
   browser pin bump or on another machine. A row without one prints as uncalibrated.
 
 What each piece catches, as an app developer would see it. `bun test harness` plants each fault, running the commands
-with a stand-in browser. Two pieces run only in a real browser and aren't planted: the Firefox hold, and the page
-(`page.ts`) passing the browser's name to the recorder, which leaves Chrome's soft hyphen copies out:
+with a stand-in browser. Three pieces run only in a real browser and aren't planted: the Firefox hold, the page
+(`page.ts`) passing the browser's name to the recorder, which leaves Chrome's soft hyphen copies out, and the bound on a
+job's browser (Browsers):
 
 | Piece | Without it |
 |---|---|
@@ -194,6 +195,7 @@ with a stand-in browser. Two pieces run only in a real browser and aren't plante
 | Held handles and their copies after other prepares, `clearCache()` and `setLocale()`, and warm prepares against cold ones | A message a list prepared moves when another is prepared with other letter spacing, or a message prepared again at other letter spacing takes the first one's geometry |
 | Canvas calls and submitted units that grow at most linearly | A long word measures every prefix, so preparing it grows with the square of its length while the calls grow linearly |
 | `watchdog.ts`: past 1 GB (bun test 2 GB), a parent that is gone, or 30 s without a timer | A library under test whose walker runs away inside it fills the machine's memory from a process no test waits for any more, or hangs `bun test` |
+| A job's browser killed past 4 GB, and every open browser killed when the process exits | A page that allocates without end fills the machine's memory: Firefox's content process grew 1.35 GB a second, and Chrome's renderer stopped only at its 4.4 GB heap limit; Ctrl-C left 9 Chrome and 11 Firefox processes running |
 | `equal`'s calls and submitted units per set, here against there | Preparing a set gets slower with the same lines, unseen until someone times it |
 | Bench: base, candidate and a control copy of base in each document, in a shuffled order | A change's speed reads from sessions that drifted apart by 5-19%, so a slower row goes unseen or noise reads as a change |
 | Bench: new text read forward, never prepared twice | Browser and library caches make new text look as fast as seen text |
@@ -278,6 +280,15 @@ protocol; Firefox launches through LaunchServices, which macOS 27 needs.
 For about 12 s after it starts, Firefox changes fonts under a page (`PLATFORM_BUGS.md`, the late family names), so every
 Firefox job holds its first document until 15 s after launch. WebKit runs as webkit-host (`webkit-host/build.sh`), the
 system WebKit.framework that installed Safari runs, in a window below every other. Nothing takes focus.
+
+While a job runs, the harness sums the memory footprint of its browser's processes every 100 ms: the one it launched,
+their descendants, and webkit-host's web content process, which launchd starts and the host names on its stdout
+(`webkit-host/build.sh` records the source it built from, and the harness runs no other build). Past 4 GB it kills them
+and fails the job, as a page that allocates without end grows a content process by gigabytes a second and neither
+Firefox nor WebKit stops it; a check takes up to 2.3 GB. The bench and the grapheme check, whose pages take up to 3.6
+and 4.6 GB in Chrome, allow 6 GB. A browser that quits fails its job at once. The process kills every browser it still
+has open when it exits, on an interrupt, SIGTERM or hang-up too; one killed outright leaves Chrome and Firefox running,
+as they start through LaunchServices, outside its process group.
 
 Installed Safari opens a window of its own, only while another app is frontmost, and hands the focus back if it takes it;
 the window must stay uncovered while a job runs. It is recorded on a sample drawn from every set,
