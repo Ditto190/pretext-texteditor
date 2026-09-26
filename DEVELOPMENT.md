@@ -27,7 +27,8 @@ judged, the case sets and the pinned browsers.
   of new failures
 - `bun harness equal main` — whether `main`'s build, its `src/` and the harness adapter that predicts with it, predicts
   what this tree's does on every case: the same lines, widths and line text, line APIs' disagreements and Canvas calls
-  after preparing; it prints each case file's `measureText` calls and submitted units, here against there
+  after preparing; it prints each case file's `measureText` calls and submitted units, here against there. `--offline`
+  compares the two `src/` on a stand-in Canvas in four engine profiles in about 10 s, before any browser time
 - `bun harness repin chrome` (also `firefox`, `safari`) — the first thing to run when you come back to the project: pin
   the installed Chrome or Firefox as a copy named by its version (Safari can't be pinned, so webkit-host and installed
   Safari are recorded as the system has them), record every case into a scratch copy of the recordings, and print the

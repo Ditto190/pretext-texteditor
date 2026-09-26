@@ -6,7 +6,8 @@
 // record and gate draw with --seed=S (default 20260924).
 //   equal <ref>              whether this tree's build (src/ and the adapter) and <ref>'s predict the same lines, widths
 //                            and line text for every case, with the same line APIs' disagreements and Canvas calls after
-//                            preparing, and each set's measureText calls and submitted units here and there
+//                            preparing, and each set's measureText calls and submitted units here and there;
+//                            --offline: whether their src/ give the same results on a stand-in Canvas (offline-equal.ts)
 //   bench <base> [--sessions=3] [--rows=new,...] [--background]   <base>'s src/ timed against --lib's (bench/run.ts)
 //   repin <chrome|firefox|safari> [--write]   after a browser update: pin the installed Chrome or Firefox, record every
 //                            case into a scratch copy of the recordings, and print what changed and whether the browser's
@@ -444,6 +445,23 @@ export async function equal(browser: BrowserKind, cases: Case[], setOf: Map<stri
   return differ.length > 0
 }
 
+// equal --offline: harness/offline-equal.ts once for each of invariants.ts's engine profiles, side by side, each killed
+// after 60 s. It compares src/ only, as this tree's harness drives both builds.
+async function offlineEqual(ref: string, lib: string, io: Io): Promise<boolean> {
+  const theirs = srcOf(ref)
+  const results = await Promise.all(['blink', 'webkit', 'gecko', 'unknown'].map(async profile => {
+    const child = Bun.spawn([process.execPath, join(import.meta.dir, 'offline-equal.ts'), `--profile=${profile}`, `--a=${lib}`, `--b=${theirs}`], { stdout: 'pipe', stderr: 'inherit', timeout: 60_000, killSignal: 'SIGKILL' })
+    const [out, code] = await Promise.all([new Response(child.stdout).text(), child.exited])
+    if (code !== 0) throw new Error(`equal --offline in the ${profile} profile exited ${code}`)
+    return JSON.parse(out) as { profile: string; inputs: number; differ: number; parts: Record<string, number>; measuredOtherwise: number; calls: number[]; units: number[]; first: string[] }
+  }))
+  for (const r of results) {
+    const parts = Object.entries(r.parts).map(([part, n]) => `${part} ${n}`).join(', ')
+    io.log([`${r.profile}, offline: ${r.differ} of ${r.inputs} inputs differ from ${ref}${parts === '' ? '' : ` (${parts})`}, ${r.measuredOtherwise} measured otherwise; measureText calls ${r.calls[0]} / ${r.calls[1]}, units ${r.units[0]} / ${r.units[1]}, here against there`, ...r.first.map(line => `  ${line}`)].join('\n'))
+  }
+  return results.some(r => r.differ > 0)
+}
+
 // The case `explain` shows: a pinned one by id with its stored recording, or else a paragraph from the flags (or the one
 // case of a --cases file) recorded alone in a fresh document, and not kept.
 async function explainCase(browser: BrowserKind, cases: Case[], id: string | undefined, flags: Map<string, string>, lib: string): Promise<{ c: Case; recording: Recording | undefined }> {
@@ -526,6 +544,7 @@ async function main(): Promise<number> {
     }
     case 'equal': {
       if (positional[1] === undefined) throw new Error('equal needs a git ref')
+      if (flags.has('offline')) return await offlineEqual(positional[1], o.lib, io) ? 1 : 0
       const differ = await Promise.all(browsers.map(b => equal(b, cases, sets, positional[1]!, o, io)))
       return differ.some(Boolean) ? 1 : 0
     }

@@ -8,8 +8,9 @@ the per-engine rebuild's without inline structure.
 bun harness record [--only-new]         # the browser's layout of every case, sorted and shuffled, in fresh short documents
 bun harness check [--accept="<reason>"]  # predict every pinned case and score it; about a minute
 bun harness gate [--sample=1000]         # check, plus reverse-order predictions, a fresh re-recording and attribution
-bun harness equal <ref>                  # whether <ref>'s build predicts what this tree's does on every case, and each
-                                         # set's measureText calls and submitted units here and there (Equal)
+bun harness equal <ref> [--offline]      # whether <ref>'s build predicts what this tree's does on every case, and each
+                                         # set's measureText calls and submitted units here and there; --offline, their
+                                         # src/ on a stand-in Canvas in about 10 s (Equal)
 bun harness bench <base> [--sessions=3]  # <base>'s src/ timed against this tree's in the same documents (Bench)
 bun harness repin <chrome|firefox|safari> [--write]
                                          # after a browser update: the drift a new build brings (Browsers)
@@ -112,6 +113,17 @@ move, or its line APIs disagree otherwise or make other Canvas calls after prepa
 against there, and exits 1 on a difference. Line text goes out as a hash, which adapters before it send none of; texts
 are then not compared, and it says so.
 
+`--offline` runs no browser. `offline-equal.ts` gives this tree's `src/` and `<ref>`'s the same inputs in the same order
+on the invariants' stand-in Canvas, in one process per engine profile (Blink, WebKit, Gecko, and an engine Pretext
+doesn't recognize), in about 10 s: 15,000 plain and 1,500 rich seeded draws from the case files, each under its page
+language, and the bench's texts. An input differs when a field of `prepareWithSegments`' handle differs, or any line
+API's output, line text included, at 11 widths (a text over 4,000 units, a bench shape's, at its width and Infinity).
+It is measured otherwise when its measureText calls, in order, name another font, letter spacing or text. The stand-in's
+widths also move with each pair of neighbouring units, so a text measured whole and in pieces measures differently. It
+prints per profile the inputs that differ and in which parts, those measured otherwise and each build's calls and units,
+and exits 1 when an input differs. This tree's harness drives both builds, so it compares `src/` only, and only on a
+stand-in: `equal` in the browsers still decides.
+
 ## Offline invariants
 
 `bun test harness` also runs `invariants.ts` in one process per engine profile (Blink, WebKit, Gecko, and an engine
@@ -128,7 +140,8 @@ needn't survive a JSON round trip. The Blink and Gecko processes run under a des
 `letterSpacing` on the context, as Chrome's and Firefox's have; without both, preparation skips the geometry of a fresh
 line's first graphemes that those browsers take, and a held handle changed by a later prepare went unseen in 500 draws.
 `invariants.test.ts` plants a fault in a copy of `src/` for every check but coverage, round trip and asking Canvas
-nothing after preparing. Every walk and stream stops after a line per source unit, plus one, as a failure, and a range
+nothing after preparing, and two that `equal --offline` must see: line text every text API gets wrong alike, and each
+segment measured twice. Every walk and stream stops after a line per source unit, plus one, as a failure, and a range
 or rich fragment that names no place in its text fails before its text is built. A walker that never returns inside the
 library can take a gigabyte a second, or spin without allocating, so four processes run at a time, each is killed after
 10 s, all of them once one ends without its report, and `watchdog.ts` kills a process that holds more than 1 GB (bun
@@ -220,6 +233,7 @@ job's browser (Browsers):
 | `equal`'s calls and submitted units per set, here against there | Preparing a set gets slower with the same lines, unseen until someone times it |
 | `equal`: each build's own adapter, its line text, disagreements and Canvas calls after preparing | A change to the adapter shows no difference, and neither do a line text every text API gets wrong alike, such as a hyphen left out at a soft hyphen, or a new disagreement |
 | `equal`: cases that vary between runs listed apart | main against itself differs, on Chrome's system-ui label |
+| `equal --offline`: the prepared handle and each input's measureText calls in order, in four engine profiles | A change to preparation that no line shows, or that measures other text to the same widths, waits for a browser run to show, and the profile of an engine Pretext doesn't recognize is compared nowhere |
 | Bench: base, candidate and a control copy of base in each document, in a shuffled order | A change's speed reads from sessions that drifted apart by 5-19%, so a slower row goes unseen or noise reads as a change |
 | Bench: new text read forward, never prepared twice | Browser and library caches make new text look as fast as seen text |
 | A case without a recording blocks | A generator change that renames ids unpins cases silently |

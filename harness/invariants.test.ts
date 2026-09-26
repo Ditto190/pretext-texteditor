@@ -1,6 +1,6 @@
 // The offline invariants (invariants.ts) in every engine profile, and faults no browser recording shows, each planted in
-// a copy of src/: one for every check but coverage, round trip and asking Canvas nothing after preparing. The test name
-// says what an app developer would see if it went unseen.
+// a copy of src/: one for every check but coverage, round trip and asking Canvas nothing after preparing; and two faults
+// `equal --offline` (offline-equal.ts) must see. The test name says what an app developer would see if it went unseen.
 import { afterAll, describe, expect, test } from 'bun:test'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -41,19 +41,19 @@ async function head(stream: ReadableStream<Uint8Array>): Promise<string> {
   return Buffer.concat(chunks).subarray(0, 1 << 20).toString()
 }
 
-async function run(profile: Profile, lib?: string, args: string[] = []): Promise<Result> {
+async function run<T = Result>(profile: Profile, lib?: string, args: string[] = [], script = 'invariants.ts'): Promise<T> {
   if (slots > 0) slots--
   else await new Promise<void>(resolve => waiting.push(resolve))
-  const what = `invariants --profile=${profile}${lib === undefined ? '' : ` --lib=${lib}`}`
+  const what = `${script} --profile=${profile}${lib === undefined ? '' : ` --lib=${lib}`}`
   try {
     // By length, or TypeScript takes `stopped` to stay '' across the await below, where another child may set it.
     if (stopped.length > 0) throw new Error(`${what} didn't start, as ${stopped}`)
-    const child = Bun.spawn([process.execPath, join(import.meta.dir, 'invariants.ts'), `--profile=${profile}`, ...(lib === undefined ? [] : [`--lib=${lib}`]), ...args], { stdout: 'pipe', stderr: 'pipe', timeout: 10_000, killSignal: 'SIGKILL' })
+    const child = Bun.spawn([process.execPath, join(import.meta.dir, script), `--profile=${profile}`, ...(lib === undefined ? [] : [`--lib=${lib}`]), ...args], { stdout: 'pipe', stderr: 'pipe', timeout: 10_000, killSignal: 'SIGKILL' })
     running.add(child)
     const start = performance.now()
     const [out, err, code] = await Promise.all([head(child.stdout), head(child.stderr), child.exited])
     running.delete(child)
-    if (code === 0) return JSON.parse(out) as Result
+    if (code === 0) return JSON.parse(out) as T
     const how = child.signalCode === null ? `exited ${code}` : stopped !== '' ? `was stopped when ${stopped}` : performance.now() - start >= 10_000 ? 'ran over 10 s' : 'was killed'
     killAll(`${what} ${how}`)
     throw new Error(`${what} ${how}: ${err}`)
@@ -128,6 +128,19 @@ describe('the line APIs offline, in every engine profile', () => {
       expect(result.failures).toEqual([])
     }, 30_000)
   }
+})
+
+describe('equal --offline', () => {
+  type Equal = { differ: number; parts: Record<string, number>; measuredOtherwise: number }
+  const offline = (lib: string): Promise<Equal> => run<Equal>('unknown', undefined, [`--a=${join(import.meta.dir, '../src')}`, `--b=${lib}`, '--draws=500', '--rich=50', '--bench=none'], 'offline-equal.ts')
+  test('line text every text API gets wrong alike differs, and a prepare that measures each segment twice is measured otherwise with the same results: a build that paints no hyphen at a soft-hyphen break would equal main, or one that measures more pass unseen', async () => {
+    const [hyphen, twice] = await Promise.all([
+      offline(planted('offline-hyphen', 'line-text.ts', [[/\? text \+ '-' : text/, '? text : text']])),
+      offline(planted('offline-twice', 'measurement.ts', [[/width: ctx\.measureText\(seg\)\.width,/, 'width: (ctx.measureText(seg), ctx.measureText(seg).width),']])),
+    ])
+    expect([hyphen.differ > 0, hyphen.parts['prepareWithSegments'], hyphen.measuredOtherwise]).toEqual([true, undefined, 0])
+    expect([twice.differ, twice.measuredOtherwise > 0]).toEqual([0, true])
+  }, 30_000)
 })
 
 describe('planted faults', () => {
