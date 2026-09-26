@@ -1388,13 +1388,14 @@ interleaved, while main's loop on the same prepared text took 1.0. Changing
 main's loop one step at a time toward it slowed only that step. Starting each
 line at 0 gave 0.87 to 1.04 there.
 
-The full walker lays out text with letter spacing, soft hyphens, controls, tabs,
-hard breaks or preserved spaces in every API. Its line state lived in variables
-its nested helpers closed over, which V8 boxes: each write cost 12-14ns there
-against about 1ns for a local, several per segment. It now keeps that state in
-locals of one function, reads each segment's kind, whether it takes letter
-spacing and whether the scan gives a break before it from one byte, and ends a
-line's walk at the next hard break instead of looking up chunk records.
+The full walker lays out text with letter spacing, soft hyphens, control segments,
+tabs, hard breaks or preserved spaces in every API, and in the line APIs text
+with a segment boundary the scan doesn't break at (below). Its line state lived
+in variables its nested helpers closed over, which V8 boxes: each write cost
+12-14ns there against about 1ns for a local, several per segment. It now keeps
+that state in locals of one function, reads each segment's kind, whether it takes
+letter spacing and whether the scan gives a break before it from one byte, and
+ends a line's walk at the next hard break instead of looking up chunk records.
 JavaScriptCore types an infinite default loop bound as a double: Bun walked
 letter-spaced and pre-wrap text 30-65% slower with one. Together these halve
 `layout()` of letter-spaced CJK in all three browsers and take pre-wrap
@@ -1404,6 +1405,66 @@ the line ends, pending breaks and paint widths the line APIs report, which a cou
 doesn't need. One walker for every text would make chat `layout()` two to seven
 times main's time, and chat's line APIs 1.4 to 7.2 times as slow as on the simple
 stepper, several of them then slower than main, so the simple walkers stay.
+
+Text of the simple walkers' kinds with a segment boundary the scan doesn't break
+at takes the full walker in the line APIs. `layout()` counts it with the simple
+stepper instead, and the full walker steps a line again where the stepper ended it
+at such a boundary, before the segment or after the space before it. On the old
+benchmark page's control row, 46 of 120 texts in the Gecko profile have one: 32
+before NEL (UAX #14 LB6), as in the Blink and WebKit scans, and 14 more after a
+space before a bidi control. Firefox leaves bidi controls out of the text runs it
+breaks (IsDiscardable, nsTextFrameUtils.cpp:32-49), so its break lands on the next
+character it keeps, after the control. While the full walker counted those texts,
+1,748 of the row's 4,049 segments, at five times the counter's cost per segment,
+Firefox's `layout()` of the row took 2.2 times the time of main before #340, which
+counted them with its counter. Stepping them, Firefox counts the row in 0.44 of
+main's time, Chrome in 0.59 and Safari, where NEL is a control segment, in 0.96.
+Against main before #340 the ratios move with what else the page runs: Firefox
+read 0.85 to 0.90 of its time at the benchmark's widths on pages of four
+libraries, 0.98 to 1.01 at a new width every pass, and about 1.07 on the full page
+of six; Chrome read 0.80 to 0.83. Paragraphs of 12 of those texts take 0.22 to
+0.24 of main's time in Firefox, 0.17 to 0.28 in Chrome and 0.97 to 0.98 in Safari.
+The other rows' `layout()` reads 0.97 to 1.04 of main's time in Chrome, 0.99 to
+1.03 in Firefox and 0.92 to 0.99 in Safari, where a second copy of main reads 0.96
+to 1.05, and preparation doesn't move either (same-document interleaved,
+foreground, two sessions per browser).
+
+Chrome's line APIs pay a little for it. Once `layout()` has counted such text with
+the simple stepper, Chrome's `walkLineRanges()` of chat messages and other simple
+text, which steps its lines with the same function, takes 2 to 4% more time than a
+second copy of main (same-document interleaved, foreground, 12 sessions over four
+page setups). The cost comes from the count sharing the stepper, by a mechanism
+not found. V8 does turn the stepper's six reads of the handle polymorphic once it
+has seen both kinds, since a `prepare()` handle has no `segments` or `kinds`
+(Node's `--log-ic`), but one shape for both kinds of handle, with those two fields
+null on a `prepare()` handle, reads the same as two shapes in Chrome, and makes
+Firefox's `walkLineRanges()` of simple text 1.01 to 1.14 of main's time, whether
+or not `layout()` steps such text, and whether the shape comes from one literal or
+from adding the two fields after it; a build with two literals holding the same
+fields takes 0.98 to 1.01. Firefox's walks swing by 10% with what else the page
+runs: with two shapes, it walks chat in 0.86 to 0.93 of main's time on a
+four-library page and 0.98 to 1.02 on the full one. A private copy of the stepper
+for the count, 77 more lines, is the only cure measured, and a few percent of JIT
+cost doesn't pay for a second stepper, so Chrome keeps it (ENGINE_FOLLOWUPS.md).
+
+A check inside the counter's loop, handing such a line to the full walker, counted
+the row as fast, but it slowed the count of all other text in Firefox and Chrome:
+up to 1.6 and 1.3 times main's time when the counter went on after the full
+walker's lines, and 5 to 26% more in Firefox when it handed the full walker the
+rest of the text or all of it, even with the hand-off after the loop. The check
+alone, with that text kept off the counter, and the counter taking that text
+without the check each cost nothing: the loop slows once the check has ever held.
+The same check in the simple stepper, which the count reaches only for that text,
+slowed Chrome's `walkLineRanges()` of other text by 4 to 5%, a little more than
+the count's own stepping costs it (above), so the count checks where each stepped
+line ended instead. Letting the stepper hand such lines off in the line APIs too
+would give the same lines, but a line whose space overflows paints the widths
+before the space summed there, and the sum after the space less the space in the
+full walker, which differ in the last bits: in 99 of 96,470 offline line checks in
+the Gecko profile. No harness prediction moves in any browser, though the harness
+compares widths exactly: the one webkit-host prediction that differed, Ethiopic
+text in a `system-ui` font list on the simple path, is one whose widths
+webkit-host moves with what the process measured before (harness/README.md).
 
 A fresh page pays to compile the whole library before its first `prepare()`. In
 Firefox 156, `new Function` over the fresh-page probe's minified bundle took 4.5 to

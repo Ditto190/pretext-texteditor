@@ -3620,6 +3620,54 @@ describe('layout invariants', () => {
     }
   })
 
+  test('countPreparedLines counts text with boundaries the scan does not break as the full walker does', () => {
+    const profile = getEngineProfile()
+    const previous = profile.lineBreakScan
+    const texts = [
+      // No break before NEL (UAX #14 LB6), after text or a space.
+      'alpha\u0085beta gamma \u0085delta epsilon\u0085',
+      // C0 controls stay their own segments, with no break on either side.
+      'one\u0001two three\u0007 four fivesixseven\u0001eight',
+      // A mark after a control stays apart from the text after it.
+      'x\u0001\u0301yz abc\u0001\u0301',
+      // Gecko breaks after a bidi control that follows a space, not before it.
+      'said \u2066quoted\u2069 words and \u200Emore \u202Bnested\u202C text',
+    ]
+    const scans = ['blink', 'gecko'] as const
+    try {
+      for (let scanIndex = 0; scanIndex < scans.length; scanIndex++) {
+        const scan = scans[scanIndex]!
+        profile.lineBreakScan = scan
+        clearCache()
+        for (let textIndex = 0; textIndex < texts.length; textIndex++) {
+          const text = texts[textIndex]!
+          const prepared = prepareWithSegments(text, FONT)
+          const internal = prepared as unknown as { widths: number[], simpleLineWalkFastPath: boolean, simpleLineCountFastPath: boolean }
+          // The line APIs take the full walker, and layout() the simple stepper.
+          if (scan === 'gecko' || textIndex < 3) expect(internal.simpleLineWalkFastPath).toBe(false)
+          expect(internal.simpleLineCountFastPath).toBe(true)
+          const compact = prepare(text, FONT)
+          const widths = [-5, 0, 0.5, 1]
+          for (let width = 2; width <= 300; width += 1.5) widths.push(width)
+          let prefix = 0
+          for (let i = 0; i < internal.widths.length; i++) {
+            prefix += internal.widths[i]!
+            widths.push(prefix - 0.001, prefix, prefix + 0.001)
+          }
+          for (let widthIndex = 0; widthIndex < widths.length; widthIndex++) {
+            const width = widths[widthIndex]!
+            const walked = walkPreparedLinesRaw(prepared, width)
+            expect({ scan, text, width, count: countPreparedLines(prepared, width) }).toEqual({ scan, text, width, count: walked })
+            expect(layout(compact, width, LINE_HEIGHT).lineCount).toBe(walked)
+          }
+        }
+      }
+    } finally {
+      profile.lineBreakScan = previous
+      clearCache()
+    }
+  })
+
   test('line counts preserve leading and resumed zero-width spaces at emergency widths', () => {
     for (const [text, expected] of [
       [' \u200Babc', ['\u200B', 'a', 'b', 'c']],

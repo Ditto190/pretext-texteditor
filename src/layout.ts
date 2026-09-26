@@ -333,7 +333,10 @@ function measureAnalysis(
   // An engine's scan makes one prepared segment per analysis segment.
   const breaksBefore = analysis.breaksBefore
   const segmentFlags = new Uint8Array(analysis.kinds.length)
-  let simpleLineWalkFastPath = !hasLetterSpacing && breaksBefore === null
+  // Text of the simple walkers' kinds without letter spacing. They lay it out where
+  // the scan breaks at every segment boundary, and layout() counts it with the
+  // simple stepper where it doesn't (countPreparedLines).
+  let simpleKinds = !hasLetterSpacing
   const breakableFitAdvances: (number[] | null)[] = []
   let entryGeometry: (SegmentEntryGeometry | null)[] | null = null
   let lineStartProhibitions: (number[] | null)[] | null = null
@@ -402,9 +405,10 @@ function measureAnalysis(
     prohibitions: number[] | null = null,
   ): void {
     if (kind !== 'text' && kind !== 'space' && kind !== 'zero-width-break') {
-      simpleLineWalkFastPath = false
+      simpleKinds = false
     }
-    // Only the full walker and rich-inline layout read where the scan gives no break.
+    // The full walker, layout()'s count and rich-inline layout read where the scan
+    // gives no break.
     const index = widths.length
     segmentFlags[index] = getKindCode(kind) | (hasLetterSpacing && spacingGraphemeCount > 0 ? SPACED : 0) |
       (breaksBefore === null ? 0 : breaksBefore[index] ? RETURNABLE : UNBROKEN)
@@ -597,7 +601,8 @@ function measureAnalysis(
   const prepared = {
     widths,
     segmentFlags,
-    simpleLineWalkFastPath,
+    simpleLineWalkFastPath: simpleKinds && breaksBefore === null,
+    simpleLineCountFastPath: simpleKinds,
     breakableFitAdvances,
     entryGeometry,
     letterSpacing,
