@@ -138,7 +138,19 @@ any segment boundary instead gave `a`, U+00AD, WJ, `b` at 0px a line holding onl
 soft hyphen, and the second installed gate lost 9,068 line-count passes that way.
 Combining marks after zero-width glue or a control shape after the grapheme before
 them and what separates them, so they're measured as that source with the marks, minus
-the source, and take no letter spacing of their own. Measured alone, U+0301 took 2.97px
+the source, and take no letter spacing of their own. Measuring every run after the whole
+chain was quadratic, so past 96 UTF-16 units of what separates them, a run is measured
+after the grapheme and the fewest of the chain's last runs, each with the separators
+before it, that hold at least 96 units. Safari gives a run a width that depends on how
+far it sits from the grapheme, up to 61 units in the chains measured: after `क`, soft
+hyphens and U+0323 in 16px Georgia, the first mark takes 5.2px, the next 29 take 1.6px
+and the rest none. Keeping at most the last 96 units instead left only the separator
+after a run of 95 marks or more, and Safari then gave such runs up to 7.1px more than
+after the whole chain. In Chrome 154, Safari 27 and Firefox 156.0.1, runs measured
+this way within 0.0005px of their widths after the whole chain over 10,560 chains of
+one- and two-code-point runs in 24 fonts, and within 0.002px over 2,400 chains of six
+runs of 1 to 400 marks in 5 fonts, while leaving out the grapheme too took up to 25px
+off a run (#351). Measured alone, U+0301 took 2.97px
 in 16px Arial. Measured on the grapheme without the glue, Canvas composed the pair or drew
 it in another font: `a` with U+0323 in 16px Amiri took 2.22px more than `a`, where
 Chrome paints `a`, U+00AD, U+0301, U+00AD, U+0323, `b` as wide as `ab`. WebKit's
@@ -1347,12 +1359,26 @@ history audit found these traps; the commits retain the implementation details:
 | Measuring every growing Canvas prefix | `fcf9c62` |
 | Searching hard-break chunks from the beginning for every streamed line | `2c52171` |
 | Retrying whitespace/font-size suffix regexes; restarting preferred-hyphen searches | [#221](https://github.com/chenglou/pretext/pull/221) |
+| Measuring each run of a chain of combining marks after the whole chain before it | `MARK_CHAIN_CONTEXT_UNITS` in `src/layout.ts` (#351) |
 
 The regex failures involved *internal* whitespace followed by content and long
 digit runs without `px`, not just long trailing whitespace or valid font strings.
 The preferred-break failure needed one long hyphenated run producing many lines.
 An arbitrary continuation must seek to its starting boundary; an already
 positioned scan can carry its index.
+
+A long chain of combining marks is trimmed in `getLongMarkChainContext()`, which
+runs only for a context longer than 96 units, apart from `getMarkContext()`, which
+`prepare()` calls for every segment. V8 inlines a function into its caller only
+while its bytecode stays under 460 bytes (`--max-inlined-bytecode-size`). In Node
+23's V8 12.9, over the bench's messages and worst-case shapes, main's
+`getMarkContext()` took 326 bytes and was inlined into `measureAnalysis()`; with
+the trimming loop inside, it took 519 bytes and wasn't (`--trace-turbo-inlining`),
+and Chrome 154's `prepare()` took 0.4 to 2.6% more time than main on most bench
+rows in every session, 1.8% on seen Arabic and 2.6% on letter-spaced CJK, while
+Firefox and Safari didn't move. With the loop apart, `getMarkContext()` takes 376
+bytes and is inlined again, and every Chrome row reads within noise: seen Arabic
+−0.2% and letter-spaced CJK +0.6% (#351).
 
 `layout()` needs only a count. On simple text, `countPreparedLines()` keeps just
 the line width and whether the line has content, with no line ends, pending
