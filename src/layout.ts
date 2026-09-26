@@ -320,6 +320,11 @@ function measureAnalysis(
     markBaseStart = baseStart
     if (baseStart < 0) return null
     const start = analysis.starts[analysisIndex]!
+    return start - baseStart > MARK_CHAIN_CONTEXT_UNITS ? getLongMarkChainContext(baseStart, start) : analysis.normalized.slice(baseStart, start)
+  }
+  // Apart from getMarkContext(), which prepare() calls for every segment, so that V8
+  // still inlines that one there (RESEARCH.md, Keeping Work Bounded).
+  function getLongMarkChainContext(baseStart: number, start: number): string {
     // The kept part starts after the grapheme or a run of marks, moves only forward and
     // never holds fewer than MARK_CHAIN_CONTEXT_UNITS.
     for (let k = markChainKept + 1; start - analysis.starts[k]! >= MARK_CHAIN_CONTEXT_UNITS; k++) {
