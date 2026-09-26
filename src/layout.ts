@@ -145,7 +145,7 @@ const controlCharacterRe = /^[\p{Cc}\u2028\u2029]$/u
 // the grapheme (getMarkContext): measured after the whole chain, a long chain prepared in
 // time that grows with the square of its length. Safari gives a run a width that depends
 // on how far it sits from the grapheme, up to 61 units in the chains measured
-// (VALIDATION.md), so a context that keeps fewer moves widths there.
+// (RESEARCH.md), so a context that keeps fewer moves widths there.
 const MARK_CHAIN_CONTEXT_UNITS = 96
 
 function needsComplexTextPath(text: string): boolean {
@@ -294,7 +294,7 @@ function measureAnalysis(
   // chain's last runs, each with the separators before it, that hold at least that many
   // units: in Chrome, Safari and Firefox, runs of 1 to 400 marks then measure as they do
   // after the whole chain, to 0.002px, and without the grapheme some took 25px less
-  // (VALIDATION.md).
+  // (RESEARCH.md).
   let markRunIndex = -1
   let markBaseStart = -1 // where that run's grapheme starts in the normalized text, or -1
   let markChainStart = -1 // the segment after that grapheme

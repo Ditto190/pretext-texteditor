@@ -4,24 +4,30 @@
 //   check [--accept=<why>]   predict every pinned case in the browser and score it against the recordings
 //   gate [--sample=N]        check, plus a prediction in reverse order, N cases recorded again, and attribution
 // record and gate draw with --seed=S (default 20260924).
-//   equal <ref>              whether this tree's src/ and <ref>'s predict the same lines for every case
+//   equal <ref>              whether this tree's src/ and <ref>'s predict the same lines for every case, and each set's
+//                            measureText calls and submitted units here and there
+//   bench <base> [--sessions=3] [--rows=new,...] [--background]   <base>'s src/ timed against --lib's (bench/run.ts)
 //   explain <id>             one case's recorded lines against the predicted ones, character by character
+//   explain --text=<text> [--width=320] [--font="16px Arial"] [--lang=en] [--white-space=pre-wrap] [--word-break=keep-all]
+//           [--letter-spacing=<px>]  the same for a paragraph with no recording, or for the one case of a --cases file:
+//                            recorded alone in a fresh document, never kept
 // --lib=<dir> predicts with another build's src/ directory. Default browsers: chrome, firefox and webkit-host, side by side;
 // explain takes one, chrome by default.
-import { execFileSync } from 'node:child_process'
 import { mkdirSync, readdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import {
   accept, attribute, checkBlocks, freshRecordings, gateBlocks, gateSample, headline, judge, observable, outsideClaims, pinning, predictionChange, reverseOrder, score, SEED,
   shown, shrinkWrapShort, widthBand, type Outcome,
 } from './score.ts'
+import { bench, ROWS } from './bench/run.ts'
+import { srcOf } from './bench/lib.ts'
 import { LIB, runJob, type Job, type JobResult, type Mode } from './run.ts'
-import { createRng } from './sets/build.ts'
+import { createRng, makeCase, paragraph, parseFont } from './sets/build.ts'
 import {
   acceptedPath, assertSameEnvironment, caseText, historyPath, readAccepted, readCases, readHistory, readRecordings, readVarying, recordingText,
   recordingsPath, splitHistory, varyingPath, writeAccepted, writeHistory, writeRecordings, type Accepted, type Varying,
 } from './store.ts'
-import { BROWSERS, type BrowserKind, type Case, type Prediction, type Recording } from './types.ts'
+import { BROWSERS, type BrowserKind, type Case, type Paragraph, type Prediction, type Recording } from './types.ts'
 
 // A document holds this many cases while recording, so each case sees a short page history.
 const RECORD_DOCUMENT = 200
@@ -32,7 +38,7 @@ const ATTRIBUTE_AT_MOST = 200
 // What the flags ask for. `sample`: --sample's count, or null. `partial`: the run covers some case files only (--cases),
 // so it leaves the other cases' entries alone.
 export type Options = { lib: string; seed: number; sample: number | null; accept: string; partial: boolean; onlyNew: boolean }
-export type Args = { command: string | undefined; positional: string[]; browsers: BrowserKind[]; cases: string | null; options: Options }
+export type Args = { command: string | undefined; positional: string[]; browsers: BrowserKind[]; cases: string | null; options: Options; flags: Map<string, string> }
 
 export function parseArgs(args: readonly string[]): Args {
   const flags = new Map<string, string>()
@@ -50,25 +56,27 @@ export function parseArgs(args: readonly string[]): Args {
     lib: resolve(flags.get('lib') ?? LIB), seed: Number(flags.get('seed') ?? SEED), sample: flags.has('sample') ? Number(flags.get('sample')) : null,
     accept: flags.get('accept') ?? '', partial: flags.has('cases'), onlyNew: flags.has('only-new'),
   }
-  return { command, positional, browsers, cases: flags.get('cases') ?? null, options }
+  return { command, positional, browsers, cases: flags.get('cases') ?? null, options, flags }
 }
 
 // Where a command reads and writes the harness's files, how it runs a job in a browser, and where it prints. The tests
 // give it a folder of their own and a stand-in browser.
 export type Io = { root: string; run: <T extends Recording | Prediction>(job: Job) => Promise<JobResult<T>>; log: (text: string) => void }
 
-function loadCases(files: readonly string[]): Case[] {
+// The cases, and each case's set: the name of its case file.
+function loadCases(files: readonly string[]): { cases: Case[]; sets: Map<string, string> } {
   const cases: Case[] = []
-  const ids = new Set<string>()
+  const sets = new Map<string, string>()
   for (let f = 0; f < files.length; f++) {
     const list = readCases(files[f]!)
+    const set = basename(files[f]!, '.ndjson')
     for (let i = 0; i < list.length; i++) {
-      if (ids.has(list[i]!.id)) throw new Error(`${files[f]}: duplicate case ${list[i]!.id}`)
-      ids.add(list[i]!.id)
+      if (sets.has(list[i]!.id)) throw new Error(`${files[f]}: duplicate case ${list[i]!.id}`)
+      sets.set(list[i]!.id, set)
       cases.push(list[i]!)
     }
   }
-  return cases
+  return { cases, sets }
 }
 
 // webkit-host runs installed Safari's engine, so it takes Safari's cases.
@@ -330,32 +338,56 @@ export async function gate(browser: BrowserKind, cases: Case[], o: Options, io: 
 
 // ---- equal and explain ----
 
-async function equal(browser: BrowserKind, cases: Case[], ref: string, lib: string): Promise<boolean> {
-  const sha = execFileSync('git', ['rev-parse', ref], { encoding: 'utf8' }).trim()
-  const dir = resolve(import.meta.dir, `../.artifacts/harness-equal/${sha}`)
-  mkdirSync(dir, { recursive: true })
-  execFileSync('sh', ['-c', `git archive ${sha} src | tar -x -C "${dir}"`])
+async function equal(browser: BrowserKind, cases: Case[], setOf: Map<string, string>, ref: string, lib: string): Promise<boolean> {
   const list = cases.filter(c => applies(c, browser))
   const mine = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib })
-  const theirs = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib: join(dir, 'src') })
+  const theirs = await runJob<Prediction>({ browser, mode: 'predict', cases: list, documentSize: WHOLE, lib: srcOf(ref) })
   const differ = list.filter(c => predictionChange(mine.results.get(c.id)!, theirs.results.get(c.id)!) !== 'same')
-  let callsMine = 0
-  let callsTheirs = 0
+  // Per case file, measureText calls and the units submitted to them, here and there.
+  const sets = new Map<string, number[]>()
   for (let i = 0; i < list.length; i++) {
+    const set = setOf.get(list[i]!.id)!
+    const counts = sets.get(set) ?? [0, 0, 0, 0]
+    sets.set(set, counts)
     const a = mine.results.get(list[i]!.id)!
     const b = theirs.results.get(list[i]!.id)!
-    if ('lines' in a) callsMine += a.prepareCalls + a.lineCalls
-    if ('lines' in b) callsTheirs += b.prepareCalls + b.lineCalls
+    if ('lines' in a) { counts[0]! += a.prepareCalls + a.lineCalls; counts[2]! += a.prepareUnits }
+    if ('lines' in b) { counts[1]! += b.prepareCalls + b.lineCalls; counts[3]! += b.prepareUnits }
   }
-  console.log(`${browser}: ${differ.length} of ${list.length} predictions differ from ${ref} (${sha.slice(0, 10)}); measureText calls ${callsMine} here, ${callsTheirs} there`)
+  console.log(`${browser}: ${differ.length} of ${list.length} predictions differ from ${ref}; measureText calls and units submitted to them, here against there:`)
+  for (const [set, [a, b, ua, ub]] of [...sets].sort((x, y) => (x[0] < y[0] ? -1 : 1))) console.log(`  ${set}: calls ${a} / ${b}, units ${ua} / ${ub}`)
   for (let i = 0; i < differ.length && i < 20; i++) console.log(`  ${differ[i]!.id}  ${differ[i]!.family}`)
   return differ.length > 0
 }
 
-async function explain(browser: BrowserKind, cases: Case[], id: string, lib: string): Promise<void> {
-  const c = cases.find(x => x.id === id)
-  if (c === undefined) throw new Error(`No case ${id}`)
-  const recording = readRecordings(recordingsPath(import.meta.dir, browser))?.recordings.get(id) ?? readHistory(historyPath(import.meta.dir, browser))?.cases.get(id)?.[0]
+// The case `explain` shows: a pinned one by id with its stored recording, or else a paragraph from the flags (or the one
+// case of a --cases file) recorded alone in a fresh document, and not kept.
+async function explainCase(browser: BrowserKind, cases: Case[], id: string | undefined, flags: Map<string, string>, lib: string): Promise<{ c: Case; recording: Recording | undefined }> {
+  if (id !== undefined) {
+    const c = cases.find(x => x.id === id)
+    if (c === undefined) throw new Error(`No case ${id}`)
+    return { c, recording: readRecordings(recordingsPath(import.meta.dir, browser))?.recordings.get(id) ?? readHistory(historyPath(import.meta.dir, browser))?.cases.get(id)?.[0] }
+  }
+  let c: Case
+  const text = flags.get('text')
+  if (text !== undefined) {
+    const lang = flags.get('lang') ?? 'en'
+    const p = paragraph({
+      font: parseFont(flags.get('font') ?? '16px Arial'), lang, width: Number(flags.get('width') ?? 320), letterSpacing: Number(flags.get('letter-spacing') ?? 0),
+      whiteSpace: (flags.get('white-space') ?? 'normal') as Paragraph['whiteSpace'], wordBreak: (flags.get('word-break') ?? 'normal') as Paragraph['wordBreak'],
+    }, [text])
+    c = makeCase('explain', { family: 'explain', origin: 'bun harness explain', pageLang: lang, paragraph: p })
+  } else if (cases.length === 1 && flags.has('cases')) {
+    c = cases[0]!
+  } else {
+    throw new Error('explain needs a case id, --text=, or a --cases file of one case')
+  }
+  const job = await runJob<Recording>({ browser, mode: 'record', cases: [c], documentSize: ALONE, lib })
+  return { c, recording: job.results.get(c.id) }
+}
+
+async function explain(browser: BrowserKind, c: Case, recording: Recording | undefined, lib: string): Promise<void> {
+  const id = c.id
   if (recording === undefined) throw new Error(`${browser} has no recording of ${id}`)
   if ('error' in recording) throw new Error(`${browser} couldn't record ${id}: ${recording.error}`)
   const job = await runJob<Prediction>({ browser, mode: 'predict', cases: [c], documentSize: ALONE, lib })
@@ -392,9 +424,9 @@ async function explain(browser: BrowserKind, cases: Case[], id: string, lib: str
 }
 
 async function main(): Promise<number> {
-  const { command, positional, browsers, cases: file, options: o } = parseArgs(process.argv.slice(2))
+  const { command, positional, browsers, cases: file, options: o, flags } = parseArgs(process.argv.slice(2))
   const dir = join(import.meta.dir, 'cases')
-  const cases = loadCases(file !== null ? [file] : readdirSync(dir).filter(name => name.endsWith('.ndjson')).sort().map(name => join(dir, name)))
+  const { cases, sets } = loadCases(file !== null ? [file] : readdirSync(dir).filter(name => name.endsWith('.ndjson')).sort().map(name => join(dir, name)))
   const io: Io = { root: import.meta.dir, run: runJob, log: text => console.log(text) }
   switch (command) {
     case 'record':
@@ -410,15 +442,23 @@ async function main(): Promise<number> {
     }
     case 'equal': {
       if (positional[1] === undefined) throw new Error('equal needs a git ref')
-      const differ = await Promise.all(browsers.map(b => equal(b, cases, positional[1]!, o.lib)))
+      const differ = await Promise.all(browsers.map(b => equal(b, cases, sets, positional[1]!, o.lib)))
       return differ.some(Boolean) ? 1 : 0
     }
-    case 'explain':
-      if (positional[1] === undefined) throw new Error('explain needs a case id')
-      await explain(browsers[0]!, cases, positional[1], o.lib)
+    case 'bench': {
+      if (positional[1] === undefined) throw new Error('bench needs a base: a git ref or a src/ directory')
+      const background = flags.has('background')
+      const chosen = flags.has('browser') ? browsers : background ? ['chrome', 'firefox', 'webkit-host'] as BrowserKind[] : ['chrome', 'firefox', 'safari'] as BrowserKind[]
+      await bench(positional[1], flags.get('lib') ?? LIB, chosen, Number(flags.get('sessions') ?? 3), flags.get('rows')?.split(',') ?? ROWS, background)
       return 0
+    }
+    case 'explain': {
+      const { c, recording } = await explainCase(browsers[0]!, cases, positional[1], flags, o.lib)
+      await explain(browsers[0]!, c, recording, o.lib)
+      return 0
+    }
     default:
-      console.error('Usage: bun harness record|check|gate|equal <ref>|explain <id> [--browser=...] [--cases=...] [--lib=...]')
+      console.error('Usage: bun harness record|check|gate|equal <ref>|bench <base>|explain <id>|explain --text=... [--browser=...] [--cases=...] [--lib=...]')
       return 2
   }
 }
