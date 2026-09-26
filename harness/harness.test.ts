@@ -2,8 +2,9 @@
 // says what an app developer would see if the fault went unseen.
 import './watchdog.ts'
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { srcOf } from './bench/lib.ts'
 import { fontsKey, keyOf, type Environment } from './browsers.ts'
 import { icuEntries, rustByteStrings } from './break-data.ts'
 import { check, drift, equal, gate, parseArgs, record, type Io, type Options } from './cli.ts'
@@ -675,7 +676,8 @@ describe('the documents a job lays out', () => {
     expect(ids(documents('chrome', cases, 2))).toEqual([['a', 'text'], ['b'], ['ko']])
   })
 
-  test('a build\'s own adapter is bundled with its src/, and this tree\'s with a src/ that has none beside it: equal would run this tree\'s adapter against itself and show no change to it', async () => {
+  test('a ref\'s adapter is unpacked beside its src/, a build\'s own adapter is bundled with its src/, and this tree\'s with a src/ that has none beside it: equal would run this tree\'s adapter against itself and show no change to it', async () => {
+    expect(existsSync(join(srcOf('HEAD'), '../harness/page.ts'))).toBe(true)
     const dir = join(import.meta.dir, '../.artifacts/harness-test-builds')
     for (const build of ['own', 'bare']) cpSync(join(import.meta.dir, '../src'), join(dir, build, 'src'), { recursive: true, dereference: true })
     mkdirSync(join(dir, 'own/harness'), { recursive: true })

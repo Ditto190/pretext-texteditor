@@ -83,7 +83,7 @@ export type Failure = Exclude<Status, 'pass'>
 // disagrees with the walk, or null.
 // `unsupported`: the adapter can't express the case. `error`: the library threw.
 export type Prediction =
-  | { lines: PredictedLine[]; textHash: number; prepareCalls: number; prepareUnits: number; lineCalls: number; disagreement: string | null }
+  | { lines: PredictedLine[]; textHash?: number; prepareCalls: number; prepareUnits: number; lineCalls: number; disagreement: string | null }
   | { unsupported: string }
   | { error: string }
 
